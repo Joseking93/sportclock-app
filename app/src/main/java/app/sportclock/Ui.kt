@@ -129,12 +129,12 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
     val (series, sess, meta) = heroTexts(h, now)
     val shape = RoundedCornerShape(20.dp)
     Box(
-        Modifier.fillMaxWidth().height(204.dp).clip(shape)
+        Modifier.fillMaxWidth().heightIn(min = 204.dp).clip(shape)
             .background(Brush.radialGradient(listOf(Color(0xFF171C0D), Color(0xFF0B0D09)), center = Offset(0f, 600f), radius = 900f))
             .border(1.dp, C.limeDim, shape)
             .combinedClickable(onClick = onOpen, onLongClick = onPin)
     ) {
-        h.person?.let { p ->
+        h.person?.let { p -> Box(Modifier.matchParentSize()) {
             Image(
                 painterResource(p.photo), null,
                 contentScale = ContentScale.Crop, alignment = BiasAlignment(p.fx * 2 - 1, p.fy * 2 - 1),
@@ -146,10 +146,11 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
                         drawRect(Brush.horizontalGradient(0f to Color.Transparent, 0.25f to Color.Black.copy(alpha = .4f), 0.55f to Color.Black), blendMode = BlendMode.DstIn)
                     },
             )
-        }
+        } }
         Box(Modifier.matchParentSize().background(Brush.horizontalGradient(0f to Color(0xE60B0D09), 0.38f to Color(0xA80B0D09), 0.6f to Color(0x260B0D09), 0.7f to Color.Transparent)))
 
-        Column(Modifier.padding(start = 20.dp, top = 16.dp, end = 16.dp)) {
+        // the card grows with its text (large font settings), so the time is never clipped
+        Column(Modifier.padding(start = 20.dp, top = 16.dp, end = 16.dp, bottom = 14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (pinned) { Icon(Icons.Filled.PushPin, null, Modifier.size(13.dp), tint = C.lime); Spacer(Modifier.width(4.dp)) }
                 Text(if (pinned) "PINNED" else "NEXT UP", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 2.4.sp)
@@ -161,8 +162,8 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
             }
             Text(sess, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(meta, color = C.fg2, fontFamily = Inter, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 230.dp))
-            Text(timeText(e), style = Digits, color = C.lime, fontWeight = FontWeight.ExtraBold, fontSize = 80.sp, lineHeight = 74.sp,
-                modifier = Modifier.offset(x = (-3).dp, y = (-2).dp))
+            Text(timeText(e), style = Digits, color = C.lime, fontWeight = FontWeight.ExtraBold, fontSize = 80.sp, lineHeight = 80.sp,
+                modifier = Modifier.offset(x = (-3).dp))
         }
 
         Row(Modifier.align(Alignment.TopEnd).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
