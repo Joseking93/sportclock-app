@@ -2,6 +2,11 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.0.3 (25 Oct 2026)
+- **Live countdown with seconds** on the NEXT UP card: the ring ticks every second (2:41:37, then 41:37 in the last hour) and still fills over the last two hours.
+- **Sharper widget photo:** photos are bundled at up to 1280 px and the widget draws them at about its own pixel size instead of stretching a half-size copy.
+- **The widget says how long to go**, rounded so it stays true between redraws: "in ~3h", "in about 1½h", "within the hour", "on now".
+
 ## 2.0.2 (24 Oct 2026)
 - The widget's photo now melts into the background with no visible edge: the fade is built into the image and it fills the whole widget, with a soft darkening at the bottom so the next two rows stay readable.
 - The widget's next-two rows no longer run the fixture into the day.

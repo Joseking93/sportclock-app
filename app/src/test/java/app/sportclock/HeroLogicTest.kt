@@ -48,4 +48,12 @@ class HeroLogicTest {
         assertEquals("TBC", timeText(tbc))
         assertEquals(null, pillFor(tbc, now))
     }
+
+    @Test fun countdownFormat() {
+        assertEquals("41:37", countdown(41 * 60 + 37))
+        assertEquals("2:41:37", countdown(2 * 3600 + 41 * 60 + 37))
+        assertEquals("19:00:05", countdown(19 * 3600 + 5))
+        assertEquals("00:00", countdown(0))
+        assertEquals("5d", countdown(5 * 86400 + 10))
+    }
 }

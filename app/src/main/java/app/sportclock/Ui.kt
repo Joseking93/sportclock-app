@@ -181,23 +181,36 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
                 Icon(if (pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin, if (pinned) "Unpin" else "Pin to top", Modifier.size(17.dp), tint = if (pinned) C.lime else C.fg2)
             }
         }
-        if (!e.isTbc) Ring(Duration.between(now, e.start).toMinutes(), Modifier.align(Alignment.BottomEnd).padding(16.dp))
+        if (!e.isTbc) Ring(e.start, Modifier.align(Alignment.BottomEnd).padding(16.dp))
     }
 }
 
-/** Countdown ring: fills over the last two hours before the start. */
+/** Live countdown ring: ticks every second (2:41:37, then 41:37 in the last hour) and fills over the last two hours. */
 @Composable
-fun Ring(minsLeft: Long, modifier: Modifier = Modifier) {
-    val frac = (1f - minsLeft.coerceAtLeast(0) / 120f).coerceIn(0f, 1f)
+fun Ring(start: Instant, modifier: Modifier = Modifier) {
+    var t by remember { mutableStateOf(Instant.now()) }
+    LaunchedEffect(start) { while (true) { t = Instant.now(); kotlinx.coroutines.delay(1000L - System.currentTimeMillis() % 1000L) } }
+    val secs = Duration.between(t, start).seconds.coerceAtLeast(0)
+    val frac = (1f - secs / 7200f).coerceIn(0f, 1f)
     Box(modifier.size(88.dp).clip(CircleShape).background(Color(0xB30A0C08)), contentAlignment = Alignment.Center) {
         Canvas(Modifier.matchParentSize().padding(3.dp)) {
             drawCircle(C.ringTrack, style = Stroke(6.dp.toPx()))
             if (frac > 0f) drawArc(C.lime, -90f, 360f * frac, false, style = Stroke(6.dp.toPx(), cap = StrokeCap.Round))
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(ringText(minsLeft.coerceAtLeast(0)), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 21.sp, lineHeight = 23.sp)
-            Text("to go", color = Color(0xFFC2C5B9), fontFamily = Inter, fontSize = 12.sp, lineHeight = 14.sp)
+            Text(countdown(secs), style = Digits, color = C.fg, fontSize = if (secs >= 36000) 19.sp else 22.sp, lineHeight = 24.sp, maxLines = 1)
+            Text(if (secs == 0L) "starting" else "to go", color = Color(0xFFC2C5B9), fontFamily = Inter, fontSize = 12.sp, lineHeight = 14.sp)
         }
+    }
+}
+
+/** 41:37 under an hour, 2:41:37 under 4 days, otherwise whole days. */
+fun countdown(secs: Long): String {
+    val h = secs / 3600; val m = (secs % 3600) / 60; val s = secs % 60
+    return when {
+        secs >= 96 * 3600 -> "${secs / 86400}d"
+        h > 0 -> "%d:%02d:%02d".format(h, m, s)
+        else -> "%02d:%02d".format(m, s)
     }
 }
 
