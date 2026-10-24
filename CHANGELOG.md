@@ -2,6 +2,10 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.0.2 (24 Oct 2026)
+- The widget's photo now melts into the background with no visible edge: the fade is built into the image and it fills the whole widget, with a soft darkening at the bottom so the next two rows stay readable.
+- The widget's next-two rows no longer run the fixture into the day.
+
 ## 2.0.1 (24 Oct 2026)
 - The NEXT UP card now grows with its text, so the big time is never clipped on phones with a larger font setting.
 

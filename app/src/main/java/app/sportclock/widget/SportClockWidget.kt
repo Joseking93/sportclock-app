@@ -50,37 +50,52 @@ class SportClockWidget : GlanceAppWidget() {
         val all = data?.events.orEmpty()
         val hero = heroes(all, follows, Repo.pinned(context), Filter.FOLLOWING, favs, now).firstOrNull()
         val next = all.filter { followed(it, follows) && !it.started(now) && !it.over(now) && it.id != hero?.event?.id }.take(2)
-        val photo = hero?.person?.let { runCatching { crop(context, it) }.getOrNull() }
-        provideContent { Content(hero, next, photo, now) }
+        val wideBmp = hero?.person?.let { runCatching { faded(context, it, 760, 340, 0.22f, 0.72f, 1f) }.getOrNull() }
+        val squareBmp = hero?.person?.let { runCatching { faded(context, it, 420, 420, 0.0f, 0.95f, 0.75f) }.getOrNull() }
+        provideContent { Content(hero, next, wideBmp, squareBmp, now) }
     }
 
-    /** A small, pre-cropped copy of the hero photo (greyscale for fighters) that fits a widget's memory limit. */
-    private fun crop(ctx: Context, p: Person): Bitmap {
-        val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
-        val src = BitmapFactory.decodeResource(ctx.resources, p.photo, opts)
-        val side = minOf(src.width, src.height)
-        val cx = (p.fx * src.width).toInt().coerceIn(side / 2, src.width - side / 2)
-        val cy = (p.fy * src.height).toInt().coerceIn(side / 2, src.height - side / 2)
-        val out = Bitmap.createBitmap(420, 420, Bitmap.Config.ARGB_8888)
+    /**
+     * The hero photo for the whole widget, with the fade baked into the bitmap: fully transparent at [from] of the width,
+     * fully opaque at [to], so it melts into the widget's background with no visible edge, as the card in the app does.
+     * Greyscale for fighters; small enough for a widget's memory limit.
+     */
+    private fun faded(ctx: Context, p: Person, w: Int, h: Int, from: Float, to: Float, maxAlpha: Float): Bitmap {
+        val src = BitmapFactory.decodeResource(ctx.resources, p.photo, BitmapFactory.Options().apply { inSampleSize = 2 })
+        // largest crop of the target shape that keeps the focal point (face, cockpit) in frame
+        val scale = minOf(src.width.toFloat() / w, src.height.toFloat() / h)
+        val cw = (w * scale).toInt(); val ch = (h * scale).toInt()
+        val left = ((p.fx * src.width) - cw * 0.62f).toInt().coerceIn(0, src.width - cw)
+        val top = ((p.fy * src.height) - ch / 2f).toInt().coerceIn(0, src.height - ch)
+        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val c = Canvas(out)
         val paint = Paint(Paint.FILTER_BITMAP_FLAG)
         if (p.kind == Kind.FIGHTER) paint.colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
-        Canvas(out).drawBitmap(src, Rect(cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2), Rect(0, 0, 420, 420), paint)
+        c.drawBitmap(src, Rect(left, top, left + cw, top + ch), Rect(0, 0, w, h), paint)
         src.recycle()
+        val mask = Paint().apply {
+            shader = android.graphics.LinearGradient(w * from, 0f, w * to, 0f,
+                intArrayOf(0x00000000, (((maxAlpha * 0.45f) * 255).toInt() shl 24), ((maxAlpha * 255).toInt() shl 24)),
+                floatArrayOf(0f, 0.45f, 1f), android.graphics.Shader.TileMode.CLAMP)
+            xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN)
+        }
+        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), mask)
+        // a soft darkening towards the bottom, only over the photo itself, so the "next two" rows stay readable
+        val shade = Paint().apply {
+            shader = android.graphics.LinearGradient(0f, h * 0.45f, 0f, h.toFloat(), 0x000E100B, 0xB30E100B.toInt(), android.graphics.Shader.TileMode.CLAMP)
+            xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_ATOP)
+        }
+        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), shade)
         return out
     }
 
     @Composable
-    private fun Content(hero: Hero?, next: List<Event>, photo: Bitmap?, now: Instant) {
+    private fun Content(hero: Hero?, next: List<Event>, wideBmp: Bitmap?, squareBmp: Bitmap?, now: Instant) {
         val wide = LocalSize.current.width >= 250.dp
         val lime = ColorProvider(Color(0xFFC8F53C)); val fg = ColorProvider(Color(0xFFECEEE6)); val fg2 = ColorProvider(Color(0xFFA6A99E))
         Box(GlanceModifier.fillMaxSize().cornerRadius(24.dp).background(Color(0xFF0E100B)).clickable(actionStartActivity<MainActivity>())) {
-            if (photo != null) {
-                Row(GlanceModifier.fillMaxSize()) {
-                    Spacer(GlanceModifier.defaultWeight())
-                    Image(ImageProvider(photo), null, contentScale = androidx.glance.layout.ContentScale.Crop,
-                        modifier = GlanceModifier.fillMaxHeight().width(if (wide) 170.dp else 120.dp))
-                }
-                Image(ImageProvider(R.drawable.widget_scrim), null, contentScale = androidx.glance.layout.ContentScale.FillBounds, modifier = GlanceModifier.fillMaxSize())
+            (if (wide) wideBmp else squareBmp)?.let { bmp ->
+                Image(ImageProvider(bmp), null, contentScale = androidx.glance.layout.ContentScale.Crop, modifier = GlanceModifier.fillMaxSize())
             }
             Column(GlanceModifier.fillMaxSize().padding(14.dp)) {
                 Text("NEXT UP", style = TextStyle(color = lime, fontSize = 11.sp, fontWeight = FontWeight.Bold))
@@ -95,11 +110,10 @@ class SportClockWidget : GlanceAppWidget() {
                     if (wide) {
                         Spacer(GlanceModifier.defaultWeight())
                         next.forEach { n ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(timeText(n), style = TextStyle(color = fg, fontSize = 15.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.width(52.dp))
-                                Text(n.line1(), maxLines = 1, style = TextStyle(color = fg, fontSize = 12.sp))
-                                Spacer(GlanceModifier.defaultWeight())
-                                Text(dayWord(n.start, now), style = TextStyle(color = fg2, fontSize = 11.sp))
+                            Row(GlanceModifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(timeText(n), style = TextStyle(color = fg, fontSize = 15.sp, fontWeight = FontWeight.Bold), modifier = GlanceModifier.width(54.dp))
+                                Text(n.line1(), maxLines = 1, style = TextStyle(color = fg, fontSize = 12.sp), modifier = GlanceModifier.defaultWeight())
+                                Text(dayWord(n.start, now), style = TextStyle(color = fg2, fontSize = 11.sp), modifier = GlanceModifier.padding(start = 8.dp))
                             }
                         }
                     }
