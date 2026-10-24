@@ -5,9 +5,23 @@ It reads the same live data as the website ([sportclock.pages.dev](https://sport
 
 **Private repository.** The app bundles press photos for personal use only; don't make this repo public or share the APK publicly.
 
+## Screenshots
+
+| Home: pinned F1 card | Home: swipe to Man Utd | Calendar |
+|---|---|---|
+| <img src="docs/screenshots/home-f1-pinned.jpg" width="260"> | <img src="docs/screenshots/home-man-utd.jpg" width="260"> | <img src="docs/screenshots/calendar.jpg" width="260"> |
+
+| Favourites: choose your driver | Favourites: choose your player | Installing: Play Protect check |
+|---|---|---|
+| <img src="docs/screenshots/favourites-driver.jpg" width="260"> | <img src="docs/screenshots/favourites-player.jpg" width="260"> | <img src="docs/screenshots/play-protect.jpg" width="260"> |
+
 ## Install
-Download the APK from the latest [Release](../../releases), open it on the phone and tap **Update** (or Install).
-It is signed with the same key as the earlier web-app version, so it updates in place. Android 8.0 or newer.
+1. Download the APK from the latest [Release](../../releases) and open it on the phone.
+2. If Android asks, allow your browser or Files app to **install unknown apps** (a one-time setting).
+3. **Google Play Protect scan:** if Play Protect is on (it is by default), the phone scans the APK before installing, because it doesn't come from the Play Store. Wait for the result. It should say **"This app looks safe"**; then tap **Install** (or **Update**). If it ever offers "Scan app" instead, tap it and wait.
+4. Open SportClock.
+
+It is signed with the same key as the earlier web-app version, so it updates in place without uninstalling. Android 8.0 or newer.
 
 ## Build
 1. Double-click `build-release.cmd` (or run `.\build-release.cmd`).
