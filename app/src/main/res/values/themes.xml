@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- the window is near-black from the first frame, so there is no white flash before Compose draws -->
+    <style name="Theme.SportClock" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/sc_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+    <style name="Theme.SportClock.Splash" parent="Theme.SportClock">
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31" xmlns:tools="http://schemas.android.com/tools">@color/sc_bg</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31" xmlns:tools="http://schemas.android.com/tools">@mipmap/ic_maskable</item>
+    </style>
+</resources>
