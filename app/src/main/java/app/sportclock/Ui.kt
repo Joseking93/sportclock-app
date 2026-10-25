@@ -15,11 +15,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.SportsMma
 import androidx.compose.material.icons.filled.SportsScore
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.NotificationAdd
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -40,6 +42,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.Duration
@@ -287,7 +290,24 @@ fun EventRow(e: Event, now: Instant, score: Score? = null, highlight: Boolean = 
             Text(e.line2(), color = C.fg2, fontFamily = Inter, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 28.dp))
         }
         val pill = if (showScore && score!!.status == "FINISHED") null else pillFor(e, now)
-        pill?.let { Box(Modifier.padding(end = 12.dp)) { PillView(it) } }
+        val bell = AlertChoices.on && !e.isTbc && e.start.isAfter(now)
+        pill?.let { Box(Modifier.padding(end = if (bell) 0.dp else 12.dp)) { PillView(it) } }
+        if (bell) AlertBell(e)
+    }
+}
+
+/** Tap to get (or stop) a starting-soon alert for just this event. */
+@Composable
+fun AlertBell(e: Event, size: Dp = 22.dp) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val on = AlertChoices.wants(e)
+    Box(Modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).clickable {
+        val now = AlertChoices.toggle(ctx, e)
+        Repo.data.value?.let { Alerts.reschedule(ctx, it.events) }
+        android.widget.Toast.makeText(ctx, if (now) "Alert on: ${Settings.leadMins(ctx)} min before" else "No alert for this one", android.widget.Toast.LENGTH_SHORT).show()
+    }, contentAlignment = Alignment.Center) {
+        Icon(if (on) Icons.Filled.NotificationsActive else Icons.Outlined.NotificationAdd, if (on) "Alert on" else "Alert off",
+            tint = if (on) C.lime else C.fg3, modifier = Modifier.size(size))
     }
 }
 

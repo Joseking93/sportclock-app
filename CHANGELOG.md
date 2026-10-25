@@ -2,6 +2,11 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.3 (25 Oct 2026)
+- **Pick which matches alert you.** Every upcoming match and session has a bell: tap it to get an alert for just that one, or to silence one you'd otherwise get. The same switch is in the match sheet.
+- **Alert for: All or Picked**, per follow, in More → Settings. Football competitions start as Picked, so a Premier League weekend no longer means ten alerts; your team, F1 and UFC start as All.
+- A picked match keeps its alert if TV moves it to another day.
+
 ## 2.2 (25 Oct 2026)
 - **Tables no longer crash** when you switch league; only the first table you opened worked before. Switching F1 drivers/teams had the same bug.
 - **Updates inside the app:** More → Updates shows the newest version and installs it in two taps. Home shows a note when one is ready.

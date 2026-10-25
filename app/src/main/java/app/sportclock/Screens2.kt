@@ -257,7 +257,7 @@ fun SettingsScreen(onBack: () -> Unit, onChanged: () -> Unit, onTextScale: (Floa
     var lead by remember { mutableIntStateOf(Settings.leadMins(ctx)) }
     var scale by remember { mutableFloatStateOf(Settings.textScale(ctx)) }
     val askPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        alerts = granted; Settings.setAlertsOn(ctx, granted); onChanged()
+        alerts = granted; Settings.setAlertsOn(ctx, granted); AlertChoices.on = granted; onChanged()
     }
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding()) {
         item {
@@ -270,7 +270,7 @@ fun SettingsScreen(onBack: () -> Unit, onChanged: () -> Unit, onTextScale: (Floa
         item {
             ToggleRow(C.lime, "Starting-soon alerts", "For everything you follow, even with the app closed", alerts) { on ->
                 if (on && Build.VERSION.SDK_INT >= 33) askPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                else { alerts = on; Settings.setAlertsOn(ctx, on); onChanged() }
+                else { alerts = on; Settings.setAlertsOn(ctx, on); AlertChoices.on = on; onChanged() }
             }
         }
         item {
@@ -279,6 +279,26 @@ fun SettingsScreen(onBack: () -> Unit, onChanged: () -> Unit, onTextScale: (Floa
                 listOf(10, 15, 30, 60).forEach { m ->
                     FilterChip(lead == m, { lead = m; Settings.setLeadMins(ctx, m); onChanged() }, label = { Text(if (m == 60) "1 hour" else "$m min", fontFamily = Inter) },
                         colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
+                }
+            }
+        }
+        if (alerts) {
+            item {
+                Text("Alert for", color = C.fg2, fontFamily = Inter, fontSize = 13.sp, modifier = Modifier.padding(start = 20.dp, top = 16.dp))
+                Text("Picked: only the matches you tap the bell on.", color = C.fg3, fontFamily = Inter, fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 6.dp))
+            }
+            items(AlertChoices.follows.sortedWith(compareBy({ !it.startsWith("c:") }, { tokenLabel(it) })).toList()) { t ->
+                val all = alertsAll(t, AlertChoices.flipped)
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 2.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(C.tile)
+                    .padding(start = 14.dp, end = 8.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (t.startsWith("c:")) { LogoChip(t.substring(2), 20.dp); Spacer(Modifier.width(10.dp)) }
+                    Text(tokenLabel(t), Modifier.weight(1f), color = C.fg, fontFamily = Inter, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    listOf(true to "All", false to "Picked").forEach { (v, label) ->
+                        FilterChip(all == v, { AlertChoices.setAll(ctx, t, v); onChanged() }, label = { Text(label, fontFamily = Inter) },
+                            modifier = Modifier.padding(start = 6.dp),
+                            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
+                    }
                 }
             }
         }

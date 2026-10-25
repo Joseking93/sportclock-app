@@ -73,6 +73,7 @@ fun App(onTextScale: (Float) -> Unit = {}) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val st = remember { AppState(ctx) }
+    remember { AlertChoices.load(ctx) }
     val data by Repo.data.collectAsState()
     var now by remember { mutableStateOf(Instant.now()) }
     var tab by remember { mutableStateOf(Tab.HOME) }
@@ -89,6 +90,7 @@ fun App(onTextScale: (Float) -> Unit = {}) {
         if (crashes > 0) Toast.makeText(ctx, "SportClock crashed last time. A report was sent.", Toast.LENGTH_LONG).show()
         Updater.checkNow(ctx); updateWaiting = Updater.waiting(ctx)
     }
+    LaunchedEffect(st.follows) { AlertChoices.follows = st.follows }
     LaunchedEffect(tab, page) { Diag.log("screen ${page ?: tab.name.lowercase()}") }
     LaunchedEffect(detail) { detail?.let { Diag.log("open ${it.id} ${it.title}") } }
     // Scores from ESPN for today's and yesterday's football: every 2 minutes while a match is on, otherwise every 15.
@@ -285,6 +287,19 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?) {
         }, color = C.fg, fontFamily = Inter, fontSize = 15.sp)
         if (e.isApprox) Text("Approximate: broadcasters may move this.", color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
         if (e.sport != Sport.FOOTBALL && e.venue.isNotEmpty()) Text(e.venue, color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+        if (!e.isTbc && e.start.isAfter(now)) {
+            val ctx = LocalContext.current
+            val on = AlertChoices.on && AlertChoices.wants(e)
+            Row(Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.tile2).padding(start = 14.dp).heightIn(min = 48.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(when {
+                    !AlertChoices.on -> "Alerts are off. Turn them on in More → Settings."
+                    on -> "Alert ${Settings.leadMins(ctx)} min before ${if (e.sport == Sport.FOOTBALL) "kick-off" else "the start"}"
+                    else -> "No alert for this one · tap the bell"
+                }, Modifier.weight(1f), color = if (on) C.fg else C.fg2, fontFamily = Inter, fontSize = 14.sp)
+                if (AlertChoices.on) AlertBell(e, 24.dp)
+            }
+        }
         if (e.sport == Sport.FOOTBALL) {
             MatchSheetView(e, score, now)
             Text("Scores can lag behind the match${fetchedAt?.let { " · checked ${hm(it)}" } ?: ""}", color = C.fg3, fontFamily = Inter, fontSize = 12.sp,

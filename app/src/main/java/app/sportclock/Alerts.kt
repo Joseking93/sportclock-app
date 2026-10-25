@@ -10,6 +10,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.glance.appwidget.updateAll
 import app.sportclock.widget.SportClockWidget
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +34,66 @@ object Settings {
 }
 
 /**
+ * Which events alert. A match you picked (its bell) always does and one you muted never does; anything else
+ * alerts when it comes from a follow set to "All". Football competitions start as "Picked only", because a
+ * Premier League weekend is ten matches; teams and series (Man Utd, F1, UFC) start as "All".
+ * Picks are kept by the football match number, or code + title + session, so a match moved by TV keeps its alert.
+ */
+fun alertKey(e: Event) = e.fdid?.let { "fd:$it" } ?: "${e.code}|${e.title}|${e.session}"
+fun quietByDefault(token: String) = token.startsWith("c:") && series(token.substring(2))?.sport == Sport.FOOTBALL
+/** True when this follow alerts for everything; [flipped] holds the follows changed away from their default. */
+fun alertsAll(token: String, flipped: Set<String>) = (token in flipped) == quietByDefault(token)
+fun wantsAlert(e: Event, follows: Set<String>, flipped: Set<String>, picked: Set<String>, muted: Set<String>): Boolean {
+    if (e.isTbc) return false
+    val k = alertKey(e)
+    if (k in picked) return true
+    if (k in muted) return false
+    return follows.any { tokenMatches(it, e) && alertsAll(it, flipped) }
+}
+
+/** The alert choices as Compose state, so every bell on screen updates together. */
+object AlertChoices {
+    var on by mutableStateOf(false)
+    var follows by mutableStateOf(emptySet<String>())
+    var picked by mutableStateOf(emptySet<String>())
+    var muted by mutableStateOf(emptySet<String>())
+    var flipped by mutableStateOf(emptySet<String>())
+
+    fun load(ctx: Context) {
+        val p = Repo.prefs(ctx)
+        on = Settings.alertsOn(ctx); follows = Repo.follows(ctx)
+        picked = p.getStringSet("alertPicked", emptySet())!!.toSet()
+        muted = p.getStringSet("alertMuted", emptySet())!!.toSet()
+        flipped = p.getStringSet("alertFlipped", emptySet())!!.toSet()
+    }
+    private fun save(ctx: Context) = Repo.prefs(ctx).edit().putStringSet("alertPicked", picked).putStringSet("alertMuted", muted)
+        .putStringSet("alertFlipped", flipped).apply()
+
+    fun wants(e: Event) = wantsAlert(e, follows, flipped, picked, muted)
+
+    /** The bell: turns this one event's alert on or off, whatever its follow says. Returns the new state. */
+    fun toggle(ctx: Context, e: Event): Boolean {
+        val k = alertKey(e)
+        if (wants(e)) { picked = picked - k; if (wants(e)) muted = muted + k }
+        else { muted = muted - k; if (!wants(e)) picked = picked + k }
+        save(ctx); return wants(e)
+    }
+
+    fun setAll(ctx: Context, token: String, all: Boolean) {
+        flipped = if (all == !quietByDefault(token)) flipped - token else flipped + token
+        save(ctx)
+    }
+
+    /** Forget picks for events that are over, so the lists don't grow for ever. */
+    fun prune(ctx: Context, events: List<Event>, now: Instant) {
+        if (events.size < 20) return                     // a failed or partial load must not wipe the picks
+        val live = events.filter { !it.over(now) }.map { alertKey(it) }.toSet()
+        picked = picked intersect live; muted = muted intersect live
+        save(ctx)
+    }
+}
+
+/**
  * "Starting soon" alerts for followed events, as exact alarms owned by the phone, so they arrive with the app closed.
  * Re-armed whenever the app opens, follows or settings change, the phone restarts or the app updates.
  * TBC events never alert: there is no honest time to alert on.
@@ -45,9 +108,9 @@ object Alerts {
         p.getStringSet("alarmCodes", emptySet())!!.forEach { am.cancel(pending(ctx, it.toInt(), null)) }
         if (!Settings.alertsOn(ctx)) { p.edit().putStringSet("alarmCodes", emptySet()).apply(); return }
         val now = Instant.now(); val lead = Settings.leadMins(ctx).toLong()
-        val follows = Repo.follows(ctx)
+        AlertChoices.load(ctx); AlertChoices.prune(ctx, events, now)
         val codes = HashSet<String>()
-        events.asSequence().filter { !it.isTbc && followed(it, follows) }
+        events.asSequence().filter { AlertChoices.wants(it) }
             .map { it to it.start.minusSeconds(lead * 60) }
             .filter { (e, at) -> at.isAfter(now) && Duration.between(now, e.start).toDays() < 8 }
             .take(MAX).forEach { (e, at) ->
