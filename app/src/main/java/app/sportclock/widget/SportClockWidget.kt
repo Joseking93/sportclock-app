@@ -52,6 +52,7 @@ class SportClockWidget : GlanceAppWidget() {
         val next = all.filter { followed(it, follows) && !it.started(now) && !it.over(now) && it.id != hero?.event?.id }.take(2)
         val wideBmp = hero?.person?.let { runCatching { faded(context, it, 1080, 480, 0.22f, 0.72f, 1f) }.getOrNull() }
         val squareBmp = hero?.person?.let { runCatching { faded(context, it, 600, 600, 0.0f, 0.95f, 0.75f) }.getOrNull() }
+        Alerts.scheduleWidget(context, hero?.event?.takeIf { !it.isTbc }?.start)   // redraw when the wording next changes
         provideContent { Content(hero, next, wideBmp, squareBmp, now) }
     }
 
@@ -123,17 +124,16 @@ class SportClockWidget : GlanceAppWidget() {
     }
 
     /**
-     * How long to go, rounded so it stays true between redraws (the widget only refreshes about every 30 minutes):
-     * "in ~3h", "in about 1½h", "within the hour", "on now". The app's own card shows the exact countdown.
+     * How long to go. The widget redraws every 5 minutes in the last hour (see Alerts.scheduleWidget), so under an hour
+     * it can say "in about 15 min"; further out it rounds to what stays true until the next redraw.
      */
     private fun roughUntil(e: Event, now: Instant): String {
         if (e.inProgress(now)) return "on now"
         val m = java.time.Duration.between(now, e.start).toMinutes()
         return when {
-            m <= 0 -> "starting"
-            m < 60 -> "within the hour"
-            m < 90 -> "in about 1h"
-            m < 120 -> "in about 1½h"
+            m <= 2 -> "starting now"
+            m < 60 -> "in about ${((m + 2) / 5 * 5).coerceAtLeast(5)} min"
+            m < 180 -> "in about ${untilText((m + 7) / 15 * 15)}"
             m < 48 * 60 -> "in ~${(m + 30) / 60}h"
             else -> "in ${m / 1440} days"
         }

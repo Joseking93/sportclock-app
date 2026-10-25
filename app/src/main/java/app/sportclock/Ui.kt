@@ -157,7 +157,7 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
             }
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Dot(seriesColor(e.code), 12.dp); Spacer(Modifier.width(10.dp))
+                LogoChip(e.code, 26.dp); Spacer(Modifier.width(10.dp))
                 Text(series, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.ExtraBold, fontSize = 25.sp, letterSpacing = (-0.5).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(sess, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -275,16 +275,16 @@ fun EventRow(e: Event, now: Instant, score: Score? = null, highlight: Boolean = 
     ) {
         Column(Modifier.width(80.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(if (showScore) "${score!!.home}–${score.away}" else timeText(e), style = Digits, fontSize = 24.sp, color = if (highlight) C.lime else C.fg)
-            val cue = if (showScore) when (score!!.status) { "FINISHED" -> "FT"; "PAUSED" -> "Break"; else -> null } else tonightCue(e, now)
+            val cue = if (showScore) when (score!!.status) { "FINISHED" -> "FT"; "PAUSED" -> "HT"; else -> score.detail.takeIf { it.isNotEmpty() && it.length <= 7 } ?: "Live" } else tonightCue(e, now)
             cue?.let { Text(it, color = C.lime, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, lineHeight = 13.sp) }
         }
         Box(Modifier.width(1.dp).height(36.dp).background(C.line))
         Column(Modifier.weight(1f).padding(start = 14.dp, end = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Dot(seriesColor(e.code)); Spacer(Modifier.width(8.dp))
+                LogoChip(e.code, 20.dp); Spacer(Modifier.width(8.dp))
                 Text(e.line1(), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Text(e.line2(), color = C.fg2, fontFamily = Inter, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 17.dp))
+            Text(e.line2(), color = C.fg2, fontFamily = Inter, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 28.dp))
         }
         val pill = if (showScore && score!!.status == "FINISHED") null else pillFor(e, now)
         pill?.let { Box(Modifier.padding(end = 12.dp)) { PillView(it) } }
@@ -292,13 +292,13 @@ fun EventRow(e: Event, now: Instant, score: Score? = null, highlight: Boolean = 
 }
 
 /** Events grouped under day headers, in the phone's own zone. */
-fun androidx.compose.foundation.lazy.LazyListScope.dayGroups(events: List<Event>, now: Instant, scores: Map<Long, Score>, onOpen: (Event) -> Unit) {
+fun androidx.compose.foundation.lazy.LazyListScope.dayGroups(events: List<Event>, now: Instant, scores: Map<String, Score>, onOpen: (Event) -> Unit) {
     val today = localDate(now)
     events.groupBy { localDate(it.window?.first?.takeIf { _ -> it.isTbc } ?: it.start) }.toSortedMap().forEach { (d, list) ->
         item(key = "h$d") { DayHeader(d, today) }
         list.forEach { e ->
             item(key = e.id) {
-                EventRow(e, now, e.fdid?.let { scores[it] }, onClick = { onOpen(e) })
+                EventRow(e, now, scores[e.id], onClick = { onOpen(e) })
                 Spacer(Modifier.height(4.dp))
             }
         }

@@ -20,6 +20,8 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Newspaper
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,12 +44,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        setContent { SportClockTheme { App() } }
+        setContent {
+            // text size: the user's choice in Settings, or the phone's own when "Phone" is chosen
+            var textScale by remember { mutableFloatStateOf(Settings.textScale(this)) }
+            val dens = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(dens.density, if (textScale > 0f) textScale else dens.fontScale)
+            ) { SportClockTheme { App(onTextScale = { textScale = it }) } }
+        }
     }
 }
 
 enum class Tab(val label: String, val icon: ImageVector) { HOME("Home", Icons.Filled.Home), SCORES("Scores", Icons.Filled.EmojiEvents),
-    CALENDAR("Calendar", Icons.Filled.CalendarMonth), MORE("More", Icons.Filled.Menu) }
+    CALENDAR("Calendar", Icons.Filled.CalendarMonth), NEWS("News", Icons.Filled.Newspaper), MORE("More", Icons.Filled.Menu) }
 
 /** Everything the screens read; changes are written through Repo and mirrored here. */
 class AppState(ctx: android.content.Context) {
@@ -58,29 +67,32 @@ class AppState(ctx: android.content.Context) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun App() {
+fun App(onTextScale: (Float) -> Unit = {}) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val st = remember { AppState(ctx) }
     val data by Repo.data.collectAsState()
     var now by remember { mutableStateOf(Instant.now()) }
     var tab by remember { mutableStateOf(Tab.HOME) }
-    var page by remember { mutableStateOf<String?>(null) }          // "follow" | "about" pushed over More
+    var page by remember { mutableStateOf<String?>(null) }          // "follow" | "about" | "settings" pushed over More
     var detail by remember { mutableStateOf<Event?>(null) }
     var scores by remember { mutableStateOf(Scores(emptyMap(), null, null)) }
 
-    LaunchedEffect(Unit) { Repo.load(ctx); SportClockWidget().updateAll(ctx) }
+    LaunchedEffect(Unit) { Repo.load(ctx)?.let { Alerts.reschedule(ctx, it.events) }; SportClockWidget().updateAll(ctx) }
     LaunchedEffect(Unit) { while (true) { delay(30_000); now = Instant.now() } }
-    // free delayed scores for football that is on now or ended in the last day; asked at most every 65 s
+    // Scores from ESPN for today's and yesterday's football: every 2 minutes while a match is on, otherwise every 15.
     LaunchedEffect(data) {
         while (true) {
             val t = Instant.now()
-            val ids = data?.events.orEmpty().filter { it.fdid != null && it.started(t) && it.start.isAfter(t.minusSeconds(86400)) }.mapNotNull { it.fdid }
-            if (ids.isNotEmpty()) scores = Repo.scores(ids)
-            delay(65_000)
+            val pool = data?.events.orEmpty().filter { it.sport == Sport.FOOTBALL && it.started(t) && it.start.isAfter(t.minusSeconds(30 * 3600)) }
+            val live = pool.any { it.inProgress(t) }
+            if (pool.isNotEmpty()) scores = Repo.scores(if (live) pool.filter { it.inProgress(t) || scores.matches[it.id] == null } else pool)
+                .let { fresh -> if (live) Scores(scores.matches + fresh.matches, fresh.fetchedAt, fresh.error) else fresh }
+            delay(if (live) 120_000 else 900_000)
         }
     }
     fun refreshWidget() = scope.launch { SportClockWidget().updateAll(ctx) }
+    fun rearm() { data?.let { Alerts.reschedule(ctx, it.events) }; refreshWidget() }
 
     BackHandler(enabled = page != null) { page = null }
 
@@ -100,7 +112,8 @@ fun App() {
         Box(Modifier.padding(pad).fillMaxSize()) {
             val d = data
             when {
-                page == "follow" -> FollowScreen(st, d?.events.orEmpty(), now, onBack = { page = null }, onChanged = { refreshWidget() })
+                page == "follow" -> FollowScreen(st, d?.events.orEmpty(), now, onBack = { page = null }, onChanged = { rearm() })
+                page == "settings" -> SettingsScreen(onBack = { page = null }, onChanged = { rearm() }, onTextScale = onTextScale)
                 page == "about" -> AboutScreen(d, onBack = { page = null })
                 d == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = C.lime) }
                 tab == Tab.HOME -> HomeScreen(st, d.events, now, scores.matches,
@@ -110,14 +123,15 @@ fun App() {
                         Toast.makeText(ctx, if (newPin == null) "Unpinned" else "${tokenLabel(newPin)} stays on top", Toast.LENGTH_SHORT).show()
                     },
                     onOpen = { detail = it })
-                tab == Tab.SCORES -> ScoresScreen(st, d, now, scores, onOpen = { detail = it })
+                tab == Tab.SCORES -> ScoresHub(st, d, now, scores, onOpen = { detail = it })
                 tab == Tab.CALENDAR -> CalendarScreen(st, d.events, now, scores.matches, onOpen = { detail = it })
-                tab == Tab.MORE -> MoreScreen(onFollow = { page = "follow" }, onAbout = { page = "about" })
+                tab == Tab.NEWS -> NewsScreen(st, now)
+                tab == Tab.MORE -> MoreScreen(onFollow = { page = "follow" }, onSettings = { page = "settings" }, onAbout = { page = "about" })
             }
         }
     }
     detail?.let { e -> ModalBottomSheet(onDismissRequest = { detail = null }, containerColor = C.tile, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        DetailSheet(e, now, e.fdid?.let { scores.matches[it] }, scores.fetchedAt, data?.attribution.orEmpty())
+        DetailSheet(e, now, scores.matches[e.id], scores.fetchedAt)
     } }
 }
 
@@ -129,7 +143,7 @@ fun TopBar() {
 }
 
 @Composable
-fun HomeScreen(st: AppState, events: List<Event>, now: Instant, scores: Map<Long, Score>, onPin: (Hero) -> Unit, onOpen: (Event) -> Unit) {
+fun HomeScreen(st: AppState, events: List<Event>, now: Instant, scores: Map<String, Score>, onPin: (Hero) -> Unit, onOpen: (Event) -> Unit) {
     var filter by remember { mutableStateOf(Filter.FOLLOWING) }
     val hs = remember(events, st.follows, st.pinned, filter, st.favs, now) { heroes(events, st.follows, st.pinned, filter, st.favs, now) }
     var shown by remember { mutableStateOf<String?>(null) }
@@ -145,7 +159,7 @@ fun HomeScreen(st: AppState, events: List<Event>, now: Instant, scores: Map<Long
 }
 
 @Composable
-fun CalendarScreen(st: AppState, events: List<Event>, now: Instant, scores: Map<Long, Score>, onOpen: (Event) -> Unit) {
+fun CalendarScreen(st: AppState, events: List<Event>, now: Instant, scores: Map<String, Score>, onOpen: (Event) -> Unit) {
     var all by remember { mutableStateOf(false) }
     val today = localDate(now)
     var day by remember { mutableStateOf(today) }
@@ -180,45 +194,15 @@ fun CalendarScreen(st: AppState, events: List<Event>, now: Instant, scores: Map<
 }
 
 @Composable
-fun ScoresScreen(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Event) -> Unit) {
-    val t = localDate(now)
-    val todays = d.events.filter { it.sport == Sport.FOOTBALL && (localDate(it.start) == t || (it.started(now) && !it.over(now))) }
-    val mine = todays.filter { followed(it, st.follows) }
-    val nextMine = d.events.filter { it.sport == Sport.FOOTBALL && followed(it, st.follows) && !it.started(now) }.take(3)
-    LazyColumn(Modifier.fillMaxSize()) {
-        item {
-            Column(Modifier.statusBarsPadding().padding(start = 20.dp, top = 8.dp, bottom = 6.dp)) {
-                Text("Scores", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 26.sp)
-                Text("Football today, yours first", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
-            }
-        }
-        item { SectionLabel("Your teams") }
-        val yours = (mine + nextMine).distinct()
-        if (yours.isEmpty()) item { Text("No football you follow today", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp)) }
-        yours.forEach { e -> item(key = "m" + e.id) { EventRow(e, now, e.fdid?.let { scores.matches[it] }, onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) } }
-        todays.filter { it !in mine }.groupBy { it.code }.forEach { (code, list) ->
-            item(key = "s$code") { SectionLabel(series(code)?.name ?: code) }
-            list.forEach { e -> item(key = "o" + e.id) { EventRow(e, now, e.fdid?.let { scores.matches[it] }, onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) } }
-        }
-        item {
-            Column(Modifier.padding(20.dp)) {
-                val at = scores.fetchedAt?.let { "checked ${hm(it)}" } ?: "not checked yet"
-                Text("Scores can lag behind the match · $at", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
-                Text(d.attribution, color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
-            }
-        }
-    }
-}
-
-@Composable
 fun SectionLabel(text: String) = Text(text, color = C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp,
     modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp))
 
 @Composable
-fun MoreScreen(onFollow: () -> Unit, onAbout: () -> Unit) {
+fun MoreScreen(onFollow: () -> Unit, onSettings: () -> Unit, onAbout: () -> Unit) {
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(top = 8.dp)) {
         Text("More", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 26.sp, modifier = Modifier.padding(start = 20.dp, bottom = 12.dp))
         MoreItem(Icons.Filled.Star, "Following", "Series, teams and favourites", onFollow)
+        MoreItem(Icons.Filled.Settings, "Settings", "Alerts and text size", onSettings)
         MoreItem(Icons.Filled.Info, "About", "Sources, credits and honesty rules", onAbout)
     }
 }
@@ -246,8 +230,8 @@ fun AboutScreen(d: Data?, onBack: () -> Unit) {
             "Every time is shown in your phone's own time zone.",
             "\"~\" means an approximate time: broadcasters move these. TBC means no time is published yet, and the app never guesses one.",
             "LIVE is only shown for confirmed start times; an approximate one shows ON NOW.",
-            "Football scores are free and can lag behind the match. ${d?.attribution ?: ""}",
-            "F1 via Jolpica; fight cards and other series curated by hand.",
+            "Football scores, lineups and tables are fetched by your phone from ESPN; F1 standings from Jolpica (Ergast); news from BBC Sport.",
+            "Fixtures: ${d?.attribution ?: ""}; F1 calendar via Jolpica; fight cards and other series curated by hand.",
             "Photos are from news coverage and Wikimedia Commons, for personal use in this app only.",
             "Fixtures checked: ${d?.generated?.take(16)?.replace('T', ' ') ?: "—"} UTC",
         ).forEach { Text("• $it", color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(vertical = 5.dp)) }
@@ -255,23 +239,31 @@ fun AboutScreen(d: Data?, onBack: () -> Unit) {
 }
 
 @Composable
-fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, attribution: String) {
+fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?) {
+    val today = localDate(now)
     Column(Modifier.padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) { Dot(seriesColor(e.code), 12.dp); Spacer(Modifier.width(10.dp))
-            Text(series(e.code)?.name ?: e.comp, color = C.fg2, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp) }
-        Text(e.line1(), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 22.sp, modifier = Modifier.padding(top = 6.dp))
-        Text(e.line2(), color = C.fg2, fontFamily = Inter, fontSize = 15.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            LogoChip(e.code, 34.dp); Spacer(Modifier.width(12.dp))
+            Text(series(e.code)?.name ?: e.comp, color = C.fg2, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+        }
+        Text(e.line1(), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 22.sp, modifier = Modifier.padding(top = 10.dp))
+        if (e.sport != Sport.FOOTBALL) Text(e.line2(), color = C.fg2, fontFamily = Inter, fontSize = 15.sp)
         val showScore = score?.home != null && score.away != null
         Text(if (showScore) "${score!!.home}–${score.away}" else timeText(e), style = Digits, color = C.lime, fontWeight = FontWeight.ExtraBold, fontSize = 64.sp,
-            modifier = Modifier.padding(top = 8.dp))
-        Text(if (e.isTbc) (e.window?.let { "Time not published yet · expected between ${hm(it.first)} and ${hm(it.second)}" } ?: "Time not published yet")
-             else "${dayWord(e.start, now)} · ${daySub(localDate(e.start))} · your time", color = C.fg, fontFamily = Inter, fontSize = 15.sp)
+            modifier = Modifier.padding(top = 6.dp))
+        val d = localDate(e.start)
+        val dayLine = if (d == today || d == today.plusDays(1)) "${dayTitle(d, today)} · ${daySub(d)}" else "${dayTitle(d, today)} ${d.dayOfMonth} ${d.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }}"
+        Text(when {
+            showScore -> "${score!!.detail.ifEmpty { "Live" }} · kick-off ${hm(e.start)}, $dayLine"
+            e.isTbc -> e.window?.let { "Time not published yet · expected between ${hm(it.first)} and ${hm(it.second)}" } ?: "Time not published yet"
+            else -> "$dayLine · ${hm(e.start)}, your time"
+        }, color = C.fg, fontFamily = Inter, fontSize = 15.sp)
         if (e.isApprox) Text("Approximate: broadcasters may move this.", color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
-        if (e.venue.isNotEmpty()) Text(e.venue, color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+        if (e.sport != Sport.FOOTBALL && e.venue.isNotEmpty()) Text(e.venue, color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
         if (e.sport == Sport.FOOTBALL) {
-            Spacer(Modifier.height(14.dp))
-            Text("Scores can lag behind the match${fetchedAt?.let { " · checked ${hm(it)}" } ?: ""}", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
-            Text(attribution, color = C.fg3, fontFamily = Inter, fontSize = 12.sp)
+            MatchSheetView(e, score, now)
+            Text("Scores can lag behind the match${fetchedAt?.let { " · checked ${hm(it)}" } ?: ""}", color = C.fg3, fontFamily = Inter, fontSize = 12.sp,
+                modifier = Modifier.padding(top = 12.dp))
         }
     }
 }

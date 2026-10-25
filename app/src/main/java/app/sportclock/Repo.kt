@@ -18,8 +18,9 @@ enum class Filter(val label: String) { FOLLOWING("Following"), ALL("All"), FOOTB
 fun Filter.sport(): Sport? = when (this) { Filter.FOOTBALL -> Sport.FOOTBALL; Filter.MOTORSPORT -> Sport.MOTORSPORT; Filter.FIGHT -> Sport.COMBAT; else -> null }
 
 data class Data(val events: List<Event>, val generated: String, val attribution: String, val fetchedAt: Instant?)
-data class Score(val status: String, val home: Int?, val away: Int?, val minute: Int?)
-data class Scores(val matches: Map<Long, Score>, val fetchedAt: Instant?, val error: String?)
+/** A match state as the score source sent it; [detail] is its own wording ("45'", "HT", "FT"). */
+data class Score(val status: String, val home: Int?, val away: Int?, val minute: Int?, val detail: String = "", val espnId: String? = null, val league: String? = null)
+data class Scores(val matches: Map<String, Score>, val fetchedAt: Instant?, val error: String?)
 
 /** One card in the swipeable NEXT UP pager: the next event for one thing you follow. */
 data class Hero(val token: String?, val event: Event, val person: Person?)
@@ -61,21 +62,11 @@ object Repo {
         } finally { c.disconnect() }
     }
 
-    /** Free, delayed football scores through the site's own /api/scores. A score is shown only as the feed sent it. */
-    suspend fun scores(ids: Collection<Long>): Scores = withContext(Dispatchers.IO) {
-        if (ids.isEmpty()) return@withContext Scores(emptyMap(), null, null)
-        runCatching {
-            val o = JSONObject(get("$SITE/api/scores?ids=" + ids.take(200).joinToString(",")))
-            val m = o.optJSONObject("matches") ?: JSONObject()
-            val map = HashMap<Long, Score>()
-            for (k in m.keys()) {
-                val s = m.getJSONObject(k)
-                map[k.toLong()] = Score(s.optString("status"), s.optIntOrNull("home"), s.optIntOrNull("away"), s.optIntOrNull("minute"))
-            }
-            Scores(map, o.optString("fetchedAt").takeIf { it.isNotEmpty() && it != "null" }?.let(Instant::parse), o.optString("error").takeIf { it.isNotEmpty() && it != "null" })
-        }.getOrElse { Scores(emptyMap(), null, "network") }
+    /** Football scores for these events, fetched by the phone from ESPN (see Feeds.kt). Keyed by our event id. */
+    suspend fun scores(events: List<Event>): Scores {
+        if (events.isEmpty()) return Scores(emptyMap(), null, null)
+        return runCatching { Scores(espnScores(events), Instant.now(), null) }.getOrElse { Scores(emptyMap(), null, "network") }
     }
-    private fun JSONObject.optIntOrNull(k: String) = if (isNull(k) || !has(k)) null else optInt(k)
 
     /* ---------- what Jose chose ---------- */
     private val DEFAULT_FOLLOWS = setOf("c:F1", "t:Manchester United", "c:UFC")

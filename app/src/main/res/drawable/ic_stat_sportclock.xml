@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- status-bar icon: the podium stopwatch as a white silhouette -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="68" android:viewportHeight="70">
+    <group android:translateX="-18" android:translateY="-15">
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="6.5" android:fillColor="#00000000"
+            android:pathData="M26.25,55 a23.75,23.75 0 1,0 47.5,0 a23.75,23.75 0 1,0 -47.5,0" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M43.75,18.75 h12.5 v4.17 h-12.5 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M47,22.5 h6 v3 h-6 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M66.2,28.6 l3.9,3.9 l-3.6,3.6 l-3.9,-3.9 Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M33.33,60.42 V50 H43.75 V39.58 H56.25 V54.17 H66.67 V60.42 Z" />
+    </group>
+</vector>
