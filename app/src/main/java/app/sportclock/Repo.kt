@@ -80,6 +80,15 @@ object Repo {
     /* ---------- what Jose chose ---------- */
     private val DEFAULT_FOLLOWS = setOf("c:F1", "t:Manchester United", "c:UFC")
     fun follows(ctx: Context): Set<String> = prefs(ctx).getStringSet("follows", null) ?: DEFAULT_FOLLOWS
+    fun setFollows(ctx: Context, s: Set<String>) = prefs(ctx).edit().putStringSet("follows", s).apply()
+
+    /** A new install: nothing chosen yet and no sign of use, so the welcome page asks what to follow. */
+    fun isNewInstall(ctx: Context): Boolean {
+        val p = prefs(ctx)
+        return !p.getBoolean("welcomed", false) &&
+            listOf("follows", "myTab", "alerts", "alertPicked", "pinned", "updateChecked", "liveState", "lead", "textScale").none { p.contains(it) }
+    }
+    fun setWelcomed(ctx: Context) = prefs(ctx).edit().putBoolean("welcomed", true).apply()
     fun setFollow(ctx: Context, token: String, on: Boolean) {
         val s = follows(ctx).toMutableSet(); if (on) s += token else s -= token
         prefs(ctx).edit().putStringSet("follows", s).apply()

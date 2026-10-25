@@ -30,7 +30,7 @@ import java.time.Instant
  * league (Premier League, La Liga, Serie A, Bundesliga, Ligue 1...) or a single team. "Change" in its header picks.
  */
 
-private val LEAGUE_SHORT = mapOf("ENG" to "PL", "ESP" to "La Liga", "ITA" to "Serie A", "GER" to "Bundesliga", "FRA" to "Ligue 1",
+internal val LEAGUE_SHORT = mapOf("ENG" to "PL", "ESP" to "La Liga", "ITA" to "Serie A", "GER" to "Bundesliga", "FRA" to "Ligue 1",
     "UCL" to "UCL", "EFL" to "EFL", "NED" to "Eredivisie", "POR" to "Liga PT")
 
 fun myTabLabel(v: String) = when {
@@ -148,38 +148,72 @@ private fun NflStandings(onTeam: (String) -> Unit) {
 
 /* ---------- choosing what your tab shows ---------- */
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The choices: search first (so the keyboard never hides the matches), then F1, the NFL, the leagues and the teams
+ * you follow. Typing two letters shows only the matching teams and leagues.
+ */
 @Composable
-private fun MyTabPicker(current: String, st: AppState, events: List<Event>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+fun MyTabChoices(current: String?, follows: Set<String>, events: List<Event>, onPick: (String) -> Unit, modifier: Modifier = Modifier) {
     var query by remember { mutableStateOf("") }
     val teams = remember(events) { (events.filter { it.sport == Sport.FOOTBALL }.flatMap { it.teams } + NFL_TEAMS.keys).distinct().sorted() }
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = C.tile) {
-        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 640.dp)) {
-            item {
-                Text("Your tab shows…", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp))
-            }
+    val leagues = listOf("ENG", "ESP", "ITA", "GER", "FRA", "UCL", "EFL", "NED", "POR")
+    LazyColumn(modifier.imePadding()) {
+        item {
+            OutlinedTextField(query, { query = it }, placeholder = { Text("Find a team or league (e.g. United, Bundesliga)", fontFamily = Inter) }, singleLine = true,
+                leadingIcon = { Icon(Icons.Filled.Search, null) }, shape = RoundedCornerShape(28.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth())
+        }
+        if (query.trim().length >= 2) {
+            val q = query.trim()
+            val ls = leagues.filter { (series(it)?.name ?: it).contains(q, ignoreCase = true) || (LEAGUE_SHORT[it] ?: "").contains(q, ignoreCase = true) }
+            val ts = teams.filter { it.contains(q, ignoreCase = true) || short(it).contains(q, ignoreCase = true) }.take(12)
+            items(ls, key = { "ql$it" }) { c -> PickRow(series(c)?.name ?: c, "A whole league", c, current == "c:$c") { onPick("c:$c") } }
+            items(ts, key = { "qt$it" }) { t -> PickRow(t, if (t in NFL_TEAMS) "NFL team" else "Football team", null, current == "t:$t") { onPick("t:$t") } }
+            if (ls.isEmpty() && ts.isEmpty()) item { Text("Nothing called \"$q\". Try part of the name, e.g. \"United\".", color = C.fg2, fontFamily = Inter,
+                modifier = Modifier.padding(20.dp)) }
+        } else {
             item { PickRow("Formula 1", "Weekend, live timing, standings, season", "F1", current == "F1") { onPick("F1") } }
             item { PickRow("NFL", "Games, scores and standings", "NFL", current == "NFL") { onPick("NFL") } }
             item { SectionLabel("A whole league") }
-            items(listOf("ENG", "ESP", "ITA", "GER", "FRA", "UCL", "EFL", "NED", "POR")) { c ->
-                PickRow(series(c)?.name ?: c, "Matches and the table", c, current == "c:$c") { onPick("c:$c") }
+            items(leagues, key = { "l$it" }) { c -> PickRow(series(c)?.name ?: c, "Matches and the table", c, current == "c:$c") { onPick("c:$c") } }
+            val mine = follows.filter { it.startsWith("t:") }.sorted()
+            if (mine.isNotEmpty()) {
+                item { SectionLabel("Teams you follow") }
+                items(mine, key = { "f$it" }) { t -> PickRow(t.substring(2), "One team", null, current == t) { onPick(t) } }
             }
-            item { SectionLabel("One team") }
-            st.follows.filter { it.startsWith("t:") }.sorted().forEach { t ->
-                item(key = "f$t") { PickRow(t.substring(2), "A team you follow", null, current == t) { onPick(t) } }
-            }
-            item {
-                OutlinedTextField(query, { query = it }, placeholder = { Text("Find a team (e.g. United, Chiefs)", fontFamily = Inter) }, singleLine = true,
-                    leadingIcon = { Icon(Icons.Filled.Search, null) }, shape = RoundedCornerShape(28.dp),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth())
-            }
-            if (query.length >= 2) items(teams.filter { it.contains(query, ignoreCase = true) }.take(8), key = { "q$it" }) { t ->
-                PickRow(t, if (t in NFL_TEAMS) "NFL" else "Football", null, current == "t:$t") { onPick("t:$t") }
-            }
-            item { Spacer(Modifier.height(32.dp)) }
+            item { Text("Any other team: type its name in the search box above.", color = C.fg3, fontFamily = Inter, fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) }
         }
+        item { Spacer(Modifier.height(32.dp)) }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MyTabPicker(current: String, st: AppState, events: List<Event>, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = C.tile, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        Text("Your tab shows…", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(start = 24.dp, bottom = 4.dp))
+        MyTabChoices(current, st.follows, events, onPick, Modifier.fillMaxWidth().heightIn(max = 680.dp))
+    }
+}
+
+/**
+ * The first screen on a new phone: what do you follow most? The pick becomes your tab and what you follow, so a new
+ * person starts with their own team or sport rather than F1, Man Utd and UFC.
+ */
+@Composable
+fun WelcomeScreen(events: List<Event>, onPick: (String) -> Unit) =
+    Column(Modifier.fillMaxSize().background(C.bg).statusBarsPadding()) {
+        Row(Modifier.padding(start = 20.dp, top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Logo(34.dp); Spacer(Modifier.width(12.dp))
+            Text("SportClock", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.ExtraBold, fontSize = 26.sp)
+        }
+        Text("What do you follow most?", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 22.sp,
+            modifier = Modifier.padding(start = 20.dp, top = 18.dp))
+        Text("It gets its own tab, and its fixtures show on Home. You can add more later in More → Following, and change the tab any time.",
+            color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp))
+        MyTabChoices(null, emptySet(), events, onPick, Modifier.fillMaxWidth().weight(1f))
+    }
 
 @Composable
 private fun PickRow(title: String, sub: String, logo: String?, on: Boolean, onClick: () -> Unit) =

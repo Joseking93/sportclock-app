@@ -77,6 +77,7 @@ fun App(onTextScale: (Float) -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val st = remember { AppState(ctx) }
     remember { AlertChoices.load(ctx); Spoilers.load(ctx) }
+    var welcome by remember { mutableStateOf(Repo.isNewInstall(ctx)) }
     val data by Repo.data.collectAsState()
     var now by remember { mutableStateOf(Instant.now()) }
     var tab by remember { mutableStateOf(Tab.HOME) }
@@ -116,6 +117,18 @@ fun App(onTextScale: (Float) -> Unit = {}) {
     fun rearm() { data?.let { Alerts.reschedule(ctx, it.events) }; refreshWidget() }
 
     BackHandler(enabled = page != null) { page = null }
+
+    // a new phone: ask what this person follows before anything else
+    if (welcome) {
+        WelcomeScreen(data?.events.orEmpty()) { v ->
+            val token = when (v) { "F1" -> "c:F1"; "NFL" -> "c:NFL"; else -> v }
+            Repo.setFollows(ctx, setOf(token)); st.follows = setOf(token)
+            Settings.setMyTab(ctx, v); myTab = v
+            Repo.setWelcomed(ctx); welcome = false; tab = Tab.MINE
+            scope.launch { Repo.load(ctx, maxAgeMin = 600); rearm() }
+        }
+        return
+    }
 
     Scaffold(
         containerColor = C.bg,

@@ -2,6 +2,10 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.10 (25 Oct 2026)
+- **Fixed: picking a team for your tab.** The search box was at the bottom of the picker, so the keyboard covered the matches. Search now comes first, matching teams and leagues appear right under it as you type ("United", "Bundesliga", "Chiefs"), and the list stays above the keyboard.
+- **Welcome page on a new phone:** a fresh install starts by asking what you follow most: F1, the NFL, a league, or a team (with search). That choice becomes the tab and what you follow, instead of F1, Man Utd and UFC. Phones already in use skip it.
+
 ## 2.9 (25 Oct 2026)
 - **NFL:** follow the whole league or single teams (More → Following → NFL, or search "Chiefs").
   - Games appear on Home, in the Calendar, on the widget and in starting-soon alerts, with live scores and both teams' badges.
