@@ -15,7 +15,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import java.io.File
 
 /* ---------- More → Updates ---------- */
 
@@ -23,8 +22,6 @@ private sealed interface Up {
     data object Checking : Up
     data class Current(val v: String) : Up
     data class Available(val r: Release) : Up
-    data class Downloading(val r: Release, val p: Float) : Up
-    data class Ready(val r: Release, val f: File) : Up
     data class Failed(val msg: String) : Up
 }
 
@@ -34,19 +31,13 @@ fun UpdateScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val mine = remember { Diag.version(ctx).first }
     var state by remember { mutableStateOf<Up>(Up.Checking) }
-    var askedPermission by remember { mutableStateOf(false) }
+    var opened by remember { mutableStateOf(false) }
 
     fun check() = scope.launch {
         state = Up.Checking
         state = runCatching { Updater.latest() }.fold(
             { r -> Updater.remember(ctx, r); if (Updater.newer(r.version, mine)) Up.Available(r) else Up.Current(r.version) },
             { e -> Up.Failed(if (e is ServiceNotSetUp) "The update service isn't switched on yet." else "Couldn't reach the update service. Check your connection.") })
-    }
-    fun get(r: Release) = scope.launch {
-        Diag.log("update download ${r.version}")
-        state = Up.Downloading(r, 0f)
-        state = runCatching { Updater.download(ctx) { p -> state = Up.Downloading(r, p) } }.fold(
-            { Up.Ready(r, it) }, { Up.Failed("The download stopped. Try again on a steadier connection.") })
     }
     LaunchedEffect(Unit) { check() }
 
@@ -70,30 +61,14 @@ fun UpdateScreen(onBack: () -> Unit) {
                     Text("SportClock ${s.r.version} is ready", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
                     s.r.size?.let { Text("%.1f MB".format(it / 1_000_000f), color = C.fg2, fontFamily = Inter, fontSize = 13.sp) }
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = { get(s.r) }, colors = ButtonDefaults.buttonColors(containerColor = C.lime, contentColor = C.onLime)) {
-                        Text("Download and install", fontFamily = Inter, fontWeight = FontWeight.Bold)
+                    Button(onClick = { Diag.log("update open ${s.r.version}"); opened = true; Updater.openDownload(ctx) },
+                        colors = ButtonDefaults.buttonColors(containerColor = C.lime, contentColor = C.onLime)) {
+                        Text("Download", fontFamily = Inter, fontWeight = FontWeight.Bold)
                     }
+                    Text(if (opened) "When the download finishes, tap it and choose Update. If Play Protect asks, scan or choose Install anyway: it's your own app."
+                         else "Your browser downloads it; tap the finished download to install. Your follows, favourites and settings stay as they are.",
+                        color = C.fg2, fontFamily = Inter, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
                     Notes(s.r.notes)
-                }
-                is Up.Downloading -> {
-                    Text("Downloading ${s.r.version}…", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.height(10.dp))
-                    if (s.p >= 0f) LinearProgressIndicator(progress = { s.p }, color = C.lime, trackColor = C.tile2, modifier = Modifier.fillMaxWidth())
-                    else LinearProgressIndicator(color = C.lime, trackColor = C.tile2, modifier = Modifier.fillMaxWidth())
-                }
-                is Up.Ready -> {
-                    Text("${s.r.version} is downloaded", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
-                    if (!Updater.canInstall(ctx)) Text(
-                        if (askedPermission) "Switch on \"Allow from this source\" for SportClock, come back, then tap Install."
-                        else "Android will ask once whether SportClock may install updates. Allow it, come back, then tap Install.",
-                        color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
-                    Spacer(Modifier.height(12.dp))
-                    Button(onClick = {
-                        if (Updater.canInstall(ctx)) Updater.install(ctx, s.f) else { askedPermission = true; Updater.askInstallPermission(ctx) }
-                    }, colors = ButtonDefaults.buttonColors(containerColor = C.lime, contentColor = C.onLime)) {
-                        Text("Install", fontFamily = Inter, fontWeight = FontWeight.Bold)
-                    }
-                    Text("Your follows, favourites and settings stay as they are.", color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                 }
                 is Up.Failed -> {
                     Text(s.msg, color = C.fg, fontFamily = Inter, fontSize = 15.sp)

@@ -10,6 +10,7 @@ import android.graphics.Paint
 import android.graphics.Rect
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,8 +51,16 @@ class SportClockWidget : GlanceAppWidget() {
         val all = data?.events.orEmpty()
         val hero = heroes(all, follows, Repo.pinned(context), Filter.FOLLOWING, favs, now).firstOrNull()
         val next = all.filter { followed(it, follows) && !it.started(now) && !it.over(now) && it.id != hero?.event?.id }.take(2)
-        val wideBmp = hero?.person?.let { runCatching { faded(context, it, 1080, 480, 0.22f, 0.72f, 1f) }.getOrNull() }
-        val squareBmp = hero?.person?.let { runCatching { faded(context, it, 600, 600, 0.0f, 0.95f, 0.75f) }.getOrNull() }
+        // as on the app's card: a football player only when he is in one of the two squads, otherwise both clubs' badges
+        val e = hero?.event
+        val look = if (e != null && e.sport == Sport.FOOTBALL && e.teams.size == 2) Looks.load(e) else null
+        val person = hero?.person?.takeIf { e?.sport != Sport.FOOTBALL || (look != null && personKey(it.name) in look.squad) }
+        val wideBmp = runCatching {
+            person?.let { faded(context, it, 1080, 480, 0.22f, 0.72f, 1f) } ?: look?.let { badges(context, it, 1080, 480, 0.30f, 0.62f, 1f) }
+        }.getOrNull()
+        val squareBmp = runCatching {
+            person?.let { faded(context, it, 600, 600, 0.0f, 0.95f, 0.75f) } ?: look?.let { badges(context, it, 600, 600, 0.05f, 0.75f, 0.7f) }
+        }.getOrNull()
         Alerts.scheduleWidget(context, hero?.event?.takeIf { !it.isTbc }?.start)   // redraw when the wording next changes
         provideContent { Content(hero, next, wideBmp, squareBmp, now) }
     }
@@ -89,6 +98,43 @@ class SportClockWidget : GlanceAppWidget() {
         c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), shade)
         return out
     }
+
+    /**
+     * Both clubs half and half for a match with no favourite player in it, faded in from the left like the photo.
+     * Badges come from ESPN and are kept in the cache folder, so a redraw does not download them again.
+     */
+    private fun badges(ctx: Context, look: MatchLook, w: Int, h: Int, from: Float, to: Float, maxAlpha: Float): Bitmap {
+        val (hc, ac) = sideColors(look.home, look.away)
+        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val c = Canvas(out)
+        val top = w * 0.80f; val bottom = w * 0.70f
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+        fill.color = hc.copy(alpha = .62f).toArgb()
+        c.drawPath(android.graphics.Path().apply { moveTo(0f, 0f); lineTo(top, 0f); lineTo(bottom, h.toFloat()); lineTo(0f, h.toFloat()); close() }, fill)
+        fill.color = ac.copy(alpha = .62f).toArgb()
+        c.drawPath(android.graphics.Path().apply { moveTo(top, 0f); lineTo(w.toFloat(), 0f); lineTo(w.toFloat(), h.toFloat()); lineTo(bottom, h.toFloat()); close() }, fill)
+        val size = (minOf(w, h) * 0.30f).toInt(); val y = (h * 0.12f).toInt()
+        val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+        listOf(look.home to (w * 0.66f), look.away to (w * 0.89f)).forEach { (side, cx) ->
+            badge(ctx, side)?.let { b -> c.drawBitmap(b, null, Rect((cx - size / 2).toInt(), y, (cx + size / 2).toInt(), y + size), paint); b.recycle() }
+        }
+        val mask = Paint().apply {
+            shader = android.graphics.LinearGradient(w * from, 0f, w * to, 0f, 0x00000000, ((maxAlpha * 255).toInt() shl 24), android.graphics.Shader.TileMode.CLAMP)
+            xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN)
+        }
+        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), mask)
+        return out
+    }
+
+    private fun badge(ctx: Context, side: TeamSide): Bitmap? = runCatching {
+        val f = java.io.File(java.io.File(ctx.cacheDir, "badges").apply { mkdirs() }, "${side.id}.png")
+        if (!f.exists() || f.length() == 0L) {
+            val conn = java.net.URL(side.logo).openConnection() as java.net.HttpURLConnection
+            conn.connectTimeout = 10_000; conn.readTimeout = 15_000
+            try { conn.inputStream.use { inp -> f.outputStream().use { inp.copyTo(it) } } } finally { conn.disconnect() }
+        }
+        BitmapFactory.decodeFile(f.path)
+    }.getOrNull()
 
     @Composable
     private fun Content(hero: Hero?, next: List<Event>, wideBmp: Bitmap?, squareBmp: Bitmap?, now: Instant) {

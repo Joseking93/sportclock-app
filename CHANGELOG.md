@@ -2,6 +2,13 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.4 (25 Oct 2026)
+- **Club badges on NEXT UP:** a football card shows both clubs half and half, each badge on its own club colour. Badges and colours come from ESPN.
+- **Your favourite player only when he plays:** his photo leads a match only if he's in one of the two squads (checked against ESPN's current squads). Ronaldo no longer fronts Man Utd v Bournemouth.
+- **No favourite:** choose None for player, driver or fighter. With no player, football cards always show the badges.
+- The widget shows the same badges.
+- **Updates no longer trip Play Protect:** More → Updates now hands the download to your browser, and SportClock no longer asks for permission to install apps. Play Protect blocks sideloaded apps that install APKs themselves.
+
 ## 2.3 (25 Oct 2026)
 - **Pick which matches alert you.** Every upcoming match and session has a bell: tap it to get an alert for just that one, or to silence one you'd otherwise get. The same switch is in the match sheet.
 - **Alert for: All or Picked**, per follow, in More → Settings. Football competitions start as Picked, so a Premier League weekend no longer means ten alerts; your team, F1 and UFC start as All.

@@ -61,15 +61,15 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
                         if (p != null) Image(painterResource(p.avatar), null, contentScale = ContentScale.Crop, alignment = BiasAlignment(p.fx * 2 - 1, p.fy * 2 - 1),
                             modifier = Modifier.size(60.dp).clip(CircleShape).border(2.dp, C.lime, CircleShape))
                         else Box(Modifier.size(60.dp).clip(CircleShape).background(C.tile2))
-                        Text(p?.name ?: "Choose", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, textAlign = TextAlign.Center,
+                        Text(p?.name ?: "None", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, textAlign = TextAlign.Center,
                             maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
-                        Text("$role · ${p?.team ?: ""}", color = C.fg2, fontFamily = Inter, fontSize = 12.sp, maxLines = 1)
+                        Text(if (p == null) role else "$role · ${p.team}", color = C.fg2, fontFamily = Inter, fontSize = 12.sp, maxLines = 1)
                         Text("Change", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
                     }
                 }
             }
         }
-        item { Text("Their photo leads Next up when their sport is on next.", color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
+        item { Text("Their photo leads Next up when their sport is on next. A player shows only when his club is playing; otherwise, or with None, the card shows both clubs' badges.", color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
 
         listOf("Motorsport" to listOf("F1", "MGP", "NAS", "INDY"), "Fight" to listOf("UFC", "BOX")).forEach { (label, codes) ->
             item { SectionLabel(label) }
@@ -114,6 +114,16 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
         ModalBottomSheet(onDismissRequest = { picking = null }, containerColor = C.tile) {
             Text("Choose your ${kind.name.lowercase()}", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(start = 24.dp, bottom = 12.dp))
             LazyVerticalGrid(GridCells.Fixed(3), Modifier.heightIn(max = 560.dp), contentPadding = PaddingValues(12.dp)) {
+                item {
+                    Column(Modifier.padding(6.dp).clip(RoundedCornerShape(14.dp)).clickable {
+                        Repo.clearFav(ctx, kind); st.favs = Kind.entries.associateWith { Repo.fav(ctx, it) }; onChanged(); picking = null
+                    }.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(Modifier.size(72.dp).clip(CircleShape).background(C.tile2).border(2.dp, if (st.favs[kind] == null) C.lime else Color.Transparent, CircleShape),
+                            contentAlignment = Alignment.Center) { Text("—", color = C.fg2, fontFamily = Inter, fontSize = 22.sp) }
+                        Text(if (kind == Kind.PLAYER) "None (badges)" else "None", color = C.fg, fontFamily = Inter, fontSize = 13.sp, textAlign = TextAlign.Center,
+                            maxLines = 2, modifier = Modifier.padding(top = 6.dp))
+                    }
+                }
                 items(PEOPLE.filter { it.kind == kind }) { p ->
                     Column(Modifier.padding(6.dp).clip(RoundedCornerShape(14.dp)).clickable {
                         Repo.setFav(ctx, p); st.favs = Kind.entries.associateWith { Repo.fav(ctx, it) }; onChanged(); picking = null

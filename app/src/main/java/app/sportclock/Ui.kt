@@ -131,13 +131,19 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
     val e = h.event
     val (series, sess, meta) = heroTexts(h, now)
     val shape = RoundedCornerShape(20.dp)
+    // Football: the favourite player only when he is in one of the two squads; otherwise both clubs' badges.
+    val football = e.sport == Sport.FOOTBALL && e.teams.size == 2
+    val look = if (football) Looks.ready[e.id] else null
+    if (football) LaunchedEffect(e.id) { Looks.load(e) }
+    val person = if (!football) h.person else h.person?.takeIf { p -> look != null && personKey(p.name) in look.squad }
     Box(
         Modifier.fillMaxWidth().heightIn(min = 204.dp).clip(shape)
             .background(Brush.radialGradient(listOf(Color(0xFF171C0D), Color(0xFF0B0D09)), center = Offset(0f, 600f), radius = 900f))
             .border(1.dp, C.limeDim, shape)
             .combinedClickable(onClick = onOpen, onLongClick = onPin)
     ) {
-        h.person?.let { p -> Box(Modifier.matchParentSize()) {
+        if (person == null && look != null) BadgeBackdrop(look, Modifier.matchParentSize())
+        person?.let { p -> Box(Modifier.matchParentSize()) {
             Image(
                 painterResource(p.photo), null,
                 contentScale = ContentScale.Crop, alignment = BiasAlignment(p.fx * 2 - 1, p.fy * 2 - 1),
@@ -151,6 +157,7 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
             )
         } }
         Box(Modifier.matchParentSize().background(Brush.horizontalGradient(0f to Color(0xE60B0D09), 0.38f to Color(0xA80B0D09), 0.6f to Color(0x260B0D09), 0.7f to Color.Transparent)))
+        if (person == null && look != null) BadgeLogos(look, Modifier.matchParentSize())
 
         // the card grows with its text (large font settings), so the time is never clipped
         Column(Modifier.padding(start = 20.dp, top = 16.dp, end = 16.dp, bottom = 14.dp)) {
@@ -170,7 +177,7 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
         }
 
         Row(Modifier.align(Alignment.TopEnd).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            h.person?.let { p ->
+            person?.let { p ->
                 Row(Modifier.height(28.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xC70A0C08)).border(1.dp, Color(0x66C8F53C), RoundedCornerShape(14.dp))
                     .padding(start = 3.dp, end = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Image(painterResource(p.avatar), null, contentScale = ContentScale.Crop, alignment = BiasAlignment(p.fx * 2 - 1, p.fy * 2 - 1),

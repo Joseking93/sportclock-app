@@ -26,7 +26,7 @@ import java.util.Locale
  * Polling stays light: scores only while a match is on, lineups from an hour before kick-off.
  */
 
-private const val UA = "SportClock/2.3 (personal Android app)"
+private const val UA = "SportClock/2.4 (personal Android app)"
 
 internal fun httpGet(url: String): String {
     val c = URL(url).openConnection() as HttpURLConnection
@@ -44,7 +44,13 @@ val ESPN_LEAGUE = mapOf("ENG" to "eng.1", "EFL" to "eng.2", "ESP" to "esp.1", "I
     "FRA" to "fra.1", "NED" to "ned.1", "POR" to "por.1", "UCL" to "uefa.champions")
 
 data class EspnMatch(val id: String, val league: String, val start: Instant, val home: String, val away: String,
-                     val homeScore: Int?, val awayScore: Int?, val state: String, val detail: String)
+                     val homeScore: Int?, val awayScore: Int?, val state: String, val detail: String,
+                     val homeSide: TeamSide? = null, val awaySide: TeamSide? = null)
+/** A club as ESPN draws it: badge URL and its two colours ("da020e"), for the NEXT UP card. */
+data class TeamSide(val id: String, val name: String, val logo: String, val color: String, val alt: String)
+private fun side(c: JSONObject) = c.getJSONObject("team").let { t ->
+    TeamSide(t.optString("id"), t.optString("displayName"), t.optString("logo"), t.optString("color"), t.optString("alternateColor"))
+}
 
 /** ESPN's day is US Eastern, so a fixture is looked up under its Eastern date. */
 private val ET = ZoneId.of("America/New_York")
@@ -66,7 +72,7 @@ suspend fun espnScoreboard(league: String, date: String): List<EspnMatch> = with
             EspnMatch(e.getString("id"), league, Instant.parse(e.getString("date").let { if (it.length == 17) it.dropLast(1) + ":00Z" else it }),
                 h.getJSONObject("team").optString("displayName"), a.getJSONObject("team").optString("displayName"),
                 if (state == "pre") null else h.optString("score").toIntOrNull(), if (state == "pre") null else a.optString("score").toIntOrNull(),
-                state, st.optString("shortDetail"))
+                state, st.optString("shortDetail"), side(h), side(a))
         }.getOrNull()
     }
 }

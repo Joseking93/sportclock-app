@@ -75,9 +75,11 @@ object Repo {
         val s = follows(ctx).toMutableSet(); if (on) s += token else s -= token
         prefs(ctx).edit().putStringSet("follows", s).apply()
     }
+    /** The favourite for this kind; "none" means you chose to have none (football cards then show both badges). */
     fun fav(ctx: Context, kind: Kind): Person? = person(prefs(ctx).getString("fav_${kind.name}", null) ?: when (kind) {
         Kind.DRIVER -> "lewis-hamilton"; Kind.FIGHTER -> "alexander-volkanovski"; Kind.PLAYER -> "bruno-fernandes" })
     fun setFav(ctx: Context, p: Person) = prefs(ctx).edit().putString("fav_${p.kind.name}", p.id).apply()
+    fun clearFav(ctx: Context, kind: Kind) = prefs(ctx).edit().putString("fav_${kind.name}", "none").apply()
     fun pinned(ctx: Context): String? = prefs(ctx).getString("pinned", null)
     fun setPinned(ctx: Context, token: String?) = prefs(ctx).edit().putString("pinned", token).apply()
 }
