@@ -127,7 +127,7 @@ fun DetailActions(e: Event, now: Instant) {
 /** The two clubs as buttons to their team pages. */
 @Composable
 fun TeamLinks(e: Event, onTeam: (String) -> Unit) {
-    if (e.sport != Sport.FOOTBALL || e.teams.size != 2) return
+    if ((e.sport != Sport.FOOTBALL && e.sport != Sport.NFL) || e.teams.size != 2) return
     Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         e.teams.forEach { t -> AssistChip(onClick = { onTeam(t) }, label = { Text("${short(t)} ›", fontFamily = Inter) },
             colors = AssistChipDefaults.assistChipColors(labelColor = C.fg)) }
@@ -165,7 +165,8 @@ fun LastResults(st: AppState, events: List<Event>, now: Instant, scores: Map<Str
 /* ======================= team page ======================= */
 
 @Composable
-fun TeamScreen(team: String, events: List<Event>, now: Instant, scores: Map<String, Score>, onBack: () -> Unit, onOpen: (Event) -> Unit) {
+fun TeamScreen(team: String, events: List<Event>, now: Instant, scores: Map<String, Score>, onBack: (() -> Unit)?, onOpen: (Event) -> Unit,
+               header: (@Composable () -> Unit)? = null) {
     val ctx = LocalContext.current
     val league = remember(team, events) { leagueFor(team, events) }
     val (info, failed) = loaded(team) { league?.let { lg -> espnTeamId(lg, team)?.let { teamInfo(lg, it) } } }
@@ -175,7 +176,8 @@ fun TeamScreen(team: String, events: List<Event>, now: Instant, scores: Map<Stri
     val next = remember(team, events, now) { events.filter { team in it.teams && !it.over(now) }.take(2) }
 
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding()) {
-        item { TextButton(onClick = onBack, modifier = Modifier.padding(start = 4.dp, top = 4.dp)) { Text("‹ Back", color = C.lime, fontFamily = Inter) } }
+        if (onBack != null) item { TextButton(onClick = onBack, modifier = Modifier.padding(start = 4.dp, top = 4.dp)) { Text("‹ Back", color = C.lime, fontFamily = Inter) } }
+        header?.let { h -> item { h() } }
         item {
             Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (info?.logo?.isNotBlank() == true) { AsyncImage(info.logo, null, Modifier.size(56.dp)); Spacer(Modifier.width(14.dp)) }

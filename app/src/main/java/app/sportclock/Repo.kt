@@ -14,8 +14,9 @@ import java.time.Instant
 
 const val SITE = "https://sportclock.pages.dev"
 
-enum class Filter(val label: String) { FOLLOWING("Following"), ALL("All"), FOOTBALL("Football"), MOTORSPORT("Motorsport"), FIGHT("Fight") }
-fun Filter.sport(): Sport? = when (this) { Filter.FOOTBALL -> Sport.FOOTBALL; Filter.MOTORSPORT -> Sport.MOTORSPORT; Filter.FIGHT -> Sport.COMBAT; else -> null }
+enum class Filter(val label: String) { FOLLOWING("Following"), ALL("All"), FOOTBALL("Football"), MOTORSPORT("Motorsport"), FIGHT("Fight"), NFL("NFL") }
+fun Filter.sport(): Sport? = when (this) { Filter.FOOTBALL -> Sport.FOOTBALL; Filter.MOTORSPORT -> Sport.MOTORSPORT; Filter.FIGHT -> Sport.COMBAT
+    Filter.NFL -> Sport.NFL; else -> null }
 
 data class Data(val events: List<Event>, val generated: String, val attribution: String, val fetchedAt: Instant?)
 /** A match state as the score source sent it; [detail] is its own wording ("45'", "HT", "FT"). */
@@ -43,6 +44,10 @@ object Repo {
             f.writeText(body)
             _data.value = d
         }
+        if (Nfl.enabled(ctx)) _data.value?.let { d ->
+            val nfl = runCatching { Nfl.events(ctx) }.getOrDefault(emptyList())
+            if (nfl.isNotEmpty()) _data.value = d.copy(events = (d.events.filter { it.code != "NFL" } + nfl).sortedBy { it.start })
+        }
         _data.value
     }
 
@@ -65,7 +70,11 @@ object Repo {
     /** Football scores for these events, fetched by the phone from ESPN (see Feeds.kt). Keyed by our event id. */
     suspend fun scores(events: List<Event>): Scores {
         if (events.isEmpty()) return Scores(emptyMap(), null, null)
-        return runCatching { Scores(espnScores(events), Instant.now(), null) }.getOrElse { Scores(emptyMap(), null, "network") }
+        return runCatching {
+            val nfl = events.filter { it.code == "NFL" }
+            Scores(espnScores(events.filter { it.code != "NFL" }) + (if (nfl.isEmpty()) emptyMap() else runCatching { Nfl.scores(nfl) }.getOrDefault(emptyMap())),
+                Instant.now(), null)
+        }.getOrElse { Scores(emptyMap(), null, "network") }
     }
 
     /* ---------- what Jose chose ---------- */

@@ -62,15 +62,16 @@ data class TeamInfo(val id: String, val league: String, val name: String, val lo
 
 /** The ESPN league a followed team plays its league games in: its domestic league if we list one, else the Champions League. */
 fun leagueFor(team: String, events: List<Event>): String? {
+    if (team in NFL_TEAMS) return "football/nfl"
     val codes = events.filter { team in it.teams }.map { it.code }.distinct()
-    return (codes.firstOrNull { it != "UCL" && it in ESPN_LEAGUE } ?: codes.firstOrNull { it in ESPN_LEAGUE })?.let { ESPN_LEAGUE[it] }
+    return (codes.firstOrNull { it != "UCL" && it in ESPN_LEAGUE } ?: codes.firstOrNull { it in ESPN_LEAGUE })?.let { "soccer/" + ESPN_LEAGUE[it] }
 }
 
 private val teamIds = HashMap<String, String>()
 
 suspend fun espnTeamId(league: String, name: String): String? {
     teamIds["$league/$name"]?.let { return it }
-    val teams = json("https://site.api.espn.com/apis/site/v2/sports/soccer/$league/teams")
+    val teams = json("https://site.api.espn.com/apis/site/v2/sports/$league/teams")
         .optJSONArray("sports").objects().firstOrNull()?.optJSONArray("leagues").objects().firstOrNull()?.optJSONArray("teams").objects()
         .mapNotNull { it.optJSONObject("team") }
     val hit = teams.firstOrNull { it.optString("displayName") == name }
@@ -93,10 +94,11 @@ private fun games(o: JSONObject): List<TeamGame> = o.optJSONArray("events").obje
 }
 
 suspend fun teamInfo(league: String, id: String): TeamInfo {
-    val base = "https://site.api.espn.com/apis/site/v2/sports/soccer/$league/teams/$id"
+    val base = "https://site.api.espn.com/apis/site/v2/sports/$league/teams/$id"
     val t = json(base).optJSONObject("team") ?: JSONObject()
     val results = runCatching { games(json("$base/schedule")) }.getOrDefault(emptyList()).filter { it.done }
-    val fixtures = runCatching { games(json("$base/schedule?fixture=true")) }.getOrDefault(emptyList()).filter { !it.done }
+    val fixtures = (runCatching { games(json("$base/schedule?fixture=true")) }.getOrDefault(emptyList()) +
+        runCatching { games(json("$base/schedule")) }.getOrDefault(emptyList())).filter { !it.done }.distinctBy { it.date }
     return TeamInfo(id, league, t.optString("displayName"), t.optJSONArray("logos").objects().firstOrNull()?.optString("href").orEmpty(),
         t.optString("standingSummary"), results.sortedByDescending { it.date }, fixtures.sortedBy { it.date })
 }

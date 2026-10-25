@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.SportsFootball
 import androidx.compose.material.icons.filled.SportsMma
 import androidx.compose.material.icons.filled.SportsScore
 import androidx.compose.material.icons.filled.SportsSoccer
@@ -88,7 +89,8 @@ fun Dot(color: Color, size: androidx.compose.ui.unit.Dp = 9.dp) = Box(Modifier.s
 @Composable
 fun FilterPills(selected: Filter, onSelect: (Filter) -> Unit) {
     Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Filter.entries.forEach { f ->
+        // the NFL pill only once you follow something in the NFL
+        Filter.entries.filter { it != Filter.NFL || AlertChoices.follows.any { t -> tokenSport(t) == Sport.NFL } }.forEach { f ->
             val on = f == selected
             Row(
                 Modifier.height(40.dp).clip(RoundedCornerShape(20.dp))
@@ -99,7 +101,7 @@ fun FilterPills(selected: Filter, onSelect: (Filter) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 val icon = when (f) { Filter.FOLLOWING -> Icons.Filled.Star; Filter.FOOTBALL -> Icons.Filled.SportsSoccer
-                    Filter.MOTORSPORT -> Icons.Filled.SportsScore; Filter.FIGHT -> Icons.Filled.SportsMma; Filter.ALL -> null }
+                    Filter.MOTORSPORT -> Icons.Filled.SportsScore; Filter.FIGHT -> Icons.Filled.SportsMma; Filter.NFL -> Icons.Filled.SportsFootball; Filter.ALL -> null }
                 if (icon != null) { Icon(icon, null, Modifier.size(18.dp), tint = if (on) C.onLime else C.fg); Spacer(Modifier.width(8.dp)) }
                 Text(f.label, color = if (on) C.onLime else C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
             }
@@ -132,7 +134,7 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
     val (series, sess, meta) = heroTexts(h, now)
     val shape = RoundedCornerShape(20.dp)
     // Football: the favourite player only when he is in one of the two squads; otherwise both clubs' badges.
-    val football = e.sport == Sport.FOOTBALL && e.teams.size == 2
+    val football = (e.sport == Sport.FOOTBALL || e.sport == Sport.NFL) && e.teams.size == 2
     val look = if (football) Looks.ready[e.id] else null
     if (football) LaunchedEffect(e.id) { Looks.load(e) }
     val person = if (!football) h.person else h.person?.takeIf { p -> look != null && personKey(p.name) in look.squad }

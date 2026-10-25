@@ -26,7 +26,7 @@ import java.util.Locale
  * Polling stays light: scores only while a match is on, lineups from an hour before kick-off.
  */
 
-private const val UA = "SportClock/2.8 (personal Android app)"
+private const val UA = "SportClock/2.9 (personal Android app)"
 
 internal fun httpGet(url: String): String {
     val c = URL(url).openConnection() as HttpURLConnection

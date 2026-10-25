@@ -31,6 +31,9 @@ object Settings {
     /** Text size as a font scale; 0 means "use the phone's own setting". */
     fun textScale(ctx: Context) = Repo.prefs(ctx).getFloat("textScale", 0f)
     fun setTextScale(ctx: Context, s: Float) = Repo.prefs(ctx).edit().putFloat("textScale", s).apply()
+    /** What your own tab shows: "F1", "NFL", a whole league ("c:ENG") or one team ("t:Manchester United"). */
+    fun myTab(ctx: Context) = Repo.prefs(ctx).getString("myTab", "F1")!!
+    fun setMyTab(ctx: Context, v: String) = Repo.prefs(ctx).edit().putString("myTab", v).apply()
     /** Goals, red cards, half-time and full-time for watched matches, and the live-score notification. */
     fun liveAlerts(ctx: Context) = Repo.prefs(ctx).getBoolean("liveAlerts", true)
     fun setLiveAlerts(ctx: Context, on: Boolean) = Repo.prefs(ctx).edit().putBoolean("liveAlerts", on).apply()
@@ -59,7 +62,7 @@ object Spoilers {
  * Picks are kept by the football match number, or code + title + session, so a match moved by TV keeps its alert.
  */
 fun alertKey(e: Event) = e.fdid?.let { "fd:$it" } ?: "${e.code}|${e.title}|${e.session}"
-fun quietByDefault(token: String) = token.startsWith("c:") && series(token.substring(2))?.sport == Sport.FOOTBALL
+fun quietByDefault(token: String) = token.startsWith("c:") && series(token.substring(2))?.sport.let { it == Sport.FOOTBALL || it == Sport.NFL }
 /** True when this follow alerts for everything; [flipped] holds the follows changed away from their default. */
 fun alertsAll(token: String, flipped: Set<String>) = (token in flipped) == quietByDefault(token)
 fun wantsAlert(e: Event, follows: Set<String>, flipped: Set<String>, picked: Set<String>, muted: Set<String>): Boolean {

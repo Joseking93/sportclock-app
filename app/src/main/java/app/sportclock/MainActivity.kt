@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Tab(val label: String, val icon: ImageVector) { HOME("Home", Icons.Filled.Home), SCORES("Scores", Icons.Filled.EmojiEvents),
-    CALENDAR("Calendar", Icons.Filled.CalendarMonth), F1("F1", Icons.Filled.SportsMotorsports), MORE("More", Icons.Filled.Menu) }
+    CALENDAR("Calendar", Icons.Filled.CalendarMonth), MINE("F1", Icons.Filled.SportsMotorsports), MORE("More", Icons.Filled.Menu) }
 
 /** Everything the screens read; changes are written through Repo and mirrored here. */
 class AppState(ctx: android.content.Context) {
@@ -80,7 +80,8 @@ fun App(onTextScale: (Float) -> Unit = {}) {
     val data by Repo.data.collectAsState()
     var now by remember { mutableStateOf(Instant.now()) }
     var tab by remember { mutableStateOf(Tab.HOME) }
-    var page by remember { mutableStateOf<String?>(null) }          // "follow" | "about" | "settings" | "update" | "report" pushed over More
+    var page by remember { mutableStateOf<String?>(null) }
+    var myTab by remember { mutableStateOf(Settings.myTab(ctx)) }          // "follow" | "about" | "settings" | "update" | "report" pushed over More
     var detail by remember { mutableStateOf<Event?>(null) }
     var scores by remember { mutableStateOf(Scores(emptyMap(), null, null)) }
 
@@ -93,14 +94,18 @@ fun App(onTextScale: (Float) -> Unit = {}) {
         if (crashes > 0) Toast.makeText(ctx, "SportClock crashed last time. A report was sent.", Toast.LENGTH_LONG).show()
         Updater.checkNow(ctx); updateWaiting = Updater.waiting(ctx)
     }
-    LaunchedEffect(st.follows) { AlertChoices.follows = st.follows }
+    LaunchedEffect(st.follows) {
+        AlertChoices.follows = st.follows
+        // following something in the NFL fetches its schedule now rather than at the next refresh
+        if (Nfl.enabled(ctx) && Repo.data.value?.events?.none { it.code == "NFL" } == true) Repo.load(ctx, maxAgeMin = 600)
+    }
     LaunchedEffect(tab, page) { Diag.log("screen ${page ?: tab.name.lowercase()}") }
     LaunchedEffect(detail) { detail?.let { Diag.log("open ${it.id} ${it.title}") } }
     // Scores from ESPN for today's and yesterday's football: every 2 minutes while a match is on, otherwise every 15.
     LaunchedEffect(data) {
         while (true) {
             val t = Instant.now()
-            val pool = data?.events.orEmpty().filter { it.sport == Sport.FOOTBALL && it.started(t) && it.start.isAfter(t.minusSeconds(30 * 3600)) }
+            val pool = data?.events.orEmpty().filter { (it.sport == Sport.FOOTBALL || it.sport == Sport.NFL) && it.started(t) && it.start.isAfter(t.minusSeconds(30 * 3600)) }
             val live = pool.any { it.inProgress(t) }
             if (pool.isNotEmpty()) scores = Repo.scores(if (live) pool.filter { it.inProgress(t) || scores.matches[it.id] == null } else pool)
                 .let { fresh -> if (live) Scores(scores.matches + fresh.matches, fresh.fetchedAt, fresh.error) else fresh }
@@ -117,8 +122,8 @@ fun App(onTextScale: (Float) -> Unit = {}) {
         bottomBar = {
             if (page == null) NavigationBar(containerColor = C.nav, tonalElevation = 0.dp) {
                 Tab.entries.forEach { t ->
-                    NavigationBarItem(selected = tab == t, onClick = { tab = t }, icon = { Icon(t.icon, null) },
-                        label = { Text(t.label, fontFamily = Inter, fontWeight = FontWeight.SemiBold) },
+                    NavigationBarItem(selected = tab == t, onClick = { tab = t }, icon = { Icon(if (t == Tab.MINE) myTabIcon(myTab) else t.icon, null) },
+                        label = { Text(if (t == Tab.MINE) myTabLabel(myTab) else t.label, fontFamily = Inter, fontWeight = FontWeight.SemiBold, maxLines = 1) },
                         colors = NavigationBarItemDefaults.colors(selectedIconColor = C.onLime, indicatorColor = C.lime, selectedTextColor = C.lime,
                             unselectedIconColor = C.fg2, unselectedTextColor = C.fg2))
                 }
@@ -150,7 +155,8 @@ fun App(onTextScale: (Float) -> Unit = {}) {
                     onOpen = { detail = it }, onTeam = { page = "team:$it" })
                 tab == Tab.SCORES -> ScoresHub(st, d, now, scores, onOpen = { detail = it }, onTeam = { page = "team:$it" })
                 tab == Tab.CALENDAR -> CalendarScreen(st, d.events, now, scores.matches, onOpen = { detail = it })
-                tab == Tab.F1 -> F1Hub(d.events, now, onOpen = { detail = it }, onPage = { page = it })
+                tab == Tab.MINE -> MyTab(myTab, st, d.events, now, scores.matches, onOpen = { detail = it }, onPage = { page = it },
+                    onChoose = { v -> myTab = v; Settings.setMyTab(ctx, v); if (v == "NFL") scope.launch { Repo.load(ctx, maxAgeMin = 600) } })
                 tab == Tab.MORE -> MoreScreen(updateWaiting, onFollow = { page = "follow" }, onSettings = { page = "settings" }, onAbout = { page = "about" },
                     onUpdate = { page = "update" }, onReport = { page = "report" }, onNews = { page = "news" })
             }
@@ -327,6 +333,7 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTe
                 modifier = Modifier.padding(top = 12.dp))
         }
         if (e.code == "F1") F1WeekendView(e, events, now, onPage)
+        if (e.sport == Sport.NFL) TeamLinks(e, onTeam)
         DetailActions(e, now)
     }
 }

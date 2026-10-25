@@ -59,9 +59,9 @@ class SportClockWidget : GlanceAppWidget() {
             ?.let { ev -> Live.score(context, ev)?.takeIf { it.third == "in" }?.let { ev to it } }
         // as on the app's card: a football player only when he is in one of the two squads, otherwise both clubs' badges
         val e = live?.first ?: hero?.event
-        val look = if (e != null && e.sport == Sport.FOOTBALL && e.teams.size == 2) Looks.load(e) else null
+        val look = if (e != null && (e.sport == Sport.FOOTBALL || e.sport == Sport.NFL) && e.teams.size == 2) Looks.load(e) else null
         val candidate = if (live != null && e?.id != hero?.event?.id) favs[Kind.PLAYER] else hero?.person
-        val person = candidate?.takeIf { e?.sport != Sport.FOOTBALL || (look != null && personKey(it.name) in look.squad) }
+        val person = candidate?.takeIf { (e?.sport != Sport.FOOTBALL && e?.sport != Sport.NFL) || (look != null && personKey(it.name) in look.squad) }
         // Glance calls this on the main thread, where Android refuses downloads: the badges are fetched and drawn on IO
         val (wideBmp, squareBmp) = withContext(Dispatchers.IO) {
             runCatching { person?.let { faded(context, it, 1080, 480, 0.22f, 0.72f, 1f) } ?: look?.let { badges(context, it, 1080, 480, 0.30f, 0.62f, 1f) } }

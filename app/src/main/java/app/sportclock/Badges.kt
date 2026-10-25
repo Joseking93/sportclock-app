@@ -39,6 +39,7 @@ object Looks {
 
     suspend fun load(e: Event): MatchLook? {
         ready[e.id]?.let { return it }
+        if (e.code == "NFL") return Nfl.sides[e.id]?.let { (h, a) -> MatchLook(h, a, emptySet()).also { ready[e.id] = it } }
         val lg = ESPN_LEAGUE[e.code] ?: return null
         if (e.sport != Sport.FOOTBALL || e.teams.size != 2) return null
         val t = System.currentTimeMillis()

@@ -38,6 +38,7 @@ The keystore lives outside the repo (`../sportclock-android/android.keystore`) a
 - `Feeds.kt`: scores, lineups, goals and tables from ESPN, F1 standings from Jolpica, news from BBC Sport (all fetched by the phone)
 - `Alerts.kt`: "starting soon" alarms, settings, widget redraw timing; `Screens2.kt`: Scores/Tables/F1, News, Settings, lineups
 - `widget/SportClockWidget.kt`: the home-screen widget
+- `Nfl.kt`: NFL schedule, scores and standings from ESPN, merged into the events; `MyTab.kt`: the customisable fourth tab
 - `F1Weekend.kt`: the F1 weekend page's data (Jolpica calendar and history, OpenF1 circuit keys, Open-Meteo forecast)
 - `F1Live.kt` + `F1Screens.kt`: F1 live timing (F1's signalrcore feed), track maps (MultiViewer), pit stops, FIA upgrades
 - `Live.kt`: match-day alerts (lineups, goals, cards, HT, FT, live score); `Results.kt`: form, head-to-head, team pages, racing and UFC results; `Screens3.kt`: their screens

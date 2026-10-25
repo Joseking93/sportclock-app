@@ -39,7 +39,7 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
     var query by remember { mutableStateOf("") }
     fun set(token: String, on: Boolean) { Repo.setFollow(ctx, token, on); st.follows = Repo.follows(ctx); onChanged() }
     fun nextFor(token: String) = events.firstOrNull { tokenMatches(token, it) && !it.over(now) }
-    val allTeams = remember(events) { events.flatMap { it.teams }.distinct().sorted() }
+    val allTeams = remember(events) { (events.flatMap { it.teams } + NFL_TEAMS.keys).distinct().sorted() }
 
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding()) {
         item {
@@ -81,7 +81,9 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
             }
         }
 
-        item { SectionLabel("Football teams") }
+        item { SectionLabel("NFL") }
+        item { ToggleRow(seriesColor("NFL"), "NFL", "Every game; or add single teams below (e.g. Chiefs)", "c:NFL" in st.follows) { set("c:NFL", it) } }
+        item { SectionLabel("Teams") }
         st.follows.filter { it.startsWith("t:") }.sorted().forEach { token ->
             item { ToggleRow(Color(0xFFDA291C), token.substring(2), nextFor(token)?.let { "Next: ${it.line1()} · ${dayWord(it.start, now)} ${hm(it.start)}" } ?: "No dates yet", true) { set(token, it) } }
         }

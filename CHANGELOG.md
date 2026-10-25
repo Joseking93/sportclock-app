@@ -2,6 +2,18 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.9 (25 Oct 2026)
+- **NFL:** follow the whole league or single teams (More → Following → NFL, or search "Chiefs").
+  - Games appear on Home, in the Calendar, on the widget and in starting-soon alerts, with live scores and both teams' badges.
+  - The whole league starts as Picked for alerts, like a football league; a team you follow alerts for every game.
+  - Team pages work for NFL teams too.
+- **Your tab:** the F1 tab is now yours. Tap **Change** in its header to show:
+  - **Formula 1:** the hub from 2.8.
+  - **The NFL:** games and scores, and standings by division.
+  - **A whole league:** Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Championship, Eredivisie or Primeira Liga, with its matches and table. Tap a club in the table for its page.
+  - **One team:** e.g. United, with next up, form, results, fixtures and news.
+- The tab's name and icon follow what it shows.
+
 ## 2.8 (25 Oct 2026)
 - **F1 tab** in the bottom bar:
   - **Weekend:** the current or next Grand Prix, with what's next and a countdown, the track graphic first, then the schedule, results so far, last year and the forecast.

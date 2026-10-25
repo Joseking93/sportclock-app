@@ -10,7 +10,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-enum class Sport { MOTORSPORT, FOOTBALL, COMBAT }
+enum class Sport { MOTORSPORT, FOOTBALL, COMBAT, NFL }
 
 /** One row of data.json. Every time is a UTC instant; the phone's own zone is applied only for display. */
 data class Event(
@@ -55,6 +55,7 @@ val SERIES = listOf(
     Series("POR", "Primeira Liga", Sport.FOOTBALL, Color(0xFF2ECC71)),
     Series("UFC", "UFC", Sport.COMBAT, Color(0xFFB57CFF)),
     Series("BOX", "Boxing", Sport.COMBAT, Color(0xFFD8A25A)),
+    Series("NFL", "NFL", Sport.NFL, Color(0xFF4F7CFF)),
 )
 fun series(code: String) = SERIES.firstOrNull { it.code == code }
 fun seriesColor(code: String) = series(code)?.color ?: Color(0xFF8E9186)
@@ -69,13 +70,15 @@ val SHORT = mapOf("Manchester United" to "Man Utd", "Manchester City" to "Man Ci
     "West Ham United" to "West Ham", "Wolverhampton Wanderers" to "Wolves", "Sheffield United" to "Sheffield Utd",
     "AS Roma" to "Roma", "FC Bayern München" to "Bayern", "Paris Saint-Germain FC" to "PSG", "Real Madrid CF" to "Real Madrid",
     "FC Barcelona" to "Barcelona", "FC Internazionale Milano" to "Inter", "Borussia Dortmund" to "Dortmund")
-fun short(team: String) = SHORT[team] ?: team
+fun short(team: String) = SHORT[team] ?: NFL_TEAMS[team] ?: team
 
 /** Headline line for a row or hero: football says the fixture, everything else says series · session. */
-fun Event.line1(): String = if (sport == Sport.FOOTBALL) teams.takeIf { it.size == 2 }?.let { "${short(it[0])} v ${short(it[1])}" } ?: title
+fun Event.line1(): String = if (sport == Sport.NFL) teams.takeIf { it.size == 2 }?.let { "${short(it[1])} @ ${short(it[0])}" } ?: title
+    else if (sport == Sport.FOOTBALL) teams.takeIf { it.size == 2 }?.let { "${short(it[0])} v ${short(it[1])}" } ?: title
     else "${if (code == "F1") "F1" else series(code)?.name ?: comp} · ${sessName(session)}"
 fun Event.line2(): String = when {
     sport == Sport.FOOTBALL -> series(code)?.name ?: comp
+    sport == Sport.NFL -> "NFL · $session"
     sport == Sport.MOTORSPORT -> title.replace("Grand Prix", "GP")
     else -> title
 }
@@ -108,7 +111,8 @@ fun parseEvents(json: String): Pair<List<Event>, JSONObject> {
 /* ---------- follows: "c:CODE" for a whole series, "t:Team" for one club ---------- */
 fun followed(e: Event, follows: Set<String>) = "c:${e.code}" in follows || e.teams.any { "t:$it" in follows }
 fun tokenMatches(token: String, e: Event) = if (token.startsWith("c:")) e.code == token.substring(2) else token.substring(2) in e.teams
-fun tokenSport(token: String) = if (token.startsWith("t:")) Sport.FOOTBALL else series(token.substring(2))?.sport ?: Sport.MOTORSPORT
+fun tokenSport(token: String) = if (token.startsWith("t:")) (if (token.substring(2) in NFL_TEAMS) Sport.NFL else Sport.FOOTBALL)
+    else series(token.substring(2))?.sport ?: Sport.MOTORSPORT
 fun tokenLabel(token: String) = if (token.startsWith("t:")) short(token.substring(2)) else series(token.substring(2))?.name ?: token.substring(2)
 
 /* ---------- time wording (24 h, the phone's zone) ---------- */

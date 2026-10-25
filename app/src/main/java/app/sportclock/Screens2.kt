@@ -39,7 +39,7 @@ fun logoFor(code: String): Int? = when (code) {
     "F1" -> R.drawable.logo_f1; "MGP" -> R.drawable.logo_mgp; "NAS" -> R.drawable.logo_nas; "INDY" -> R.drawable.logo_indy
     "ENG" -> R.drawable.logo_eng; "EFL" -> R.drawable.logo_efl; "ESP" -> R.drawable.logo_esp; "ITA" -> R.drawable.logo_ita
     "GER" -> R.drawable.logo_ger; "FRA" -> R.drawable.logo_fra; "NED" -> R.drawable.logo_ned; "POR" -> R.drawable.logo_por
-    "UCL" -> R.drawable.logo_ucl; "UFC" -> R.drawable.logo_ufc; else -> null
+    "UCL" -> R.drawable.logo_ucl; "UFC" -> R.drawable.logo_ufc; "NFL" -> R.drawable.logo_nfl; else -> null
 }
 
 @Composable
@@ -132,20 +132,21 @@ private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOp
 }
 
 @Composable
-private fun TablesView(st: AppState) {
+fun TablesView(st: AppState, only: String? = null, onTeam: ((String) -> Unit)? = null) {
     val comps = remember(st.follows) {
         val followedComps = st.follows.filter { it.startsWith("c:") }.map { it.substring(2) }.filter { it in ESPN_LEAGUE }
         (listOf("ENG", "UCL") + followedComps + ESPN_LEAGUE.keys).distinct()
     }
-    var code by rememberSaveable { mutableStateOf("ENG") }
+    var picked by rememberSaveable { mutableStateOf("ENG") }
+    val code = only ?: picked
     var table by remember { mutableStateOf<Table?>(null) }
     var failed by remember { mutableStateOf(false) }
     LaunchedEffect(code) { Diag.log("table $code"); table = null; failed = false; runCatching { espnTable(code) }.onSuccess { table = it }.onFailure { if (it !is kotlinx.coroutines.CancellationException) failed = true } }
     val myTeams = st.follows.filter { it.startsWith("t:") }.map { it.substring(2) }
     Column {
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (only == null) Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             comps.forEach { c ->
-                FilterChip(c == code, { code = c }, label = { Text(series(c)?.name ?: c, fontFamily = Inter) }, leadingIcon = { LogoChip(c, 18.dp) },
+                FilterChip(c == code, { picked = c }, label = { Text(series(c)?.name ?: c, fontFamily = Inter) }, leadingIcon = { LogoChip(c, 18.dp) },
                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
             }
         }
@@ -164,6 +165,7 @@ private fun TablesView(st: AppState) {
                 items(t.rows) { r ->
                     val mine = myTeams.any { nameWords(it).intersect(nameWords(r.team)).size >= 2 || it == r.team }
                     Row(Modifier.padding(horizontal = 12.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (mine) Color(0x26C8F53C) else Color.Transparent)
+                        .clickable(enabled = onTeam != null) { onTeam?.invoke(r.team) }
                         .padding(horizontal = 8.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("${r.rank}", Modifier.width(28.dp), style = Digits, fontSize = 17.sp, color = if (mine) C.lime else C.fg2)
                         Text(short(r.team), Modifier.weight(1f), color = C.fg, fontFamily = Inter, fontWeight = if (mine) FontWeight.Bold else FontWeight.Medium,
