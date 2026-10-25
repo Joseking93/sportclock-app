@@ -130,6 +130,7 @@ fun App(onTextScale: (Float) -> Unit = {}) {
                 page == "about" -> AboutScreen(d, onBack = { page = null })
                 page == "update" -> UpdateScreen(onBack = { page = null; updateWaiting = Updater.waiting(ctx) })
                 page == "report" -> ReportScreen(onBack = { page = null })
+                page == "f1live" || page?.startsWith("upgrades:") == true -> F1Page(page!!, onBack = { page = null })
                 page?.startsWith("team:") == true -> TeamScreen(page!!.removePrefix("team:"), d?.events.orEmpty(), now, scores.matches,
                     onBack = { page = null }, onOpen = { detail = it })
                 d == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = C.lime) }
@@ -157,7 +158,8 @@ fun App(onTextScale: (Float) -> Unit = {}) {
         }
     }
     detail?.let { e -> ModalBottomSheet(onDismissRequest = { detail = null }, containerColor = C.tile, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        DetailSheet(e, now, scores.matches[e.id], scores.fetchedAt, onTeam = { detail = null; page = "team:$it" })
+        DetailSheet(e, now, scores.matches[e.id], scores.fetchedAt, onTeam = { detail = null; page = "team:$it" },
+            events = data?.events.orEmpty(), onPage = { detail = null; page = it })
     } }
 }
 
@@ -270,7 +272,8 @@ fun AboutScreen(d: Data?, onBack: () -> Unit) {
 }
 
 @Composable
-fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTeam: (String) -> Unit = {}) {
+fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTeam: (String) -> Unit = {},
+                events: List<Event> = emptyList(), onPage: (String) -> Unit = {}) {
     val today = localDate(now)
     Column(Modifier.padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -314,6 +317,7 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTe
             Text("Scores can lag behind the match${fetchedAt?.let { " · checked ${hm(it)}" } ?: ""}", color = C.fg3, fontFamily = Inter, fontSize = 12.sp,
                 modifier = Modifier.padding(top = 12.dp))
         }
+        if (e.code == "F1") F1WeekendView(e, events, now, onPage)
         DetailActions(e, now)
     }
 }

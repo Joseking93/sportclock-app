@@ -8,6 +8,7 @@ import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,6 +41,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -231,7 +233,7 @@ private fun TrackMapView(s: F1Snapshot) {
 
 /** The circuit drawn the FastF1 way: y up, turned by the circuit's own rotation, corners numbered just off the line. */
 @Composable
-private fun TrackCanvas(m: CircuitMap, flagged: Map<Int, String>, whole: Color?, modifier: Modifier) = Canvas(modifier) {
+fun TrackCanvas(m: CircuitMap, flagged: Map<Int, String>, whole: Color?, modifier: Modifier) = Canvas(modifier) {
     if (m.x.size < 2) return@Canvas
     val a = Math.toRadians(m.rotation)
     fun rot(x: Double, y: Double) = Pair(x * cos(a) - y * sin(a), x * sin(a) + y * cos(a))
@@ -242,7 +244,13 @@ private fun TrackCanvas(m: CircuitMap, flagged: Map<Int, String>, whole: Color?,
     val ox = (size.width - (maxX - minX).toFloat() * scale) / 2; val oy = (size.height - (maxY - minY).toFloat() * scale) / 2
     fun screen(p: Pair<Double, Double>) = Offset(ox + ((p.first - minX).toFloat() * scale), oy + ((maxY - p.second).toFloat() * scale))
     val path = Path().apply { pts.forEachIndexed { i, p -> val o = screen(p); if (i == 0) moveTo(o.x, o.y) else lineTo(o.x, o.y) }; close() }
-    drawPath(path, whole ?: Color(0xFF6B6F66), style = Stroke(width = 7.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+    // a race graphic: soft glow, dark tarmac band with a light edge, and a racing line down the middle
+    val line = whole ?: C.lime
+    val round = { w: Float -> Stroke(width = w, cap = StrokeCap.Round, join = StrokeJoin.Round) }
+    drawPath(path, line.copy(alpha = .10f), style = round(22.dp.toPx()))
+    drawPath(path, Color(0xFF4A4E44), style = round(13.dp.toPx()))
+    drawPath(path, Color(0xFF22251F), style = round(10.dp.toPx()))
+    drawPath(path, line.copy(alpha = if (whole != null) 1f else .9f), style = round(2.6.dp.toPx()))
     // a flagged marshal sector runs from its own marker to the next one along the lap
     if (whole == null && flagged.isNotEmpty() && m.sectors.isNotEmpty()) {
         fun nearest(t: TrackPoint) = m.x.indices.minBy { (m.x[it] - t.x) * (m.x[it] - t.x) + (m.y[it] - t.y) * (m.y[it] - t.y) }
@@ -252,18 +260,41 @@ private fun TrackCanvas(m: CircuitMap, flagged: Map<Int, String>, whole: Color?,
             val to = starts[(i + 1) % starts.size].second
             val idx = if (to > from) (from..to).toList() else (from until pts.size).toList() + (0..to).toList()
             val seg = Path().apply { idx.forEachIndexed { j, k -> val o = screen(pts[k]); if (j == 0) moveTo(o.x, o.y) else lineTo(o.x, o.y) } }
-            drawPath(seg, if (flag == "DOUBLE YELLOW") ORANGE else YELLOW, style = Stroke(width = 9.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(seg, if (flag == "DOUBLE YELLOW") ORANGE else YELLOW, style = Stroke(width = 10.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
     }
-    // start/finish: the first point of the outline
-    drawCircle(Color.White, 5.dp.toPx(), screen(pts.first()))
-    val paint = android.graphics.Paint().apply { color = C.fg2.toArgb(); textSize = 10.sp.toPx(); isAntiAlias = true; textAlign = android.graphics.Paint.Align.CENTER }
+    // start/finish: a chequered bar across the track at the first point, and an arrow a little way on showing the direction of the lap
+    val s0 = screen(pts.first()); val s1 = screen(pts[minOf(6, pts.size - 1)])
+    val dir = Offset(s1.x - s0.x, s1.y - s0.y).let { d -> val l = kotlin.math.hypot(d.x, d.y).takeIf { it > 0f } ?: 1f; Offset(d.x / l, d.y / l) }
+    val across = Offset(-dir.y, dir.x)
+    val half = 8.dp.toPx(); val sq = 2 * half / 6
+    for (i in 0 until 6) for (j in 0 until 2) {
+        val c0 = Offset(s0.x + across.x * (-half + i * sq) + dir.x * (j - 1) * sq, s0.y + across.y * (-half + i * sq) + dir.y * (j - 1) * sq)
+        val quad = Path().apply {
+            moveTo(c0.x, c0.y); lineTo(c0.x + across.x * sq, c0.y + across.y * sq)
+            lineTo(c0.x + across.x * sq + dir.x * sq, c0.y + across.y * sq + dir.y * sq); lineTo(c0.x + dir.x * sq, c0.y + dir.y * sq); close()
+        }
+        drawPath(quad, if ((i + j) % 2 == 0) Color.White else Color.Black)
+    }
+    val tip = screen(pts[minOf(pts.size / 30 + 8, pts.size - 1)]); val back = screen(pts[minOf(pts.size / 30 + 2, pts.size - 1)])
+    val ad = Offset(tip.x - back.x, tip.y - back.y).let { d -> val l = kotlin.math.hypot(d.x, d.y).takeIf { it > 0f } ?: 1f; Offset(d.x / l, d.y / l) }
+    val an = Offset(-ad.y, ad.x); val ah = 6.dp.toPx()
+    val arrowAt = Offset(tip.x + an.x * 13.dp.toPx(), tip.y + an.y * 13.dp.toPx())
+    drawPath(Path().apply {
+        moveTo(arrowAt.x + ad.x * ah, arrowAt.y + ad.y * ah)
+        lineTo(arrowAt.x - ad.x * ah + an.x * ah * .8f, arrowAt.y - ad.y * ah + an.y * ah * .8f)
+        lineTo(arrowAt.x - ad.x * ah - an.x * ah * .8f, arrowAt.y - ad.y * ah - an.y * ah * .8f); close()
+    }, C.lime)
+    val paint = android.graphics.Paint().apply { color = C.fg.toArgb(); textSize = 9.sp.toPx(); isAntiAlias = true; textAlign = android.graphics.Paint.Align.CENTER
+        typeface = android.graphics.Typeface.DEFAULT_BOLD }
     // each corner number sits just off the line, pushed away from the middle of the circuit
     val cx = (minX + maxX) / 2; val cy = (minY + maxY) / 2
     m.corners.forEach { c ->
         val p = rot(c.x, c.y)
         val dx = p.first - cx; val dy = p.second - cy; val len = Math.hypot(dx, dy).takeIf { it > 0 } ?: 1.0
-        val o = screen(Pair(p.first + dx / len * 600, p.second + dy / len * 600))
+        val o = screen(Pair(p.first + dx / len * 700, p.second + dy / len * 700))
+        drawCircle(Color(0xFF151712), 8.dp.toPx(), o)                     // each corner number in a small badge
+        drawCircle(C.lime.copy(alpha = .55f), 8.dp.toPx(), o, style = Stroke(1.dp.toPx()))
         drawContext.canvas.nativeCanvas.drawText("${c.number}", o.x, o.y + paint.textSize / 3, paint)
     }
 }
@@ -298,30 +329,135 @@ private fun PdfPage(f: java.io.File, i: Int) {
 }
 
 @Composable
-private fun UpgradesView(s: F1Snapshot) {
+private fun UpgradesView(s: F1Snapshot) = UpgradesDoc(s.meeting, s.year)
+
+/** The FIA's upgrades document for a Grand Prix, page by page. */
+@Composable
+fun UpgradesDoc(meeting: String, year: Int) {
     val ctx = LocalContext.current
-    var doc by remember(s.meeting) { mutableStateOf<Pair<java.io.File, Int>?>(null) }
-    var failed by remember(s.meeting) { mutableStateOf<String?>(null) }
-    LaunchedEffect(s.meeting) {
+    var doc by remember(meeting) { mutableStateOf<Pair<java.io.File, Int>?>(null) }
+    var failed by remember(meeting) { mutableStateOf<String?>(null) }
+    LaunchedEffect(meeting) {
         runCatching {
-            val f = fiaUpgradesPdf(ctx.cacheDir, s.meeting, s.year)
+            val f = fiaUpgradesPdf(ctx.cacheDir, meeting, year)
             f to withContext(Dispatchers.IO) { PdfRenderer(ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY)).use { it.pageCount } }
         }.onSuccess { doc = it }.onFailure { if (it !is CancellationException) failed = it.message ?: "not available" }
     }
     LazyColumn(Modifier.fillMaxSize()) {
         item {
-            Text("Upgrades · ${s.meeting}", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(start = 20.dp))
+            Text("Upgrades · ${meeting}", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(start = 20.dp))
             Text("The FIA's Car Presentation Submissions: every team's new parts, why, and how they work. Pinch a page to zoom.",
                 color = C.fg2, fontFamily = Inter, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
-            TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(fiaUpgradesUrl(s.meeting, s.year)))) } },
+            TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(fiaUpgradesUrl(meeting, year)))) } },
                 modifier = Modifier.padding(start = 12.dp)) { Text("Open the PDF", color = C.lime, fontFamily = Inter) }
         }
         val d = doc
         when {
-            failed != null -> item { F1Note("No upgrades document for ${s.meeting} yet (${failed}). The FIA publishes it on the Thursday or Friday of a Grand Prix weekend.") }
+            failed != null -> item { F1Note("No upgrades document for ${meeting} yet (${failed}). The FIA publishes it on the Thursday or Friday of a Grand Prix weekend.") }
             d == null -> item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = C.lime) } }
             else -> items((1 until d.second).toList(), key = { "u$it" }) { i -> PdfPage(d.first, i) }   // page 1 is the FIA cover note
         }
         item { F1Note("Document from fia.com, shown as published.") }
     }
+}
+
+/* ---------- the F1 weekend page (the sheet for any F1 session) ---------- */
+
+@Composable
+fun F1WeekendView(e: Event, events: List<Event>, now: Instant, onPage: (String) -> Unit) {
+    val ctx = LocalContext.current
+    val weekend = remember(e, events) { events.filter { it.code == "F1" && it.title == e.title && Duration.between(it.start, e.start).abs().toDays() <= 5 }.sortedBy { it.start } }
+    var info by remember(e.title) { mutableStateOf<GpInfo?>(null) }
+    var last by remember(e.title) { mutableStateOf<LastYear?>(null) }
+    var results by remember(e.title) { mutableStateOf<List<RaceSession>?>(null) }
+    var map by remember(e.title) { mutableStateOf<CircuitMap?>(null) }
+    var weather by remember(e.title) { mutableStateOf<Map<Instant, Forecast>>(emptyMap()) }
+    var open by remember(e.title) { mutableStateOf<String?>(null) }
+    LaunchedEffect(e.title) {
+        val g = runCatching { gpInfo(e) }.getOrNull(); info = g
+        results = runCatching { weekendResults(e, g) }.getOrDefault(emptyList())
+        runCatching { circuitKey(e)?.let { map = circuitMap(ctx.cacheDir, it, e.start.atZone(ZoneOffset.UTC).year) } }
+        if (g != null) {
+            runCatching { weather = forecast(g.lat, g.lon, weekend.filter { !it.isTbc }.map { it.start }) }
+            last = runCatching { lastYear(g) }.getOrNull()
+        }
+    }
+    Column(Modifier.padding(top = 14.dp)) {
+        info?.let { g -> Text("Round ${g.round} · ${g.circuit} · ${g.locality}, ${g.country}", color = C.fg2, fontFamily = Inter, fontSize = 13.sp) }
+
+        Text("This weekend", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
+        weekend.forEach { s ->
+            val f = weather[s.start]
+            Row(Modifier.padding(top = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(sessName(s.session), Modifier.width(104.dp), color = if (s.id == e.id) C.lime else C.fg, fontFamily = Inter,
+                    fontWeight = if (s.id == e.id) FontWeight.Bold else FontWeight.Normal, fontSize = 14.sp)
+                Text(if (s.isTbc) "TBC" else "${dayWord(s.start, now)} ${hm(s.start)}", Modifier.width(96.dp), color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
+                Text(when {
+                    s.inProgress(now) -> "LIVE"
+                    s.over(now) -> "done"
+                    f != null -> "${f.temp.toInt()}° · ${f.rain}% rain"
+                    else -> ""
+                }, color = if (s.inProgress(now)) C.lime else C.fg3, fontFamily = Inter, fontSize = 12.sp)
+            }
+        }
+        weather[weekend.lastOrNull { it.session == "Race" }?.start]?.let { f ->
+            Text("Race forecast: ${f.temp.toInt()}°C, ${weatherWord(f.code)}, ${f.rain}% chance of rain, wind ${f.wind.toInt()} km/h", color = C.fg2, fontFamily = Inter,
+                fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+        }
+
+        val done = results.orEmpty().filter { it.state == "post" && !it.rows.isNullOrEmpty() }
+        if (done.isNotEmpty()) {
+            Text("Results so far", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(top = 14.dp))
+            done.forEach { r ->
+                val rows = r.rows.orEmpty()
+                Column(Modifier.padding(top = 6.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(C.tile2)
+                    .clickable { open = if (open == r.name) null else r.name }.padding(10.dp)) {
+                    Text(r.name, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Reveal("wk:${e.title}:${r.name}") {
+                        val lead = when { r.name.contains("Qualifying") -> "Pole: "; r.name.contains("Practice") -> "Fastest: "; else -> "Winner: " }
+                        Text(lead + rows.first().name + (rows.first().team.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""), color = C.fg, fontFamily = Inter, fontSize = 13.sp)
+                        Text(rows.take(3).joinToString("  ·  ") { "${it.pos} ${it.name.substringAfterLast(' ')}" }, color = C.fg2, fontFamily = Inter, fontSize = 12.sp)
+                        if (open == r.name) rows.take(10).forEach { x ->
+                            Row(Modifier.padding(top = 3.dp)) {
+                                Text("${x.pos}", Modifier.width(26.dp), color = C.fg3, fontFamily = Inter, fontSize = 13.sp)
+                                Text(x.name, Modifier.weight(1f), color = C.fg, fontFamily = Inter, fontSize = 13.sp)
+                                Text(x.time, color = C.fg2, fontFamily = Inter, fontSize = 12.sp)
+                            }
+                        } else Text("Tap for the top 10", color = C.fg3, fontFamily = Inter, fontSize = 11.sp)
+                    }
+                }
+            }
+        }
+
+        Text("The track", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(top = 14.dp))
+        val m = map
+        if (m != null) {
+            TrackCanvas(m, emptyMap(), null, Modifier.padding(top = 6.dp).fillMaxWidth().aspectRatio(1.3f).clip(RoundedCornerShape(14.dp)).background(C.bg))
+            Text("${m.corners.size} corners${info?.let { " · ${it.circuit}" } ?: ""}", color = C.fg2, fontFamily = Inter, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+        } else Text(info?.circuit ?: "Loading…", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
+        last?.let { l ->
+            Text("${l.year}: ${l.winner} won for ${l.team}, ${l.laps} laps in ${l.time}" + (l.fastest?.let { ". Fastest lap: $it" } ?: ""),
+                color = C.fg2, fontFamily = Inter, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+        }
+
+        Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { onPage("f1live") }) { Text("Live timing", color = C.lime, fontFamily = Inter) }
+            OutlinedButton(onClick = { onPage("upgrades:${e.start.atZone(ZoneOffset.UTC).year}:${e.title}") }) { Text("Upgrades", color = C.lime, fontFamily = Inter) }
+        }
+        info?.wiki?.takeIf { it.isNotBlank() }?.let { url ->
+            TextButton(onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }, contentPadding = PaddingValues(0.dp)) {
+                Text("About the circuit on Wikipedia", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
+            }
+        }
+        Text("Calendar and history from Jolpica, results from ESPN or Jolpica, forecast from Open-Meteo, map from MultiViewer.",
+            color = C.fg3, fontFamily = Inter, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+    }
+}
+
+/** Full-screen pages the weekend sheet opens: F1 Live and the upgrades document. */
+@Composable
+fun F1Page(page: String, onBack: () -> Unit) = Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    TextButton(onClick = onBack, modifier = Modifier.padding(start = 4.dp, top = 4.dp)) { Text("‹ Back", color = C.lime, fontFamily = Inter) }
+    if (page == "f1live") F1LiveView()
+    else page.removePrefix("upgrades:").split(":", limit = 2).let { parts -> UpgradesDoc(parts.getOrElse(1) { "" }, parts[0].toIntOrNull() ?: 2026) }
 }

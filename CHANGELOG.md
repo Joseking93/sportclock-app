@@ -2,6 +2,15 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.7 (25 Oct 2026)
+- **F1 weekend page:** tap any F1 card or session (the NEXT UP card, a list row, the calendar) to see the whole Grand Prix:
+  - **Schedule:** every session in your time, marked done or LIVE, with the forecast for each.
+  - **Results so far:** fastest in each practice, pole, sprint and race winners. Tap a session for its top 10; spoiler-free hides them.
+  - **The track:** the circuit map, number of corners, and last year's winner, laps, race time and fastest lap.
+  - **Race-day forecast** at the circuit: temperature, sky, chance of rain, wind.
+  - Buttons for **Live timing** and the FIA **Upgrades** document, and a link to the circuit on Wikipedia.
+- **New track graphics**, here and in F1 Live: a lime racing line on a dark track, corner numbers in badges, a chequered start/finish line and an arrow for the lap direction.
+
 ## 2.6 (25 Oct 2026)
 - **F1 Live** (Scores → Racing → F1 → Live), straight from Formula 1's own live timing:
   - **Status banner:** green, yellow, safety car, VSC or red flag, plus lap count and weather.

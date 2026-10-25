@@ -62,4 +62,20 @@ class LiveSourcesTest {
         val pdf = fiaUpgradesPdf(tmp, f.meeting, f.year); println("  upgrades PDF ${fiaUpgradesUrl(f.meeting, f.year)} -> ${pdf.length()} bytes")
         assertTrue(pdf.length() > 10_000)
     }
+
+    @Test fun f1Weekend() = runBlocking {
+        assumeTrue(live)
+        val race = events.first { it.code == "F1" && it.session == "Race" && it.title == "United States Grand Prix" }
+        val g = gpInfo(race)!!
+        println("GP: round ${g.round} ${g.circuit} ${g.locality} ${g.lat},${g.lon} ${g.wiki}")
+        println("Last year: ${lastYear(g)}")
+        println("Circuit key: ${circuitKey(race)}")
+        val res = weekendResults(race, g)
+        println("Results: " + res.joinToString { "${it.name}(${it.state}) ${it.rows?.firstOrNull()?.name ?: ""}" })
+        val weekend = events.filter { it.code == "F1" && it.title == race.title }.map { it.start }
+        println("Forecast: " + forecast(g.lat, g.lon, weekend))
+        val later = events.first { it.code == "F1" && it.session == "Race" && it.start.isAfter(race.start.plusSeconds(86400 * 5)) }
+        println("Next GP: ${later.title} -> ${gpInfo(later)?.circuit}, key ${circuitKey(later)}, last year ${gpInfo(later)?.let { lastYear(it) }}")
+        assertTrue(g.round == 18 && res.isNotEmpty())
+    }
 }
