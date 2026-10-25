@@ -121,7 +121,7 @@ private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOp
                             Text(series(code)?.name ?: code, color = C.fg2, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                         }
                     }
-                    l.forEach { e -> item(key = "o" + e.id) { EventRow(e, now, scores.matches[e.id], onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) } }
+                    l.forEach { e -> item(key = "o" + e.id) { EventRow(e, now, scores.matches[e.id], showDay = false, onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) } }
                 }
             }
         }
@@ -369,6 +369,18 @@ fun SettingsScreen(onBack: () -> Unit, onChanged: () -> Unit, onTextScale: (Floa
                         colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
                 }
             }
+        }
+        item { SectionLabel("Card art") }
+        item {
+            var art by remember { mutableStateOf(Settings.cardArt(ctx)) }
+            Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("photos" to "Photos", "drawn" to "Drawn").forEach { (key, label) ->
+                    FilterChip(art == key, { art = key; Settings.setCardArt(ctx, key); onChanged() }, label = { Text(label, fontFamily = Inter) },
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
+                }
+            }
+            Text("For MotoGP, NASCAR, IndyCar, UFC and boxing cards: race and fight photos, or drawn scenes (octagon, ring, oval, trophy) in your theme's colours.",
+                color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(start = 20.dp, top = 8.dp, end = 20.dp))
         }
         item { SectionLabel("Text size") }
         item {

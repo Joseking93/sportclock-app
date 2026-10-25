@@ -3,6 +3,12 @@
 Newest first. Each version's APK is attached to its GitHub Release.
 
 ## 2.13 (25 Oct 2026)
+- **Art on every NEXT UP card.** MotoGP, NASCAR, IndyCar, UFC and boxing cards were blank; now they have pictures, your choice in More → Settings → Card art:
+  - **Photos:** free-licensed race and fight photos from Wikimedia Commons, credited in About.
+  - **Drawn:** an octagon cage, a boxing ring, a NASCAR tri-oval, an IndyCar oval and a trophy, in your theme's colours.
+  - The widget shows the same.
+- **Days on undated lists:** a row in a list without day headings (Next up on a team page, Your teams) shows the day under the time ("Sat 31", "Tomorrow"), so a 15:30 next week isn't mistaken for today.
+- **Following says what it does:** everything switched on there gets its own NEXT UP card on Home.
 - **Back works the way you came.** Swiping back closes an open match sheet, then goes back through the pages you opened (Settings, a team page, Upgrades…), then to Home. It only leaves the app from Home. The app also opts in to Android's predictive back, so the system gesture can no longer skip past it and close the app.
 
 ## 2.12 (25 Oct 2026)

@@ -145,6 +145,7 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
             .combinedClickable(onClick = onOpen, onLongClick = onPin)
     ) {
         if (person == null && look != null) BadgeBackdrop(look, Modifier.matchParentSize())
+        if (person == null && look == null && !football) SportCardArt(e.code, Modifier.matchParentSize())   // no person: the sport's photo or drawn scene
         person?.let { p -> Box(Modifier.matchParentSize()) {
             Image(
                 painterResource(p.photo), null,
@@ -278,7 +279,7 @@ fun PillView(p: Pill) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun EventRow(e: Event, now: Instant, score: Score? = null, highlight: Boolean = false, onClick: () -> Unit = {}) {
+fun EventRow(e: Event, now: Instant, score: Score? = null, highlight: Boolean = false, showDay: Boolean = true, onClick: () -> Unit = {}) {
     val showScore = score != null && score.home != null && score.away != null && score.status in setOf("IN_PLAY", "PAUSED", "FINISHED") && !Spoilers.hidden(e)
     Row(
         Modifier.padding(horizontal = 16.dp).fillMaxWidth().heightIn(min = 60.dp).clip(RoundedCornerShape(12.dp)).background(C.tile)
@@ -287,7 +288,8 @@ fun EventRow(e: Event, now: Instant, score: Score? = null, highlight: Boolean = 
     ) {
         Column(Modifier.width(80.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(if (showScore) "${score!!.home}–${score.away}" else timeText(e), style = Digits, fontSize = 24.sp, color = if (highlight) C.lime else C.fg)
-            val cue = if (showScore) when (score!!.status) { "FINISHED" -> "FT"; "PAUSED" -> "HT"; else -> score.detail.takeIf { it.isNotEmpty() && it.length <= 7 } ?: "Live" } else tonightCue(e, now)
+            val cue = if (showScore) when (score!!.status) { "FINISHED" -> "FT"; "PAUSED" -> "HT"; else -> score.detail.takeIf { it.isNotEmpty() && it.length <= 7 } ?: "Live" }
+                else tonightCue(e, now) ?: dayWord(e.start, now).takeIf { showDay && !e.isTbc && localDate(e.start) != localDate(now) }   // lists without day headings say the day
             cue?.let { Text(it, color = C.lime, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, lineHeight = 13.sp) }
         }
         Box(Modifier.width(1.dp).height(36.dp).background(C.line))
@@ -327,7 +329,7 @@ fun androidx.compose.foundation.lazy.LazyListScope.dayGroups(events: List<Event>
         item(key = "h$d") { DayHeader(d, today) }
         list.forEach { e ->
             item(key = e.id) {
-                EventRow(e, now, scores[e.id], onClick = { onOpen(e) })
+                EventRow(e, now, scores[e.id], showDay = false, onClick = { onOpen(e) })
                 Spacer(Modifier.height(4.dp))
             }
         }

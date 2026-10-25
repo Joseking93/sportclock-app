@@ -90,7 +90,7 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val st = remember { AppState(ctx) }
-    remember { AlertChoices.load(ctx); Spoilers.load(ctx) }
+    remember { AlertChoices.load(ctx); Spoilers.load(ctx); Themes.cardArt = Settings.cardArt(ctx) }
     var welcome by remember { mutableStateOf(Repo.isNewInstall(ctx)) }
     val data by Repo.data.collectAsState()
     var now by remember { mutableStateOf(Instant.now()) }
@@ -318,6 +318,7 @@ fun AboutScreen(d: Data?, onBack: () -> Unit) {
             "F1 Live reads Formula 1's own live timing feed; track maps come from MultiViewer's circuit data, upgrades from the FIA's Car Presentation Submissions.",
             "Fixtures: ${d?.attribution ?: ""}; F1 calendar via Jolpica; fight cards and other series curated by hand.",
             "Photos are from news coverage and Wikimedia Commons, for personal use in this app only.",
+            "Sport card photos, Wikimedia Commons: MotoGP by Liauzh (CC BY-SA 4.0); NASCAR by likeaduck (CC BY 2.0); IndyCar by YellowstoneTrinity (CC0); MMA by Haribhagirath (CC BY 4.0); boxing by GhaziTwaissi (CC BY-SA 4.0).",
             "Fixtures checked: ${d?.generated?.take(16)?.replace('T', ' ') ?: "—"} UTC",
         ).forEach { Text("• $it", color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(vertical = 5.dp)) }
     }

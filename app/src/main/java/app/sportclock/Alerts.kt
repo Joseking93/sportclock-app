@@ -31,6 +31,9 @@ object Settings {
     /** Text size as a font scale; 0 means "use the phone's own setting". */
     fun textScale(ctx: Context) = Repo.prefs(ctx).getFloat("textScale", 0f)
     fun setTextScale(ctx: Context, s: Float) = Repo.prefs(ctx).edit().putFloat("textScale", s).apply()
+    /** Art on NEXT UP cards for sports with no driver, fighter or club badges: "photos" or "drawn". */
+    fun cardArt(ctx: Context) = Repo.prefs(ctx).getString("cardArt", "photos")!!
+    fun setCardArt(ctx: Context, v: String) { Repo.prefs(ctx).edit().putString("cardArt", v).apply(); Themes.cardArt = v }
     /** The look: "night" or "paddock", and "system", "light" or "dark". */
     fun palette(ctx: Context) = Repo.prefs(ctx).getString("palette", "night")!!
     fun mode(ctx: Context) = Repo.prefs(ctx).getString("mode", "system")!!

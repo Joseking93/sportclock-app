@@ -44,6 +44,8 @@ val PADDOCK_LIGHT = Palette(false, c(0xFFF2F4F5), c(0xFFFFFFFF), c(0xFFE6EAED), 
 /** The palette on screen now. Set by [SportClockTheme] from the setting and the phone's own light/dark mode. */
 object Themes {
     var current by mutableStateOf(NIGHT_DARK)
+    /** "photos" or "drawn", for the sports with no person or badges on their card (see SportArt.kt). */
+    var cardArt by mutableStateOf("photos")
     fun pick(palette: String, dark: Boolean) = when (palette) { "paddock" -> if (dark) PADDOCK_DARK else PADDOCK_LIGHT; else -> if (dark) NIGHT_DARK else NIGHT_LIGHT }
 }
 

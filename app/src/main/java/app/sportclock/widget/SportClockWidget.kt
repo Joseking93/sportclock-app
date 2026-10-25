@@ -62,11 +62,17 @@ class SportClockWidget : GlanceAppWidget() {
         val look = if (e != null && (e.sport == Sport.FOOTBALL || e.sport == Sport.NFL) && e.teams.size == 2) Looks.load(e) else null
         val candidate = if (live != null && e?.id != hero?.event?.id) favs[Kind.PLAYER] else hero?.person
         val person = candidate?.takeIf { (e?.sport != Sport.FOOTBALL && e?.sport != Sport.NFL) || (look != null && personKey(it.name) in look.squad) }
+        // a sport with no photo or badges gets its drawn scene, in the bright accent of the chosen look
+        val art = e?.takeIf { person == null && look == null && it.sport != Sport.FOOTBALL && it.sport != Sport.NFL }?.code
+        val accent = Themes.pick(Settings.palette(context), true).bright
+        val photo = art?.let { sportPhoto(it) }?.takeIf { Settings.cardArt(context) == "photos" }
         // Glance calls this on the main thread, where Android refuses downloads: the badges are fetched and drawn on IO
         val (wideBmp, squareBmp) = withContext(Dispatchers.IO) {
-            runCatching { person?.let { faded(context, it, 1080, 480, 0.22f, 0.72f, 1f) } ?: look?.let { badges(context, it, 1080, 480, 0.30f, 0.62f, 1f) } }
+            runCatching { person?.let { faded(context, it, 1080, 480, 0.22f, 0.72f, 1f) } ?: look?.let { badges(context, it, 1080, 480, 0.30f, 0.62f, 1f) }
+                ?: art?.let { a -> photo?.let { fadedRes(context, it, 0.6f, 0.5f, false, 1080, 480, 0.22f, 0.72f, 1f) } ?: sportArtBitmap(a, 1080, 480, 0.30f, 0.62f, 1f, accent) } }
                 .onFailure { Diag.log("widget art: $it") }.getOrNull() to
-            runCatching { person?.let { faded(context, it, 600, 600, 0.0f, 0.95f, 0.75f) } ?: look?.let { badges(context, it, 600, 600, 0.05f, 0.75f, 0.7f) } }
+            runCatching { person?.let { faded(context, it, 600, 600, 0.0f, 0.95f, 0.75f) } ?: look?.let { badges(context, it, 600, 600, 0.05f, 0.75f, 0.7f) }
+                ?: art?.let { a -> photo?.let { fadedRes(context, it, 0.6f, 0.5f, false, 600, 600, 0.0f, 0.95f, 0.75f) } ?: sportArtBitmap(a, 600, 600, 0.05f, 0.75f, 0.7f, accent) } }
                 .onFailure { Diag.log("widget art: $it") }.getOrNull()
         }
         Alerts.scheduleWidget(context, hero?.event?.takeIf { !it.isTbc }?.start)   // redraw when the wording next changes
@@ -78,17 +84,21 @@ class SportClockWidget : GlanceAppWidget() {
      * fully opaque at [to], so it melts into the widget's background with no visible edge, as the card in the app does.
      * Decoded at full size and drawn at about the widget's own pixel size, so it stays sharp; greyscale for fighters.
      */
-    private fun faded(ctx: Context, p: Person, w: Int, h: Int, from: Float, to: Float, maxAlpha: Float): Bitmap {
-        val src = BitmapFactory.decodeResource(ctx.resources, p.photo)
+    private fun faded(ctx: Context, p: Person, w: Int, h: Int, from: Float, to: Float, maxAlpha: Float): Bitmap =
+        fadedRes(ctx, p.photo, p.fx, p.fy, p.kind == Kind.FIGHTER, w, h, from, to, maxAlpha)
+
+    /** Any bundled photo, cropped around (fx, fy) and faded like [faded]. */
+    private fun fadedRes(ctx: Context, res: Int, fx: Float, fy: Float, grey: Boolean, w: Int, h: Int, from: Float, to: Float, maxAlpha: Float): Bitmap {
+        val src = BitmapFactory.decodeResource(ctx.resources, res)
         // largest crop of the target shape that keeps the focal point (face, cockpit) in frame
         val scale = minOf(src.width.toFloat() / w, src.height.toFloat() / h)
         val cw = (w * scale).toInt(); val ch = (h * scale).toInt()
-        val left = ((p.fx * src.width) - cw * 0.62f).toInt().coerceIn(0, src.width - cw)
-        val top = ((p.fy * src.height) - ch / 2f).toInt().coerceIn(0, src.height - ch)
+        val left = ((fx * src.width) - cw * 0.62f).toInt().coerceIn(0, src.width - cw)
+        val top = ((fy * src.height) - ch / 2f).toInt().coerceIn(0, src.height - ch)
         val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(out)
         val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
-        if (p.kind == Kind.FIGHTER) paint.colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
+        if (grey) paint.colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
         c.drawBitmap(src, Rect(left, top, left + cw, top + ch), Rect(0, 0, w, h), paint)
         src.recycle()
         val mask = Paint().apply {

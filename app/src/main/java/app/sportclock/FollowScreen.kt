@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,6 +50,14 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
                     Text("Following", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 22.sp)
                     Text("${st.follows.size} followed", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
                 }
+            }
+        }
+        item {
+            Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.lime.copy(alpha = .12f))
+                .padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Star, null, tint = C.lime); Spacer(Modifier.width(12.dp))
+                Text("Everything switched on here gets its own NEXT UP card on Home, soonest first, and fills your Following list and the widget. " +
+                    "Switch a series or team off to take its card away.", color = C.fg, fontFamily = Inter, fontSize = 13.sp)
             }
         }
         item { SectionLabel("★ Favourites") }
