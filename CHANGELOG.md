@@ -2,6 +2,9 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.4.1 (25 Oct 2026)
+- **Widget badges:** the widget showed the club colours but no badges, because it tried to download them on the main thread, which Android refuses. It now fetches and draws them in the background, and a cut-off download can no longer leave a broken badge behind.
+
 ## 2.4 (25 Oct 2026)
 - **Club badges on NEXT UP:** a football card shows both clubs half and half, each badge on its own club colour. Badges and colours come from ESPN.
 - **Your favourite player only when he plays:** his photo leads a match only if he's in one of the two squads (checked against ESPN's current squads). Ronaldo no longer fronts Man Utd v Bournemouth.

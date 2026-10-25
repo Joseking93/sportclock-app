@@ -33,6 +33,8 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import app.sportclock.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.Instant
 
 class SportClockWidgetReceiver : GlanceAppWidgetReceiver() {
@@ -55,12 +57,13 @@ class SportClockWidget : GlanceAppWidget() {
         val e = hero?.event
         val look = if (e != null && e.sport == Sport.FOOTBALL && e.teams.size == 2) Looks.load(e) else null
         val person = hero?.person?.takeIf { e?.sport != Sport.FOOTBALL || (look != null && personKey(it.name) in look.squad) }
-        val wideBmp = runCatching {
-            person?.let { faded(context, it, 1080, 480, 0.22f, 0.72f, 1f) } ?: look?.let { badges(context, it, 1080, 480, 0.30f, 0.62f, 1f) }
-        }.getOrNull()
-        val squareBmp = runCatching {
-            person?.let { faded(context, it, 600, 600, 0.0f, 0.95f, 0.75f) } ?: look?.let { badges(context, it, 600, 600, 0.05f, 0.75f, 0.7f) }
-        }.getOrNull()
+        // Glance calls this on the main thread, where Android refuses downloads: the badges are fetched and drawn on IO
+        val (wideBmp, squareBmp) = withContext(Dispatchers.IO) {
+            runCatching { person?.let { faded(context, it, 1080, 480, 0.22f, 0.72f, 1f) } ?: look?.let { badges(context, it, 1080, 480, 0.30f, 0.62f, 1f) } }
+                .onFailure { Diag.log("widget art: $it") }.getOrNull() to
+            runCatching { person?.let { faded(context, it, 600, 600, 0.0f, 0.95f, 0.75f) } ?: look?.let { badges(context, it, 600, 600, 0.05f, 0.75f, 0.7f) } }
+                .onFailure { Diag.log("widget art: $it") }.getOrNull()
+        }
         Alerts.scheduleWidget(context, hero?.event?.takeIf { !it.isTbc }?.start)   // redraw when the wording next changes
         provideContent { Content(hero, next, wideBmp, squareBmp, now) }
     }
@@ -129,12 +132,15 @@ class SportClockWidget : GlanceAppWidget() {
     private fun badge(ctx: Context, side: TeamSide): Bitmap? = runCatching {
         val f = java.io.File(java.io.File(ctx.cacheDir, "badges").apply { mkdirs() }, "${side.id}.png")
         if (!f.exists() || f.length() == 0L) {
+            // into a temporary file first, so a cut-off download never leaves a broken badge behind
+            val tmp = java.io.File(f.path + ".part")
             val conn = java.net.URL(side.logo).openConnection() as java.net.HttpURLConnection
             conn.connectTimeout = 10_000; conn.readTimeout = 15_000
-            try { conn.inputStream.use { inp -> f.outputStream().use { inp.copyTo(it) } } } finally { conn.disconnect() }
+            try { conn.inputStream.use { inp -> tmp.outputStream().use { inp.copyTo(it) } } } finally { conn.disconnect() }
+            if (!tmp.renameTo(f)) tmp.delete()
         }
-        BitmapFactory.decodeFile(f.path)
-    }.getOrNull()
+        BitmapFactory.decodeFile(f.path) ?: run { f.delete(); null }
+    }.onFailure { Diag.log("widget badge ${side.name}: $it") }.getOrNull()
 
     @Composable
     private fun Content(hero: Hero?, next: List<Event>, wideBmp: Bitmap?, squareBmp: Bitmap?, now: Instant) {
