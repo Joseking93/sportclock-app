@@ -85,7 +85,7 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
         item { ToggleRow(seriesColor("NFL"), "NFL", "Every game; or add single teams below (e.g. Chiefs)", "c:NFL" in st.follows) { set("c:NFL", it) } }
         item { SectionLabel("Teams") }
         st.follows.filter { it.startsWith("t:") }.sorted().forEach { token ->
-            item { ToggleRow(Color(0xFFDA291C), token.substring(2), nextFor(token)?.let { "Next: ${it.line1()} · ${dayWord(it.start, now)} ${hm(it.start)}" } ?: "No dates yet", true) { set(token, it) } }
+            item { ToggleRow(if (token.substring(2) in NFL_TEAMS) seriesColor("NFL") else seriesColor("ENG"), token.substring(2), nextFor(token)?.let { "Next: ${it.line1()} · ${dayWord(it.start, now)} ${hm(it.start)}" } ?: "No dates yet", true) { set(token, it) } }
         }
         item {
             OutlinedTextField(query, { query = it }, placeholder = { Text("Add a team", fontFamily = Inter) }, singleLine = true,

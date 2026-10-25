@@ -140,7 +140,7 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
     val person = if (!football) h.person else h.person?.takeIf { p -> look != null && personKey(p.name) in look.squad }
     Box(
         Modifier.fillMaxWidth().heightIn(min = 204.dp).clip(shape)
-            .background(Brush.radialGradient(listOf(Color(0xFF171C0D), Color(0xFF0B0D09)), center = Offset(0f, 600f), radius = 900f))
+            .background(Brush.radialGradient(listOf(Themes.current.heroA, Themes.current.heroB), center = Offset(0f, 600f), radius = 900f))
             .border(1.dp, C.limeDim, shape)
             .combinedClickable(onClick = onOpen, onLongClick = onPin)
     ) {
@@ -158,7 +158,7 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
                     },
             )
         } }
-        Box(Modifier.matchParentSize().background(Brush.horizontalGradient(0f to Color(0xE60B0D09), 0.38f to Color(0xA80B0D09), 0.6f to Color(0x260B0D09), 0.7f to Color.Transparent)))
+        Box(Modifier.matchParentSize().background(Brush.horizontalGradient(0f to C.bg.copy(alpha = .9f), 0.38f to C.bg.copy(alpha = .66f), 0.6f to C.bg.copy(alpha = .15f), 0.7f to Color.Transparent)))
         if (person == null && look != null) BadgeLogos(look, Modifier.matchParentSize())
 
         // the card grows with its text (large font settings), so the time is never clipped
@@ -180,7 +180,7 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
 
         Row(Modifier.align(Alignment.TopEnd).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
             person?.let { p ->
-                Row(Modifier.height(28.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xC70A0C08)).border(1.dp, Color(0x66C8F53C), RoundedCornerShape(14.dp))
+                Row(Modifier.height(28.dp).clip(RoundedCornerShape(14.dp)).background(C.bg.copy(alpha = .78f)).border(1.dp, C.lime.copy(alpha = .4f), RoundedCornerShape(14.dp))
                     .padding(start = 3.dp, end = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Image(painterResource(p.avatar), null, contentScale = ContentScale.Crop, alignment = BiasAlignment(p.fx * 2 - 1, p.fy * 2 - 1),
                         modifier = Modifier.size(22.dp).clip(CircleShape))
@@ -189,7 +189,7 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
                 }
                 Spacer(Modifier.width(6.dp))
             }
-            if (h.token != null) Box(Modifier.size(32.dp).clip(CircleShape).background(Color(0xC70A0C08)).combinedClickable(onClick = onPin), contentAlignment = Alignment.Center) {
+            if (h.token != null) Box(Modifier.size(32.dp).clip(CircleShape).background(C.bg.copy(alpha = .78f)).combinedClickable(onClick = onPin), contentAlignment = Alignment.Center) {
                 Icon(if (pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin, if (pinned) "Unpin" else "Pin to top", Modifier.size(17.dp), tint = if (pinned) C.lime else C.fg2)
             }
         }
@@ -204,14 +204,14 @@ fun Ring(start: Instant, modifier: Modifier = Modifier) {
     LaunchedEffect(start) { while (true) { t = Instant.now(); kotlinx.coroutines.delay(1000L - System.currentTimeMillis() % 1000L) } }
     val secs = Duration.between(t, start).seconds.coerceAtLeast(0)
     val frac = (1f - secs / 7200f).coerceIn(0f, 1f)
-    Box(modifier.size(88.dp).clip(CircleShape).background(Color(0xB30A0C08)), contentAlignment = Alignment.Center) {
+    Box(modifier.size(88.dp).clip(CircleShape).background(C.bg.copy(alpha = .7f)), contentAlignment = Alignment.Center) {
         Canvas(Modifier.matchParentSize().padding(3.dp)) {
             drawCircle(C.ringTrack, style = Stroke(6.dp.toPx()))
             if (frac > 0f) drawArc(C.lime, -90f, 360f * frac, false, style = Stroke(6.dp.toPx(), cap = StrokeCap.Round))
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(countdown(secs), style = Digits, color = C.fg, fontSize = if (secs >= 36000) 19.sp else 22.sp, lineHeight = 24.sp, maxLines = 1)
-            Text(if (secs == 0L) "starting" else "to go", color = Color(0xFFC2C5B9), fontFamily = Inter, fontSize = 12.sp, lineHeight = 14.sp)
+            Text(if (secs == 0L) "starting" else "to go", color = C.fg2, fontFamily = Inter, fontSize = 12.sp, lineHeight = 14.sp)
         }
     }
 }

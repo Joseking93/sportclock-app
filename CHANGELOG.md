@@ -2,6 +2,15 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.11 (25 Oct 2026)
+- **Themes are back** (More → Settings → Theme), the same four looks as the website:
+  - **Night:** lime on black.
+  - **Paddock:** teal on graphite.
+  - Each comes **Light** or **Dark**, or **Follow phone** to switch with the phone's own dark mode.
+- Everything repaints at once, including the NEXT UP card, photo and badge shading, the countdown ring, the status bar icons, the F1 banner and the form chips.
+- The track map keeps its dark asphalt in every look, with the palette's bright accent as the racing line so it stays visible.
+- The home-screen widget stays dark.
+
 ## 2.10 (25 Oct 2026)
 - **Fixed: picking a team for your tab.** The search box was at the bottom of the picker, so the keyboard covered the matches. Search now comes first, matching teams and leagues appear right under it as you type ("United", "Bundesliga", "Chiefs"), and the list stays above the keyboard.
 - **Welcome page on a new phone:** a fresh install starts by asking what you follow most: F1, the NFL, a league, or a team (with search). That choice becomes the tab and what you follow, instead of F1, Man Utd and UFC. Phones already in use skip it.

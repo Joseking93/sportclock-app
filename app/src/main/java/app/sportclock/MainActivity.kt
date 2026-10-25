@@ -52,10 +52,24 @@ class MainActivity : ComponentActivity() {
         setContent {
             // text size: the user's choice in Settings, or the phone's own when "Phone" is chosen
             var textScale by remember { mutableFloatStateOf(Settings.textScale(this)) }
+            var palette by remember { mutableStateOf(Settings.palette(this)) }
+            var mode by remember { mutableStateOf(Settings.mode(this)) }
             val dens = androidx.compose.ui.platform.LocalDensity.current
             androidx.compose.runtime.CompositionLocalProvider(
                 androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(dens.density, if (textScale > 0f) textScale else dens.fontScale)
-            ) { SportClockTheme { App(onTextScale = { textScale = it }) } }
+            ) {
+                SportClockTheme(palette, mode) {
+                    // status and navigation bar icons dark on the light looks, light on the dark ones
+                    val view = androidx.compose.ui.platform.LocalView.current
+                    val darkLook = Themes.current.dark
+                    androidx.compose.runtime.SideEffect {
+                        androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
+                            isAppearanceLightStatusBars = !darkLook; isAppearanceLightNavigationBars = !darkLook
+                        }
+                    }
+                    App(onTextScale = { textScale = it }, onTheme = { p, m -> palette = p; mode = m })
+                }
+            }
         }
     }
 }
@@ -72,7 +86,7 @@ class AppState(ctx: android.content.Context) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun App(onTextScale: (Float) -> Unit = {}) {
+fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = { _, _ -> }) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val st = remember { AppState(ctx) }
@@ -147,7 +161,7 @@ fun App(onTextScale: (Float) -> Unit = {}) {
             val d = data
             when {
                 page == "follow" -> FollowScreen(st, d?.events.orEmpty(), now, onBack = { page = null }, onChanged = { rearm() })
-                page == "settings" -> SettingsScreen(onBack = { page = null }, onChanged = { rearm() }, onTextScale = onTextScale)
+                page == "settings" -> SettingsScreen(onBack = { page = null }, onChanged = { rearm() }, onTextScale = onTextScale, onTheme = onTheme)
                 page == "about" -> AboutScreen(d, onBack = { page = null })
                 page == "news" -> Column(Modifier.fillMaxSize()) {
                     TextButton(onClick = { page = null }, modifier = Modifier.statusBarsPadding().padding(start = 4.dp)) { Text("‹ Back", color = C.lime, fontFamily = Inter) }
@@ -260,7 +274,7 @@ fun MoreScreen(updateWaiting: String?, onFollow: () -> Unit, onSettings: () -> U
         Text("More", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 26.sp, modifier = Modifier.padding(start = 20.dp, bottom = 12.dp))
         MoreItem(Icons.Filled.Newspaper, "News", "BBC Sport headlines for what you follow", onNews)
         MoreItem(Icons.Filled.Star, "Following", "Series, teams and favourites", onFollow)
-        MoreItem(Icons.Filled.Settings, "Settings", "Alerts and text size", onSettings)
+        MoreItem(Icons.Filled.Settings, "Settings", "Alerts, theme and text size", onSettings)
         MoreItem(Icons.Filled.SystemUpdate, "Updates", updateWaiting?.let { "SportClock $it is ready to install" } ?: "You have ${remember { Diag.version(ctx).first }}", onUpdate)
         MoreItem(Icons.Filled.BugReport, "Report a problem", "Sends it to the app's GitHub", onReport)
         MoreItem(Icons.Filled.Info, "About", "Sources, credits and honesty rules", onAbout)

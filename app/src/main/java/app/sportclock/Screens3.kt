@@ -57,7 +57,7 @@ private fun Chip(label: String, on: Boolean, onClick: () -> Unit, lead: (@Compos
 fun FormChips(form: List<String>) = Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
     form.forEach { r ->
         Box(Modifier.size(22.dp).clip(RoundedCornerShape(5.dp)).background(when (r) { "W" -> Color(0xFF2E7D32); "L" -> Color(0xFFB3261E); else -> C.tile2 }),
-            contentAlignment = Alignment.Center) { Text(r, color = Color.White, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+            contentAlignment = Alignment.Center) { Text(r, color = if (r == "W" || r == "L") Color.White else C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 11.sp) }
     }
 }
 

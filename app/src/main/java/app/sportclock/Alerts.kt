@@ -31,6 +31,10 @@ object Settings {
     /** Text size as a font scale; 0 means "use the phone's own setting". */
     fun textScale(ctx: Context) = Repo.prefs(ctx).getFloat("textScale", 0f)
     fun setTextScale(ctx: Context, s: Float) = Repo.prefs(ctx).edit().putFloat("textScale", s).apply()
+    /** The look: "night" or "paddock", and "system", "light" or "dark". */
+    fun palette(ctx: Context) = Repo.prefs(ctx).getString("palette", "night")!!
+    fun mode(ctx: Context) = Repo.prefs(ctx).getString("mode", "system")!!
+    fun setTheme(ctx: Context, palette: String, mode: String) = Repo.prefs(ctx).edit().putString("palette", palette).putString("mode", mode).apply()
     /** What your own tab shows: "F1", "NFL", a whole league ("c:ENG") or one team ("t:Manchester United"). */
     fun myTab(ctx: Context) = Repo.prefs(ctx).getString("myTab", "F1")!!
     fun setMyTab(ctx: Context, v: String) = Repo.prefs(ctx).edit().putString("myTab", v).apply()

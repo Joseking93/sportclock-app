@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -164,7 +165,7 @@ fun TablesView(st: AppState, only: String? = null, onTeam: ((String) -> Unit)? =
                 }
                 items(t.rows) { r ->
                     val mine = myTeams.any { nameWords(it).intersect(nameWords(r.team)).size >= 2 || it == r.team }
-                    Row(Modifier.padding(horizontal = 12.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (mine) Color(0x26C8F53C) else Color.Transparent)
+                    Row(Modifier.padding(horizontal = 12.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (mine) C.lime.copy(alpha = .15f) else Color.Transparent)
                         .clickable(enabled = onTeam != null) { onTeam?.invoke(r.team) }
                         .padding(horizontal = 8.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("${r.rank}", Modifier.width(28.dp), style = Digits, fontSize = 17.sp, color = if (mine) C.lime else C.fg2)
@@ -263,7 +264,7 @@ fun ago(t: Instant, now: Instant): String {
 
 /* ---------- Settings: alerts and text size ---------- */
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onChanged: () -> Unit, onTextScale: (Float) -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onChanged: () -> Unit, onTextScale: (Float) -> Unit, onTheme: (String, String) -> Unit = { _, _ -> }) {
     val ctx = LocalContext.current
     var alerts by remember { mutableStateOf(Settings.alertsOn(ctx)) }
     var lead by remember { mutableIntStateOf(Settings.leadMins(ctx)) }
@@ -340,6 +341,33 @@ fun SettingsScreen(onBack: () -> Unit, onChanged: () -> Unit, onTextScale: (Floa
             var spoiler by remember { mutableStateOf(Settings.spoilerFree(ctx)) }
             ToggleRow(C.lime, "Spoiler-free", "Hide scores and results until you tap; no goal or result alerts", spoiler) { on ->
                 spoiler = on; Settings.setSpoilerFree(ctx, on); onChanged()
+            }
+        }
+        item { SectionLabel("Theme") }
+        item {
+            var palette by remember { mutableStateOf(Settings.palette(ctx)) }
+            var mode by remember { mutableStateOf(Settings.mode(ctx)) }
+            fun set(p: String, m: String) { palette = p; mode = m; Settings.setTheme(ctx, p, m); onTheme(p, m) }
+            Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf("night" to "Night", "paddock" to "Paddock").forEach { (key, label) ->
+                    val on = palette == key
+                    val sample = Themes.pick(key, Themes.current.dark)
+                    Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(sample.bg)
+                        .border(2.dp, if (on) C.lime else C.line, RoundedCornerShape(14.dp)).clickable { set(key, mode) }.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(14.dp).clip(RoundedCornerShape(7.dp)).background(sample.accent)); Spacer(Modifier.width(8.dp))
+                            Text(label, color = sample.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                        }
+                        Text("21:30", style = Digits, color = sample.accent, fontSize = 26.sp, modifier = Modifier.padding(top = 4.dp))
+                        Text(if (key == "night") "Lime on black" else "Teal on graphite", color = sample.fg2, fontFamily = Inter, fontSize = 12.sp)
+                    }
+                }
+            }
+            Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("system" to "Follow phone", "light" to "Light", "dark" to "Dark").forEach { (key, label) ->
+                    FilterChip(mode == key, { set(palette, key) }, label = { Text(label, fontFamily = Inter) },
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
+                }
             }
         }
         item { SectionLabel("Text size") }

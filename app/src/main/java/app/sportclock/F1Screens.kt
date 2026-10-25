@@ -105,14 +105,15 @@ fun F1LiveView() {
 private fun StatusBanner(s: F1Snapshot) {
     val col = if (s.live) trackColor(s.track) else C.tile2
     Column(Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(col.copy(alpha = if (s.live) .9f else 1f)).padding(12.dp)) {
-        Text("${s.meeting} · ${s.session}", color = Color.White, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        val ink = if (s.live) Color.White else C.fg                     // white on a flag colour, the theme's text on a plain card
+        Text("${s.meeting} · ${s.session}", color = ink, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(when {
             s.live -> "LIVE · ${trackWord(s.track)}${s.lap?.let { l -> " · Lap $l${s.totalLaps?.let { "/$it" } ?: ""}" } ?: ""}${if (s.status == "Aborted") " · session stopped" else ""}"
             s.over -> "Finished${s.start?.let { " · ${dayWord(it, Instant.now())}" } ?: ""}"
             else -> "Not started yet${s.start?.let { " · ${dayWord(it, Instant.now())} ${hm(it)}" } ?: ""}"
-        }, color = Color.White, fontFamily = Inter, fontSize = 14.sp)
+        }, color = ink, fontFamily = Inter, fontSize = 14.sp)
         s.weather?.let { w ->
-            Text("Air ${w.air}° · Track ${w.track}° · ${if (w.rain) "Rain" else "Dry"} · Wind ${w.wind} m/s", color = Color.White.copy(alpha = .85f), fontFamily = Inter, fontSize = 12.sp)
+            Text("Air ${w.air}° · Track ${w.track}° · ${if (w.rain) "Rain" else "Dry"} · Wind ${w.wind} m/s", color = ink.copy(alpha = .85f), fontFamily = Inter, fontSize = 12.sp)
         }
     }
 }
@@ -151,7 +152,7 @@ private fun RaceControl(s: F1Snapshot) = LazyColumn {
     if (s.messages.isEmpty()) item { F1Note("No race control messages yet.") }
     items(s.messages.reversed().withIndex().toList(), key = { "m" + it.index }) { (_, m) ->
         val col = when { m.flag.contains("RED") -> RED; m.flag.contains("YELLOW") -> YELLOW; m.flag == "GREEN" || m.flag == "CLEAR" -> GREEN
-            m.category == "SafetyCar" -> ORANGE; m.flag == "BLUE" -> Color(0xFF1E88E5); m.flag == "CHEQUERED" -> Color.White; else -> C.fg3 }
+            m.category == "SafetyCar" -> ORANGE; m.flag == "BLUE" -> Color(0xFF1E88E5); m.flag == "CHEQUERED" -> C.fg; else -> C.fg3 }
         Row(Modifier.padding(horizontal = 16.dp, vertical = 2.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(C.tile).padding(10.dp),
             verticalAlignment = Alignment.Top) {
             Box(Modifier.padding(top = 4.dp).size(10.dp).clip(CircleShape).background(col))
@@ -250,7 +251,7 @@ fun TrackCanvas(m: CircuitMap, flagged: Map<Int, String>, whole: Color?, modifie
     fun screen(p: Pair<Double, Double>) = Offset(ox + ((p.first - minX).toFloat() * scale), oy + ((maxY - p.second).toFloat() * scale))
     val path = Path().apply { pts.forEachIndexed { i, p -> val o = screen(p); if (i == 0) moveTo(o.x, o.y) else lineTo(o.x, o.y) }; close() }
     // a race graphic: soft glow, dark tarmac band with a light edge, and a racing line down the middle
-    val line = whole ?: C.lime
+    val line = whole ?: C.bright                                        // the bright accent reads on dark asphalt in light mode too
     val round = { w: Float -> Stroke(width = w, cap = StrokeCap.Round, join = StrokeJoin.Round) }
     drawPath(path, line.copy(alpha = .10f), style = round(22.dp.toPx()))
     drawPath(path, Color(0xFF4A4E44), style = round(13.dp.toPx()))
@@ -289,7 +290,7 @@ fun TrackCanvas(m: CircuitMap, flagged: Map<Int, String>, whole: Color?, modifie
         moveTo(arrowAt.x + ad.x * ah, arrowAt.y + ad.y * ah)
         lineTo(arrowAt.x - ad.x * ah + an.x * ah * .8f, arrowAt.y - ad.y * ah + an.y * ah * .8f)
         lineTo(arrowAt.x - ad.x * ah - an.x * ah * .8f, arrowAt.y - ad.y * ah - an.y * ah * .8f); close()
-    }, C.lime)
+    }, C.bright)
     val paint = android.graphics.Paint().apply { color = C.fg.toArgb(); textSize = 9.sp.toPx(); isAntiAlias = true; textAlign = android.graphics.Paint.Align.CENTER
         typeface = android.graphics.Typeface.DEFAULT_BOLD }
     // each corner number sits just off the line, pushed away from the middle of the circuit
@@ -298,7 +299,7 @@ fun TrackCanvas(m: CircuitMap, flagged: Map<Int, String>, whole: Color?, modifie
         val p = rot(c.x, c.y)
         val dx = p.first - cx; val dy = p.second - cy; val len = Math.hypot(dx, dy).takeIf { it > 0 } ?: 1.0
         val o = screen(Pair(p.first + dx / len * 700, p.second + dy / len * 700))
-        drawCircle(Color(0xFF151712), 8.dp.toPx(), o)                     // each corner number in a small badge
+        drawCircle(C.tile, 8.dp.toPx(), o)                                // each corner number in a small badge
         drawCircle(C.lime.copy(alpha = .55f), 8.dp.toPx(), o, style = Stroke(1.dp.toPx()))
         drawContext.canvas.nativeCanvas.drawText("${c.number}", o.x, o.y + paint.textSize / 3, paint)
     }
