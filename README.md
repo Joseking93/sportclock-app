@@ -38,6 +38,15 @@ The keystore lives outside the repo (`../sportclock-android/android.keystore`) a
 - `Feeds.kt`: scores, lineups, goals and tables from ESPN, F1 standings from Jolpica, news from BBC Sport (all fetched by the phone)
 - `Alerts.kt`: "starting soon" alarms, settings, widget redraw timing; `Screens2.kt`: Scores/Tables/F1, News, Settings, lineups
 - `widget/SportClockWidget.kt`: the home-screen widget
+- `Diag.kt`: crash catcher and bug reports; `Updater.kt`: in-app updates; `ServiceScreens.kt`: their screens
 - `Photos.kt`: the bundled photo library (generated)
+
+## Updates and bug reports
+The app talks to a small service on the website (`functions/api/app` in the `sportclock` repo) because this repo is private:
+- **Updates:** More → Updates (and a note on Home) finds the newest GitHub Release, downloads its APK and opens Android's install screen.
+  Publish a release with the signed APK attached and phones pick it up within 12 hours.
+- **Crashes** are saved on the phone and sent as a GitHub issue here the next time the app opens; **More → Report a problem** sends one by hand.
+  Release builds are not obfuscated, so the stack traces in those issues are readable.
+- The service needs the `GH_TOKEN` secret on Cloudflare (see the website README). Without it, nothing breaks: reports wait on the phone.
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.

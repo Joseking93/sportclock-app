@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Home
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -74,12 +76,21 @@ fun App(onTextScale: (Float) -> Unit = {}) {
     val data by Repo.data.collectAsState()
     var now by remember { mutableStateOf(Instant.now()) }
     var tab by remember { mutableStateOf(Tab.HOME) }
-    var page by remember { mutableStateOf<String?>(null) }          // "follow" | "about" | "settings" pushed over More
+    var page by remember { mutableStateOf<String?>(null) }          // "follow" | "about" | "settings" | "update" | "report" pushed over More
     var detail by remember { mutableStateOf<Event?>(null) }
     var scores by remember { mutableStateOf(Scores(emptyMap(), null, null)) }
 
     LaunchedEffect(Unit) { Repo.load(ctx)?.let { Alerts.reschedule(ctx, it.events) }; SportClockWidget().updateAll(ctx) }
     LaunchedEffect(Unit) { while (true) { delay(30_000); now = Instant.now() } }
+    // Last time's crash (if any) goes out as a report, then a quiet update check, at most twice a day.
+    var updateWaiting by remember { mutableStateOf(Updater.waiting(ctx)) }
+    LaunchedEffect(Unit) {
+        val (_, crashes) = Diag.sendPending(ctx)
+        if (crashes > 0) Toast.makeText(ctx, "SportClock crashed last time. A report was sent.", Toast.LENGTH_LONG).show()
+        Updater.checkNow(ctx); updateWaiting = Updater.waiting(ctx)
+    }
+    LaunchedEffect(tab, page) { Diag.log("screen ${page ?: tab.name.lowercase()}") }
+    LaunchedEffect(detail) { detail?.let { Diag.log("open ${it.id} ${it.title}") } }
     // Scores from ESPN for today's and yesterday's football: every 2 minutes while a match is on, otherwise every 15.
     LaunchedEffect(data) {
         while (true) {
@@ -115,6 +126,8 @@ fun App(onTextScale: (Float) -> Unit = {}) {
                 page == "follow" -> FollowScreen(st, d?.events.orEmpty(), now, onBack = { page = null }, onChanged = { rearm() })
                 page == "settings" -> SettingsScreen(onBack = { page = null }, onChanged = { rearm() }, onTextScale = onTextScale)
                 page == "about" -> AboutScreen(d, onBack = { page = null })
+                page == "update" -> UpdateScreen(onBack = { page = null; updateWaiting = Updater.waiting(ctx) })
+                page == "report" -> ReportScreen(onBack = { page = null })
                 d == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = C.lime) }
                 tab == Tab.HOME -> HomeScreen(st, d.events, now, scores.matches,
                     onPin = { h ->
@@ -126,7 +139,16 @@ fun App(onTextScale: (Float) -> Unit = {}) {
                 tab == Tab.SCORES -> ScoresHub(st, d, now, scores, onOpen = { detail = it })
                 tab == Tab.CALENDAR -> CalendarScreen(st, d.events, now, scores.matches, onOpen = { detail = it })
                 tab == Tab.NEWS -> NewsScreen(st, now)
-                tab == Tab.MORE -> MoreScreen(onFollow = { page = "follow" }, onSettings = { page = "settings" }, onAbout = { page = "about" })
+                tab == Tab.MORE -> MoreScreen(updateWaiting, onFollow = { page = "follow" }, onSettings = { page = "settings" }, onAbout = { page = "about" },
+                    onUpdate = { page = "update" }, onReport = { page = "report" })
+            }
+            val u = updateWaiting
+            if (page == null && tab == Tab.HOME && u != null && Updater.dismissed(ctx) != u) {
+                Row(Modifier.align(Alignment.BottomCenter).padding(12.dp).clip(RoundedCornerShape(50)).background(C.lime)
+                    .clickable { page = "update" }.padding(start = 18.dp, end = 6.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("SportClock $u is ready · Update", color = C.onLime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    TextButton(onClick = { Updater.dismiss(ctx, u); updateWaiting = null }) { Text("✕", color = C.onLime, fontFamily = Inter) }
+                }
             }
         }
     }
@@ -198,11 +220,14 @@ fun SectionLabel(text: String) = Text(text, color = C.lime, fontFamily = Inter, 
     modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp))
 
 @Composable
-fun MoreScreen(onFollow: () -> Unit, onSettings: () -> Unit, onAbout: () -> Unit) {
+fun MoreScreen(updateWaiting: String?, onFollow: () -> Unit, onSettings: () -> Unit, onAbout: () -> Unit, onUpdate: () -> Unit, onReport: () -> Unit) {
+    val ctx = LocalContext.current
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(top = 8.dp)) {
         Text("More", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 26.sp, modifier = Modifier.padding(start = 20.dp, bottom = 12.dp))
         MoreItem(Icons.Filled.Star, "Following", "Series, teams and favourites", onFollow)
         MoreItem(Icons.Filled.Settings, "Settings", "Alerts and text size", onSettings)
+        MoreItem(Icons.Filled.SystemUpdate, "Updates", updateWaiting?.let { "SportClock $it is ready to install" } ?: "You have ${remember { Diag.version(ctx).first }}", onUpdate)
+        MoreItem(Icons.Filled.BugReport, "Report a problem", "Sends it to the app's GitHub", onReport)
         MoreItem(Icons.Filled.Info, "About", "Sources, credits and honesty rules", onAbout)
     }
 }

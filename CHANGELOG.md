@@ -2,6 +2,12 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.2 (25 Oct 2026)
+- **Tables no longer crash** when you switch league; only the first table you opened worked before. Switching F1 drivers/teams had the same bug.
+- **Updates inside the app:** More → Updates shows the newest version and installs it in two taps. Home shows a note when one is ready.
+- **Crash reports:** if the app crashes, it sends a report by itself the next time it opens.
+- **Report a problem** in More sends a note straight to the app's GitHub, with the version, phone model and the screens you just used.
+
 ## 2.1 (25 Oct 2026)
 - **Scores that work:** live scores, the minute, half-time and full-time results now come from ESPN, fetched by the phone. They are checked every 2 minutes while a match you can see is on, otherwise every 15. The old free feed kept flipping live matches back to "not started".
 - **Lineups and goals:** a match's detail sheet shows both starting elevens with formation and subs once they are out (about an hour before kick-off), plus who scored.

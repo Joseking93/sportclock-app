@@ -130,7 +130,7 @@ private fun TablesView(st: AppState) {
     var code by rememberSaveable { mutableStateOf("ENG") }
     var table by remember { mutableStateOf<Table?>(null) }
     var failed by remember { mutableStateOf(false) }
-    LaunchedEffect(code) { table = null; failed = false; runCatching { espnTable(code) }.onSuccess { table = it }.onFailure { failed = true } }
+    LaunchedEffect(code) { Diag.log("table $code"); table = null; failed = false; runCatching { espnTable(code) }.onSuccess { table = it }.onFailure { if (it !is kotlinx.coroutines.CancellationException) failed = true } }
     val myTeams = st.follows.filter { it.startsWith("t:") }.map { it.substring(2) }
     Column {
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -139,9 +139,10 @@ private fun TablesView(st: AppState) {
                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
             }
         }
+        val t = table
         when {
             failed -> Text("Couldn't load the table. Check your connection.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp))
-            table == null -> Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = C.lime) }
+            t == null -> Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = C.lime) }
             else -> LazyColumn {
                 item {
                     Row(Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
@@ -150,7 +151,7 @@ private fun TablesView(st: AppState) {
                         listOf("P", "GD", "Pts").forEach { Text(it, Modifier.width(40.dp), color = C.fg3, fontFamily = Inter, fontSize = 12.sp) }
                     }
                 }
-                items(table!!.rows) { r ->
+                items(t.rows) { r ->
                     val mine = myTeams.any { nameWords(it).intersect(nameWords(r.team)).size >= 2 || it == r.team }
                     Row(Modifier.padding(horizontal = 12.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (mine) Color(0x26C8F53C) else Color.Transparent)
                         .padding(horizontal = 8.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -173,7 +174,7 @@ private fun F1View() {
     var teams by rememberSaveable { mutableStateOf(false) }
     var data by remember { mutableStateOf<Pair<String, List<Standing>>?>(null) }
     var failed by remember { mutableStateOf(false) }
-    LaunchedEffect(teams) { data = null; failed = false; runCatching { f1Standings(teams) }.onSuccess { data = it }.onFailure { failed = true } }
+    LaunchedEffect(teams) { data = null; failed = false; runCatching { f1Standings(teams) }.onSuccess { data = it }.onFailure { if (it !is kotlinx.coroutines.CancellationException) failed = true } }
     Column {
         Spacer(Modifier.height(4.dp))
         Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -182,12 +183,13 @@ private fun F1View() {
                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
             }
         }
+        val d = data
         when {
             failed -> Text("Couldn't load the standings. Check your connection.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp))
-            data == null -> Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = C.lime) }
+            d == null -> Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = C.lime) }
             else -> LazyColumn {
-                item { Text(data!!.first, color = C.fg2, fontFamily = Inter, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
-                items(data!!.second) { s ->
+                item { Text(d.first, color = C.fg2, fontFamily = Inter, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
+                items(d.second) { s ->
                     Row(Modifier.padding(horizontal = 16.dp, vertical = 2.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(C.tile)
                         .padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(s.pos, Modifier.width(30.dp), style = Digits, fontSize = 20.sp, color = if (s.pos == "1") C.lime else C.fg2)
