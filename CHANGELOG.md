@@ -2,6 +2,17 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.6 (25 Oct 2026)
+- **F1 Live** (Scores → Racing → F1 → Live), straight from Formula 1's own live timing:
+  - **Status banner:** green, yellow, safety car, VSC or red flag, plus lap count and weather.
+  - **Timing tower:** positions, gaps and intervals, tyres, pit stops, and IN PIT / OUT / STOPPED.
+  - **Map:** the circuit with numbered corners. Marshal sectors under yellow light up; the whole track goes orange for a safety car or red for a red flag.
+  - **Race control:** every message, including flags, safety car, investigations, penalties and track limits.
+  - **Pits:** live pit-lane times, and the full pit-stop list after the race.
+  - **Upgrades:** the FIA's Car Presentation Submissions for the weekend, every team's new parts and why, shown in the app.
+- **F1 alerts** for sessions you follow (More → Settings → F1 live): safety car, VSC, red flag, green flag, retirements, lead changes, and the chequered flag with the top three or pole.
+- While on screen, F1 Live refreshes every 15 seconds during a session. In the background it checks every 2 minutes; Android may stretch that while the phone sleeps.
+
 ## 2.5 (25 Oct 2026)
 - **Live match alerts** for your team and any match you belled: goals (with scorer and minute), red cards, half-time and full-time. More → Settings → Match day.
 - **Lineups out:** both starting elevens in a notification, about an hour before kick-off.

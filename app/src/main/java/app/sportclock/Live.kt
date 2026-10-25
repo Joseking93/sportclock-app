@@ -33,10 +33,15 @@ object Live {
     private const val GOALS = "goals"; private const val LINEUPS = "lineups"; private const val SCORE = "live"
     private const val BEFORE = 70L * 60; private const val AFTER = 180L * 60
 
+    /** F1 qualifying, sprints and races you get alerts for. */
+    fun watchedF1(e: Event) = e.code == "F1" && !e.isTbc && listOf("Race", "Sprint", "Qualifying").any { e.session.contains(it) } && AlertChoices.wants(e)
+    private const val F1_BEFORE = 10L * 60
+    private fun inF1Window(e: Event, now: Instant) = !now.isBefore(e.start.minusSeconds(F1_BEFORE)) && !now.isAfter(e.start.plusSeconds(AFTER))
+
     fun watched(e: Event, follows: Set<String>) = e.sport == Sport.FOOTBALL && e.teams.size == 2 && !e.isTbc && ESPN_LEAGUE.containsKey(e.code) &&
         (e.teams.any { "t:$it" in follows } || AlertChoices.wants(e))
     private fun inWindow(e: Event, now: Instant) = !now.isBefore(e.start.minusSeconds(BEFORE)) && !now.isAfter(e.start.plusSeconds(AFTER))
-    private fun wanted(ctx: Context) = Settings.alertsOn(ctx) && (Settings.liveAlerts(ctx) || Settings.lineupAlerts(ctx))
+    private fun wanted(ctx: Context) = Settings.alertsOn(ctx) && (Settings.liveAlerts(ctx) || Settings.lineupAlerts(ctx) || Settings.f1Alerts(ctx))
 
     private fun pending(ctx: Context) = PendingIntent.getBroadcast(ctx, TICK, Intent(ctx, LiveTick::class.java),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -47,9 +52,15 @@ object Live {
         if (!wanted(ctx)) { am.cancel(pending(ctx)); return }
         AlertChoices.load(ctx)
         val now = Instant.now(); val st = state(ctx)
-        val next = events.filter { watched(it, AlertChoices.follows) && it.start.plusSeconds(AFTER).isAfter(now) && it.start.isBefore(now.plusSeconds(8 * 86400)) }
+        val footballOn = Settings.liveAlerts(ctx) || Settings.lineupAlerts(ctx)
+        val football: List<Instant> = events.filter { footballOn && watched(it, AlertChoices.follows) && it.start.plusSeconds(AFTER).isAfter(now) && it.start.isBefore(now.plusSeconds(8 * 86400)) }
             .filter { st.optJSONObject(alertKey(it))?.optBoolean("ft") != true }          // a finished match needs no more looks
-            .minOfOrNull { it.start.minusSeconds(BEFORE) } ?: run { am.cancel(pending(ctx)); return }
+            .map { it.start.minusSeconds(BEFORE) }
+        val nextF1 = if (!Settings.f1Alerts(ctx)) emptyList() else events
+            .filter { watchedF1(it) && it.start.plusSeconds(AFTER).isAfter(now) && it.start.isBefore(now.plusSeconds(8 * 86400)) }
+            .filter { st.optJSONObject(alertKey(it))?.optBoolean("ft") != true }
+            .map { it.start.minusSeconds(F1_BEFORE) }
+        val next = (football + nextF1).minOrNull() ?: run { am.cancel(pending(ctx)); return }
         Alerts.setExact(am, (if (next.isAfter(now)) next else now.plusSeconds(20)).toEpochMilli(), pending(ctx))
     }
 
@@ -59,13 +70,26 @@ object Live {
         AlertChoices.load(ctx)
         val now = Instant.now()
         val st = state(ctx)
-        val active = data.events.filter { watched(it, AlertChoices.follows) && inWindow(it, now) }
+        val footballOn = Settings.liveAlerts(ctx) || Settings.lineupAlerts(ctx)
+        val active = data.events.filter { footballOn && watched(it, AlertChoices.follows) && inWindow(it, now) }
         var live = false; var waiting = false
         for (e in active) {
             when (runCatching { check(ctx, e, st) }.onFailure { Diag.log("live ${e.title}: $it") }.getOrNull()) {
                 "in" -> live = true
                 "post" -> {}
                 else -> waiting = true                       // before kick-off, or ESPN didn't answer: look again
+            }
+        }
+        // F1: one snapshot of F1's live timing covers every session we're watching
+        val activeF1 = if (Settings.f1Alerts(ctx)) data.events.filter { watchedF1(it) && inF1Window(it, now) } else emptyList()
+        if (activeF1.isNotEmpty()) {
+            val snap = runCatching { f1Snapshot() }.onFailure { Diag.log("f1 alerts: $it") }.getOrNull()
+            for (e in activeF1) {
+                when (if (snap != null && snap.isFor(e)) runCatching { checkF1(ctx, e, st, snap) }.onFailure { Diag.log("f1 ${e.session}: $it") }.getOrNull() else null) {
+                    "in" -> live = true
+                    "post" -> {}
+                    else -> waiting = true
+                }
             }
         }
         save(ctx, st, now)
@@ -143,6 +167,44 @@ object Live {
         if (state == "post") s.put("ft", true)
         s.put("score", "${score("home")}–${score("away")}").put("clock", clock).put("state", state).put("event", e.id)
         return state
+    }
+
+    /** One look at an F1 session: what changed since the last look becomes an alert. Returns in, post or null (not started). */
+    private fun checkF1(ctx: Context, e: Event, st: JSONObject, f: F1Snapshot): String? {
+        val key = alertKey(e)
+        val s = st.optJSONObject(key) ?: JSONObject().also { st.put(key, it) }
+        if (s.optBoolean("ft")) return "post"
+        val first = !s.has("ts")
+        val code = key.hashCode()
+        val gp = f.meeting.replace("Grand Prix", "GP").trim()
+        val lap = f.lap?.let { " · lap $it" } ?: ""
+        val quiet = Settings.spoilerFree(ctx)
+        val prevTs = s.optString("ts")
+        if (!quiet && !first && f.live && f.track != prevTs) {
+            when (f.track) {
+                "4" -> notify(ctx, GOALS, code + 30, "🟠 Safety car · $gp", "${f.session}$lap", "F1")
+                "6" -> notify(ctx, GOALS, code + 30, "🟠 Virtual safety car · $gp", "${f.session}$lap", "F1")
+                "5" -> notify(ctx, GOALS, code + 30, "🟥 Red flag · $gp", "${f.session} stopped$lap", "F1")
+                "1" -> if (prevTs in setOf("4", "5", "6", "7")) notify(ctx, GOALS, code + 30, "🟢 Green flag · $gp", "Racing resumes$lap", "F1")
+            }
+        }
+        val out = (0 until (s.optJSONArray("out")?.length() ?: 0)).map { s.getJSONArray("out").getString(it) }.toMutableSet()
+        val nowOut = f.lines.filter { it.retired || it.stopped }.map { it.number }
+        if (f.racing && !quiet && !first) nowOut.filter { it !in out }.forEach { n ->
+            notify(ctx, GOALS, code + 40 + (n.toIntOrNull() ?: 0), "🛑 ${f.drivers[n]?.name?.ifBlank { null } ?: f.tla(n)} is out · $gp", "${f.session}$lap", "F1")
+        }
+        val leader = f.lines.firstOrNull { it.pos == 1 }?.number.orEmpty()
+        val prevLeader = s.optString("lead")
+        if (f.racing && f.live && !quiet && !first && leader.isNotBlank() && prevLeader.isNotBlank() && leader != prevLeader && (f.lap ?: 0) > 1) {
+            notify(ctx, GOALS, code + 32, "P1 · ${f.tla(leader)} leads the $gp", "Ahead of ${f.tla(prevLeader)}$lap", "F1")
+        }
+        if (f.over && !quiet) {
+            val top = f.lines.filter { it.pos in 1..3 }.joinToString(" · ") { "${it.pos} ${f.tla(it.number)}" }
+            notify(ctx, GOALS, code + 33, "🏁 Chequered flag · $gp ${f.session}", if (f.racing) top else "Pole: ${f.lines.firstOrNull()?.let { f.tla(it.number) } ?: ""} · $top", "F1")
+        }
+        s.put("ts", f.track).put("lead", leader).put("out", org.json.JSONArray(out + nowOut))
+        if (f.over) s.put("ft", true)
+        return when { f.live -> "in"; f.over -> "post"; else -> null }
     }
 
     /** "Goal! Aston Villa 1, Manchester City 0. Nicolas Jackson (Aston Villa) right footed shot..." -> "Nicolas Jackson". */

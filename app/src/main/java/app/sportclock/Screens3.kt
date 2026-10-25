@@ -243,15 +243,19 @@ fun TeamScreen(team: String, events: List<Event>, now: Instant, scores: Map<Stri
 @Composable
 fun RacingView() {
     var code by rememberSaveable { mutableStateOf("F1") }
-    var standings by rememberSaveable { mutableStateOf(false) }
+    var f1 by rememberSaveable { mutableIntStateOf(1) }                 // 0 results, 1 live, 2 standings
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("F1", "INDY", "NAS", "MGP").forEach { c -> Chip(series(c)?.name ?: c, c == code, { code = c }) { LogoChip(c, 18.dp) } }
         }
         if (code == "F1") Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Chip("Results", !standings, { standings = false }); Chip("Standings", standings, { standings = true })
+            listOf("Results", "Live", "Standings").forEachIndexed { i, l -> Chip(l, f1 == i, { f1 = i }) }
         }
-        if (code == "F1" && standings) F1View() else WeekendView(code)
+        when {
+            code == "F1" && f1 == 1 -> F1LiveView()
+            code == "F1" && f1 == 2 -> F1View()
+            else -> WeekendView(code)
+        }
     }
 }
 

@@ -327,6 +327,12 @@ fun SettingsScreen(onBack: () -> Unit, onChanged: () -> Unit, onTextScale: (Floa
                 }
             }
         }
+        if (alerts) item {
+            var f1 by remember { mutableStateOf(Settings.f1Alerts(ctx)) }
+            ToggleRow(C.lime, "F1 live", "Safety car, VSC, red flags, retirements, lead changes and the chequered flag, for F1 sessions you follow", f1) { on ->
+                f1 = on; Settings.setF1Alerts(ctx, on); onChanged()
+            }
+        }
         item { SectionLabel("Scores") }
         item {
             var spoiler by remember { mutableStateOf(Settings.spoilerFree(ctx)) }

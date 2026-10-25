@@ -35,6 +35,9 @@ object Settings {
     fun liveAlerts(ctx: Context) = Repo.prefs(ctx).getBoolean("liveAlerts", true)
     fun setLiveAlerts(ctx: Context, on: Boolean) = Repo.prefs(ctx).edit().putBoolean("liveAlerts", on).apply()
     fun lineupAlerts(ctx: Context) = Repo.prefs(ctx).getBoolean("lineupAlerts", true)
+    /** Safety car, VSC, red flag, green flag, retirements, lead changes and the chequered flag in F1 sessions you follow. */
+    fun f1Alerts(ctx: Context) = Repo.prefs(ctx).getBoolean("f1Alerts", true)
+    fun setF1Alerts(ctx: Context, on: Boolean) = Repo.prefs(ctx).edit().putBoolean("f1Alerts", on).apply()
     fun setLineupAlerts(ctx: Context, on: Boolean) = Repo.prefs(ctx).edit().putBoolean("lineupAlerts", on).apply()
     /** Hide scores until tapped, everywhere: lists, cards, the widget and notifications. */
     fun spoilerFree(ctx: Context) = Repo.prefs(ctx).getBoolean("spoilerFree", false)

@@ -46,4 +46,20 @@ class LiveSourcesTest {
         println("Extras ${e.title}: ${x.homeName} ${x.homeForm.map { it.result }} · ${x.awayName} ${x.awayForm.map { it.result }} · H2H ${x.series} ${x.meetings.take(2).map { "${it.home} ${it.homeScore}-${it.awayScore} ${it.away}" }}")
         assertTrue(x.homeForm.isNotEmpty())
     }
+
+    @Test fun f1LiveTiming() = runBlocking {
+        assumeTrue(live)
+        val f = f1Snapshot()
+        println("F1: ${f.meeting} · ${f.session} (${f.type}) · start ${f.start} · status ${f.status} · ${trackWord(f.track)} · lap ${f.lap}/${f.totalLaps}")
+        println("  top: " + f.lines.take(4).joinToString { "${it.pos} ${f.tla(it.number)} ${it.gap} ${it.tyre} pits=${it.pits}" })
+        println("  ${f.drivers.size} drivers, ${f.messages.size} messages, flagged now ${flaggedSectors(f.messages)}, weather ${f.weather}")
+        assertTrue(f.lines.size >= 20 && f.messages.isNotEmpty())
+        val tmp = kotlin.io.path.createTempDirectory().toFile()
+        val map = circuitMap(tmp, f.circuitKey!!, f.year)
+        println("  map ${map.name}: ${map.x.size} points, ${map.corners.size} corners, ${map.sectors.size} marshal sectors")
+        assertTrue(map.x.size > 100)
+        val (race, stops) = jolpicaPitStops(); println("  pit stops: $race ${stops.size}, first ${stops.firstOrNull()}")
+        val pdf = fiaUpgradesPdf(tmp, f.meeting, f.year); println("  upgrades PDF ${fiaUpgradesUrl(f.meeting, f.year)} -> ${pdf.length()} bytes")
+        assertTrue(pdf.length() > 10_000)
+    }
 }
