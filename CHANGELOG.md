@@ -2,6 +2,16 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.8 (25 Oct 2026)
+- **F1 tab** in the bottom bar:
+  - **Weekend:** the current or next Grand Prix, with what's next and a countdown, the track graphic first, then the schedule, results so far, last year and the forecast.
+  - **Live:** F1 Live timing.
+  - **Standings:** drivers and teams.
+  - **Season:** every 2026 race with its winner; tap one for its weekend page.
+- **News** moved into More to make room.
+- **Fixed:** the match sheet now scrolls. Before, a long F1 page squeezed the results to nothing and drew the track over the forecast.
+- **Faster weekend page:** all its sources load at once, and grey pulsing placeholders show where the results and track are still coming.
+
 ## 2.7 (25 Oct 2026)
 - **F1 weekend page:** tap any F1 card or session (the NEXT UP card, a list row, the calendar) to see the whole Grand Prix:
   - **Schedule:** every session in your time, marked done or LIVE, with the forecast for each.

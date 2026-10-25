@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -40,6 +41,10 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import kotlinx.coroutines.withContext
 import java.time.Duration
 import java.time.Instant
@@ -363,29 +368,70 @@ fun UpgradesDoc(meeting: String, year: Int) {
 
 /* ---------- the F1 weekend page (the sheet for any F1 session) ---------- */
 
+/** A grey block that pulses while something is loading, so it's clear there is more coming. */
 @Composable
-fun F1WeekendView(e: Event, events: List<Event>, now: Instant, onPage: (String) -> Unit) {
+fun Skeleton(height: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
+    val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "skeleton")
+    val a by pulse.animateFloat(0.35f, 0.75f, androidx.compose.animation.core.infiniteRepeatable(
+        androidx.compose.animation.core.tween(800), androidx.compose.animation.core.RepeatMode.Reverse), label = "alpha")
+    Box(modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(10.dp)).background(C.tile2.copy(alpha = a)))
+}
+
+@Composable
+private fun Heading(t: String) = Text(t, color = C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(top = 16.dp))
+
+/** The whole Grand Prix weekend for any F1 session: schedule, results so far, the track, last year and the forecast. */
+@Composable
+fun F1WeekendView(e: Event, events: List<Event>, now: Instant, onPage: (String) -> Unit, trackFirst: Boolean = false) {
     val ctx = LocalContext.current
     val weekend = remember(e, events) { events.filter { it.code == "F1" && it.title == e.title && Duration.between(it.start, e.start).abs().toDays() <= 5 }.sortedBy { it.start } }
     var info by remember(e.title) { mutableStateOf<GpInfo?>(null) }
     var last by remember(e.title) { mutableStateOf<LastYear?>(null) }
     var results by remember(e.title) { mutableStateOf<List<RaceSession>?>(null) }
     var map by remember(e.title) { mutableStateOf<CircuitMap?>(null) }
+    var mapDone by remember(e.title) { mutableStateOf(false) }
     var weather by remember(e.title) { mutableStateOf<Map<Instant, Forecast>>(emptyMap()) }
     var open by remember(e.title) { mutableStateOf<String?>(null) }
+    // everything loads at once; each part appears as soon as its own source answers
     LaunchedEffect(e.title) {
-        val g = runCatching { gpInfo(e) }.getOrNull(); info = g
-        results = runCatching { weekendResults(e, g) }.getOrDefault(emptyList())
-        runCatching { circuitKey(e)?.let { map = circuitMap(ctx.cacheDir, it, e.start.atZone(ZoneOffset.UTC).year) } }
-        if (g != null) {
-            runCatching { weather = forecast(g.lat, g.lon, weekend.filter { !it.isTbc }.map { it.start }) }
-            last = runCatching { lastYear(g) }.getOrNull()
+        kotlinx.coroutines.coroutineScope {
+            val g = async { runCatching { gpInfo(e) }.getOrNull() }
+            launch { map = runCatching { circuitKey(e)?.let { circuitMap(ctx.cacheDir, it, e.start.atZone(ZoneOffset.UTC).year) } }.getOrNull(); mapDone = true }
+            launch { results = runCatching { weekendResults(e, g.await()) }.getOrDefault(emptyList()) }
+            launch {
+                val gi = g.await(); info = gi
+                if (gi != null) {
+                    launch { weather = runCatching { forecast(gi.lat, gi.lon, weekend.filter { !it.isTbc }.map { it.start }) }.getOrDefault(emptyMap()) }
+                    launch { last = runCatching { lastYear(gi) }.getOrNull() }
+                }
+            }
         }
     }
-    Column(Modifier.padding(top = 14.dp)) {
-        info?.let { g -> Text("Round ${g.round} · ${g.circuit} · ${g.locality}, ${g.country}", color = C.fg2, fontFamily = Inter, fontSize = 13.sp) }
 
-        Text("This weekend", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
+    @Composable
+    fun Track() {
+        Heading("The track")
+        val m = map
+        when {
+            m != null -> {
+                TrackCanvas(m, emptyMap(), null, Modifier.padding(top = 6.dp).fillMaxWidth().height(250.dp).clip(RoundedCornerShape(14.dp)).background(C.bg))
+                Text("${m.corners.size} corners${info?.let { " · ${it.circuit}" } ?: ""}", color = C.fg2, fontFamily = Inter, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+            }
+            !mapDone -> Skeleton(250.dp, Modifier.padding(top = 6.dp))
+            else -> Text(info?.circuit ?: "No track map for this circuit.", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
+        }
+        last?.let { l ->
+            Text("${l.year}: ${l.winner} won for ${l.team}, ${l.laps} laps in ${l.time}" + (l.fastest?.let { ". Fastest lap: $it" } ?: ""),
+                color = C.fg2, fontFamily = Inter, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+
+    Column(Modifier.padding(top = 12.dp)) {
+        info?.let { g -> Text("Round ${g.round} · ${g.circuit} · ${g.locality}, ${g.country}", color = C.fg2, fontFamily = Inter, fontSize = 13.sp) }
+            ?: Skeleton(16.dp, Modifier.fillMaxWidth(0.7f))
+        if (trackFirst) Track()
+
+        Heading("This weekend")
         weekend.forEach { s ->
             val f = weather[s.start]
             Row(Modifier.padding(top = 5.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -405,9 +451,12 @@ fun F1WeekendView(e: Event, events: List<Event>, now: Instant, onPage: (String) 
                 fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
         }
 
+        val anyDone = weekend.any { it.over(now) || it.inProgress(now) }
         val done = results.orEmpty().filter { it.state == "post" && !it.rows.isNullOrEmpty() }
-        if (done.isNotEmpty()) {
-            Text("Results so far", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(top = 14.dp))
+        if (anyDone) {
+            Heading("Results so far")
+            if (results == null) repeat(2) { Skeleton(58.dp, Modifier.padding(top = 6.dp)) }
+            else if (done.isEmpty()) Text("No results published yet.", color = C.fg2, fontFamily = Inter, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
             done.forEach { r ->
                 val rows = r.rows.orEmpty()
                 Column(Modifier.padding(top = 6.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(C.tile2)
@@ -429,16 +478,7 @@ fun F1WeekendView(e: Event, events: List<Event>, now: Instant, onPage: (String) 
             }
         }
 
-        Text("The track", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(top = 14.dp))
-        val m = map
-        if (m != null) {
-            TrackCanvas(m, emptyMap(), null, Modifier.padding(top = 6.dp).fillMaxWidth().aspectRatio(1.3f).clip(RoundedCornerShape(14.dp)).background(C.bg))
-            Text("${m.corners.size} corners${info?.let { " · ${it.circuit}" } ?: ""}", color = C.fg2, fontFamily = Inter, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-        } else Text(info?.circuit ?: "Loading…", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
-        last?.let { l ->
-            Text("${l.year}: ${l.winner} won for ${l.team}, ${l.laps} laps in ${l.time}" + (l.fastest?.let { ". Fastest lap: $it" } ?: ""),
-                color = C.fg2, fontFamily = Inter, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-        }
+        if (!trackFirst) Track()
 
         Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { onPage("f1live") }) { Text("Live timing", color = C.lime, fontFamily = Inter) }
@@ -451,6 +491,90 @@ fun F1WeekendView(e: Event, events: List<Event>, now: Instant, onPage: (String) 
         }
         Text("Calendar and history from Jolpica, results from ESPN or Jolpica, forecast from Open-Meteo, map from MultiViewer.",
             color = C.fg3, fontFamily = Inter, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+    }
+}
+
+/* ---------- the F1 tab ---------- */
+
+/** The race of the Grand Prix that is on now, or the next one. */
+fun currentGp(events: List<Event>, now: Instant): Event? = events
+    .filter { it.code == "F1" && it.session == "Race" && it.end.plusSeconds(12 * 3600).isAfter(now) }
+    .minByOrNull { it.start }
+
+@Composable
+fun F1Hub(events: List<Event>, now: Instant, onOpen: (Event) -> Unit, onPage: (String) -> Unit) {
+    var seg by rememberSaveable { mutableIntStateOf(0) }
+    val race = remember(events, now.epochSecond / 600) { currentGp(events, now) }
+    Column(Modifier.fillMaxSize()) {
+        Column(Modifier.statusBarsPadding().padding(start = 20.dp, top = 8.dp, bottom = 10.dp)) {
+            Text("Formula 1", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+            Text(race?.let { "Next: ${it.title}" } ?: "Season ${now.atZone(ZoneOffset.UTC).year}", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
+        }
+        Segments(listOf("Weekend", "Live", "Standings", "Season"), seg) { seg = it }
+        Spacer(Modifier.height(8.dp))
+        when (seg) {
+            0 -> if (race == null) Text("No Grand Prix coming up.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp))
+                 else Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
+                     WeekendHeader(race, events, now, onOpen)
+                     F1WeekendView(race, events, now, onPage, trackFirst = true)
+                 }
+            1 -> F1LiveView()
+            2 -> F1View()
+            else -> SeasonView(events, now, onOpen)
+        }
+    }
+}
+
+/** Big title, dates and what's next this weekend, with a countdown. */
+@Composable
+private fun WeekendHeader(race: Event, events: List<Event>, now: Instant, onOpen: (Event) -> Unit) {
+    val weekend = events.filter { it.code == "F1" && it.title == race.title && Duration.between(it.start, race.start).abs().toDays() <= 5 }.sortedBy { it.start }
+    val next = weekend.firstOrNull { it.inProgress(now) } ?: weekend.firstOrNull { !it.started(now) }
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(C.tile).clickable { next?.let(onOpen) }.padding(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            LogoChip("F1", 24.dp); Spacer(Modifier.width(10.dp))
+            Text(race.title, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.ExtraBold, fontSize = 21.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        weekend.firstOrNull()?.let { f ->
+            Text("${daySub(localDate(f.start))} – ${daySub(localDate(race.start))}", color = C.fg2, fontFamily = Inter, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+        }
+        if (next != null) {
+            Text(if (next.inProgress(now)) "${sessName(next.session)} is on now" else "Next: ${sessName(next.session)} · ${dayWord(next.start, now)} ${hm(next.start)}",
+                color = C.lime, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, modifier = Modifier.padding(top = 10.dp))
+            if (!next.started(now) && !next.isTbc) Text("in ${untilText(Duration.between(now, next.start).toMinutes().coerceAtLeast(1))}",
+                color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
+        }
+    }
+}
+
+@Composable
+private fun SeasonView(events: List<Event>, now: Instant, onOpen: (Event) -> Unit) {
+    val year = now.atZone(ZoneOffset.UTC).year
+    var list by remember { mutableStateOf<List<SeasonRace>?>(null) }
+    LaunchedEffect(year) { list = runCatching { season(year) }.getOrDefault(emptyList()) }
+    val l = list
+    LazyColumn(Modifier.fillMaxSize()) {
+        if (l == null) items(6) { Skeleton(60.dp, Modifier.padding(horizontal = 16.dp, vertical = 3.dp)) }
+        else if (l.isEmpty()) item { Text("Couldn't load the calendar. Check your connection.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp)) }
+        else items(l, key = { "r" + it.round }) { r ->
+            val ev = events.firstOrNull { it.code == "F1" && it.session == "Race" && r.start != null && Duration.between(it.start, r.start).abs().toDays() <= 2 }
+            val past = r.start?.isBefore(now) == true
+            Row(Modifier.padding(horizontal = 16.dp, vertical = 3.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.tile)
+                .clickable(enabled = ev != null) { ev?.let(onOpen) }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("${r.round}", Modifier.width(30.dp), style = Digits, fontSize = 19.sp, color = if (ev != null && !past) C.lime else C.fg3)
+                Column(Modifier.weight(1f)) {
+                    Text(r.name.replace("Grand Prix", "GP"), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Text("${r.start?.let { daySub(localDate(it)) } ?: ""} · ${r.locality}", color = C.fg2, fontFamily = Inter, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                if (r.winner != null) Box { Reveal("season:$year:${r.round}") {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(r.winner.substringAfterLast(' '), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        Text(r.winnerTeam.orEmpty(), color = C.fg3, fontFamily = Inter, fontSize = 11.sp)
+                    }
+                } }
+            }
+        }
+        item { Text("Calendar and winners from Jolpica. Tap a race for its weekend page.", color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(20.dp)) }
     }
 }
 

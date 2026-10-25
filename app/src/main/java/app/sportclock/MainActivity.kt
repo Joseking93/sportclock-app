@@ -8,6 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SportsMotorsports
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.*
@@ -58,7 +61,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Tab(val label: String, val icon: ImageVector) { HOME("Home", Icons.Filled.Home), SCORES("Scores", Icons.Filled.EmojiEvents),
-    CALENDAR("Calendar", Icons.Filled.CalendarMonth), NEWS("News", Icons.Filled.Newspaper), MORE("More", Icons.Filled.Menu) }
+    CALENDAR("Calendar", Icons.Filled.CalendarMonth), F1("F1", Icons.Filled.SportsMotorsports), MORE("More", Icons.Filled.Menu) }
 
 /** Everything the screens read; changes are written through Repo and mirrored here. */
 class AppState(ctx: android.content.Context) {
@@ -128,6 +131,10 @@ fun App(onTextScale: (Float) -> Unit = {}) {
                 page == "follow" -> FollowScreen(st, d?.events.orEmpty(), now, onBack = { page = null }, onChanged = { rearm() })
                 page == "settings" -> SettingsScreen(onBack = { page = null }, onChanged = { rearm() }, onTextScale = onTextScale)
                 page == "about" -> AboutScreen(d, onBack = { page = null })
+                page == "news" -> Column(Modifier.fillMaxSize()) {
+                    TextButton(onClick = { page = null }, modifier = Modifier.statusBarsPadding().padding(start = 4.dp)) { Text("‹ Back", color = C.lime, fontFamily = Inter) }
+                    NewsScreen(st, now)
+                }
                 page == "update" -> UpdateScreen(onBack = { page = null; updateWaiting = Updater.waiting(ctx) })
                 page == "report" -> ReportScreen(onBack = { page = null })
                 page == "f1live" || page?.startsWith("upgrades:") == true -> F1Page(page!!, onBack = { page = null })
@@ -143,9 +150,9 @@ fun App(onTextScale: (Float) -> Unit = {}) {
                     onOpen = { detail = it }, onTeam = { page = "team:$it" })
                 tab == Tab.SCORES -> ScoresHub(st, d, now, scores, onOpen = { detail = it }, onTeam = { page = "team:$it" })
                 tab == Tab.CALENDAR -> CalendarScreen(st, d.events, now, scores.matches, onOpen = { detail = it })
-                tab == Tab.NEWS -> NewsScreen(st, now)
+                tab == Tab.F1 -> F1Hub(d.events, now, onOpen = { detail = it }, onPage = { page = it })
                 tab == Tab.MORE -> MoreScreen(updateWaiting, onFollow = { page = "follow" }, onSettings = { page = "settings" }, onAbout = { page = "about" },
-                    onUpdate = { page = "update" }, onReport = { page = "report" })
+                    onUpdate = { page = "update" }, onReport = { page = "report" }, onNews = { page = "news" })
             }
             val u = updateWaiting
             if (page == null && tab == Tab.HOME && u != null && Updater.dismissed(ctx) != u) {
@@ -227,10 +234,12 @@ fun SectionLabel(text: String) = Text(text, color = C.lime, fontFamily = Inter, 
     modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp))
 
 @Composable
-fun MoreScreen(updateWaiting: String?, onFollow: () -> Unit, onSettings: () -> Unit, onAbout: () -> Unit, onUpdate: () -> Unit, onReport: () -> Unit) {
+fun MoreScreen(updateWaiting: String?, onFollow: () -> Unit, onSettings: () -> Unit, onAbout: () -> Unit, onUpdate: () -> Unit, onReport: () -> Unit,
+               onNews: () -> Unit = {}) {
     val ctx = LocalContext.current
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(top = 8.dp)) {
         Text("More", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 26.sp, modifier = Modifier.padding(start = 20.dp, bottom = 12.dp))
+        MoreItem(Icons.Filled.Newspaper, "News", "BBC Sport headlines for what you follow", onNews)
         MoreItem(Icons.Filled.Star, "Following", "Series, teams and favourites", onFollow)
         MoreItem(Icons.Filled.Settings, "Settings", "Alerts and text size", onSettings)
         MoreItem(Icons.Filled.SystemUpdate, "Updates", updateWaiting?.let { "SportClock $it is ready to install" } ?: "You have ${remember { Diag.version(ctx).first }}", onUpdate)
@@ -275,7 +284,7 @@ fun AboutScreen(d: Data?, onBack: () -> Unit) {
 fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTeam: (String) -> Unit = {},
                 events: List<Event> = emptyList(), onPage: (String) -> Unit = {}) {
     val today = localDate(now)
-    Column(Modifier.padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             LogoChip(e.code, 34.dp); Spacer(Modifier.width(12.dp))
             Text(series(e.code)?.name ?: e.comp, color = C.fg2, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)

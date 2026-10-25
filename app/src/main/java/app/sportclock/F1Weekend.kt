@@ -114,3 +114,26 @@ fun weatherWord(code: Int) = when (code) {
     0 -> "clear"; 1, 2 -> "partly cloudy"; 3 -> "cloudy"; 45, 48 -> "fog"; in 51..57 -> "drizzle"; in 61..67 -> "rain"
     in 71..77 -> "snow"; in 80..82 -> "showers"; in 95..99 -> "thunderstorms"; else -> ""
 }
+
+/* ---------- the season ---------- */
+
+data class SeasonRace(val round: Int, val name: String, val start: Instant?, val circuit: String, val locality: String, val country: String,
+                      val winner: String?, val winnerTeam: String?)
+
+/** Every Grand Prix of the season from Jolpica, with the winner of each one already run. */
+suspend fun season(year: Int): List<SeasonRace> {
+    val races = cachedJson("https://api.jolpi.ca/ergast/f1/$year.json").getJSONObject("MRData").getJSONObject("RaceTable").optJSONArray("Races") ?: return emptyList()
+    val winners = runCatching {
+        val w = cachedJson("https://api.jolpi.ca/ergast/f1/$year/results/1.json?limit=40").getJSONObject("MRData").getJSONObject("RaceTable").getJSONArray("Races")
+        (0 until w.length()).map { w.getJSONObject(it) }.associate { r ->
+            val x = r.getJSONArray("Results").getJSONObject(0)
+            r.optInt("round") to (x.getJSONObject("Driver").let { "${it.optString("givenName")} ${it.optString("familyName")}" } to x.optJSONObject("Constructor")?.optString("name").orEmpty())
+        }
+    }.getOrDefault(emptyMap())
+    return (0 until races.length()).map { races.getJSONObject(it) }.map { r ->
+        val c = r.getJSONObject("Circuit"); val loc = c.optJSONObject("Location") ?: JSONObject()
+        val start = runCatching { Instant.parse(r.optString("date") + "T" + r.optString("time", "12:00:00Z")) }.getOrNull()
+        SeasonRace(r.optInt("round"), r.optString("raceName"), start, c.optString("circuitName"), loc.optString("locality"), loc.optString("country"),
+            winners[r.optInt("round")]?.first, winners[r.optInt("round")]?.second)
+    }
+}
