@@ -86,4 +86,13 @@ class LiveSourcesTest {
         println("Current GP: " + currentGp(events, java.time.Instant.parse("2026-10-25T12:00:00Z"))?.let { "${it.title} ${it.start}" })
         assertTrue(l.size > 20 && l.count { it.winner != null } >= 15)
     }
+
+    @Test fun nflTeamAndStandings() = runBlocking {
+        assumeTrue(live)
+        val lg = leagueFor("Kansas City Chiefs", events)!!
+        val t = teamInfo(lg, espnTeamId(lg, "Kansas City Chiefs")!!)
+        println("NFL team: ${t.name} · ${t.standing} · form ${t.form()} · ${t.results.size} results, ${t.fixtures.size} fixtures, next ${t.fixtures.firstOrNull()?.let { "${it.away} at ${it.home}" }}")
+        val st = Nfl.standings(); println("Standings: ${st.size} divisions, ${st.first().first}: " + st.first().second.joinToString { "${short(it.team)} ${it.wins}-${it.losses}" })
+        assertTrue(t.results.isNotEmpty() && t.fixtures.isNotEmpty() && st.size == 8)
+    }
 }
