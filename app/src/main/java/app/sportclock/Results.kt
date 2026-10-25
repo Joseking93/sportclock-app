@@ -1,6 +1,7 @@
 package app.sportclock
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -69,15 +70,22 @@ fun leagueFor(team: String, events: List<Event>): String? {
 
 private val teamIds = HashMap<String, String>()
 
-suspend fun espnTeamId(league: String, name: String): String? {
+/** A club's ESPN id. Kept on the phone after the first look, so the big team list is fetched once per club, not per visit. */
+suspend fun espnTeamId(league: String, name: String, ctx: android.content.Context? = null): String? {
     teamIds["$league/$name"]?.let { return it }
+    ctx?.let { c -> Repo.prefs(c).getString("espnId:$league/$name", null)?.let { teamIds["$league/$name"] = it; return it } }
     val teams = json("https://site.api.espn.com/apis/site/v2/sports/$league/teams")
         .optJSONArray("sports").objects().firstOrNull()?.optJSONArray("leagues").objects().firstOrNull()?.optJSONArray("teams").objects()
         .mapNotNull { it.optJSONObject("team") }
     val hit = teams.firstOrNull { it.optString("displayName") == name }
         ?: teams.firstOrNull { sameTeam(it.optString("displayName"), name) }
-    return hit?.optString("id")?.also { teamIds["$league/$name"] = it }
+    return hit?.optString("id")?.also { id ->
+        teamIds["$league/$name"] = id
+        ctx?.let { c -> Repo.prefs(c).edit().putString("espnId:$league/$name", id).apply() }
+    }
 }
+
+private val teamCache = HashMap<String, Pair<Long, TeamInfo>>()
 
 private fun games(o: JSONObject): List<TeamGame> = o.optJSONArray("events").objects().mapNotNull { ev ->
     val c = ev.optJSONArray("competitions").objects().firstOrNull() ?: return@mapNotNull null
@@ -93,14 +101,27 @@ private fun games(o: JSONObject): List<TeamGame> = o.optJSONArray("events").obje
         h.optJSONObject("team")?.optString("id").orEmpty(), a.optJSONObject("team")?.optString("id").orEmpty())
 }
 
-suspend fun teamInfo(league: String, id: String): TeamInfo {
+/** A club's page: the team, its schedule and its fixtures fetched at the same time, and kept for ten minutes. */
+suspend fun teamInfo(league: String, id: String): TeamInfo = kotlinx.coroutines.coroutineScope {
+    teamCache["$league/$id"]?.takeIf { System.currentTimeMillis() - it.first < 10 * 60_000 }?.let { return@coroutineScope it.second }
     val base = "https://site.api.espn.com/apis/site/v2/sports/$league/teams/$id"
-    val t = json(base).optJSONObject("team") ?: JSONObject()
-    val results = runCatching { games(json("$base/schedule")) }.getOrDefault(emptyList()).filter { it.done }
-    val fixtures = (runCatching { games(json("$base/schedule?fixture=true")) }.getOrDefault(emptyList()) +
-        runCatching { games(json("$base/schedule")) }.getOrDefault(emptyList())).filter { !it.done }.distinctBy { it.date }
-    return TeamInfo(id, league, t.optString("displayName"), t.optJSONArray("logos").objects().firstOrNull()?.optString("href").orEmpty(),
+    val team = async { runCatching { json(base).optJSONObject("team") }.getOrNull() ?: JSONObject() }
+    val schedule = async { runCatching { games(json("$base/schedule")) }.getOrDefault(emptyList()) }
+    val fixtureList = async { runCatching { games(json("$base/schedule?fixture=true")) }.getOrDefault(emptyList()) }
+    val t = team.await(); val sched = schedule.await()
+    val results = sched.filter { it.done }
+    val fixtures = (fixtureList.await() + sched).filter { !it.done }.distinctBy { it.date }
+    TeamInfo(id, league, t.optString("displayName"), t.optJSONArray("logos").objects().firstOrNull()?.optString("href").orEmpty(),
         t.optString("standingSummary"), results.sortedByDescending { it.date }, fixtures.sortedBy { it.date })
+        .also { teamCache["$league/$id"] = System.currentTimeMillis() to it }
+}
+
+/** The crest for a club, from the phone's copy or ESPN; saved once found, so the tab bar can show it straight away. */
+suspend fun teamLogo(ctx: android.content.Context, team: String, events: List<Event>): String? {
+    Repo.prefs(ctx).getString("logo:$team", null)?.let { return it }
+    val lg = leagueFor(team, events) ?: return null
+    val id = espnTeamId(lg, team, ctx) ?: return null
+    return teamInfo(lg, id).logo.takeIf { it.isNotBlank() }?.also { Repo.prefs(ctx).edit().putString("logo:$team", it).apply() }
 }
 
 /* ======================= motorsport sessions ======================= */

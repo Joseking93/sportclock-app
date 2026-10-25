@@ -169,7 +169,10 @@ fun TeamScreen(team: String, events: List<Event>, now: Instant, scores: Map<Stri
                header: (@Composable () -> Unit)? = null) {
     val ctx = LocalContext.current
     val league = remember(team, events) { leagueFor(team, events) }
-    val (info, failed) = loaded(team) { league?.let { lg -> espnTeamId(lg, team)?.let { teamInfo(lg, it) } } }
+    val (info, failed) = loaded(team) { league?.let { lg -> espnTeamId(lg, team, ctx)?.let { teamInfo(lg, it) } } }
+    // the crest from the phone's copy shows at once; the page saves it the first time it loads
+    val crest = info?.logo?.takeIf { it.isNotBlank() } ?: remember(team) { Repo.prefs(ctx).getString("logo:$team", null) }
+    LaunchedEffect(info?.logo) { info?.logo?.takeIf { it.isNotBlank() }?.let { Repo.prefs(ctx).edit().putString("logo:$team", it).apply() } }
     val (stories, _) = loaded("news:$team") { news(setOf("t:$team")).take(5) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var all by rememberSaveable { mutableStateOf(false) }
@@ -180,7 +183,7 @@ fun TeamScreen(team: String, events: List<Event>, now: Instant, scores: Map<Stri
         header?.let { h -> item { h() } }
         item {
             Row(Modifier.padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (info?.logo?.isNotBlank() == true) { AsyncImage(info.logo, null, Modifier.size(56.dp)); Spacer(Modifier.width(14.dp)) }
+                if (crest != null) { AsyncImage(crest, null, Modifier.size(56.dp)); Spacer(Modifier.width(14.dp)) }
                 Column {
                     Text(info?.name ?: team, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 24.sp)
                     info?.standing?.takeIf { it.isNotBlank() }?.let { Text(it, color = C.fg2, fontFamily = Inter, fontSize = 14.sp) }
@@ -199,7 +202,7 @@ fun TeamScreen(team: String, events: List<Event>, now: Instant, scores: Map<Stri
         }
         when {
             failed && info == null -> item { Note("Couldn't load ${short(team)}'s results. Check your connection.") }
-            info == null -> item { Loading() }
+            info == null -> items(5) { Skeleton(48.dp, Modifier.padding(horizontal = 16.dp, vertical = 3.dp)) }
             else -> {
                 item { Spacer(Modifier.height(10.dp)); Segments(listOf("Results", "Fixtures"), tab) { tab = it; all = false }; Spacer(Modifier.height(6.dp)) }
                 val list = if (tab == 0) info.results else info.fixtures
@@ -262,7 +265,7 @@ fun RacingView() {
 }
 
 @Composable
-private fun WeekendView(code: String) {
+fun WeekendView(code: String) {
     val (w, failed) = loaded(code) { if (code == "MGP") motoGp() else espnRacing(code) }
     var pick by remember(code) { mutableStateOf<Int?>(null) }
     when {

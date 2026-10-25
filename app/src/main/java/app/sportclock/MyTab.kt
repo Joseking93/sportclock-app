@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.SportsFootball
+import androidx.compose.material.icons.filled.SportsMma
 import androidx.compose.material.icons.filled.SportsMotorsports
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,7 +31,7 @@ import java.time.Instant
  * league (Premier League, La Liga, Serie A, Bundesliga, Ligue 1...) or a single team. "Change" in its header picks.
  */
 
-internal val LEAGUE_SHORT = mapOf("ENG" to "PL", "ESP" to "La Liga", "ITA" to "Serie A", "GER" to "Bundesliga", "FRA" to "Ligue 1",
+internal val LEAGUE_SHORT = mapOf("MGP" to "MotoGP", "INDY" to "IndyCar", "NAS" to "NASCAR", "UFC" to "UFC", "BOX" to "Boxing", "ENG" to "PL", "ESP" to "La Liga", "ITA" to "Serie A", "GER" to "Bundesliga", "FRA" to "Ligue 1",
     "UCL" to "UCL", "EFL" to "EFL", "NED" to "Eredivisie", "POR" to "Liga PT")
 
 fun myTabLabel(v: String) = when {
@@ -40,8 +41,28 @@ fun myTabLabel(v: String) = when {
     else -> "F1"
 }
 
+/** The tab bar icon: the club's crest, or the league, F1 or NFL logo. */
+@Composable
+fun MyTabIcon(v: String, events: List<Event>) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    when {
+        v == "F1" || v == "NFL" -> LogoChip(v, 26.dp)
+        v.startsWith("c:") && logoFor(v.substring(2)) != null -> LogoChip(v.substring(2), 26.dp)
+        v.startsWith("t:") -> {
+            val team = v.substring(2)
+            var logo by remember(team) { mutableStateOf(Repo.prefs(ctx).getString("logo:$team", null)) }
+            LaunchedEffect(team, events.isNotEmpty()) { if (logo == null && events.isNotEmpty()) logo = runCatching { teamLogo(ctx, team, events) }.getOrNull() }
+            val l = logo
+            if (l != null) coil.compose.AsyncImage(l, team, Modifier.size(26.dp)) else Icon(myTabIcon(v), null)
+        }
+        else -> Icon(myTabIcon(v), null)
+    }
+}
+
 fun myTabIcon(v: String): ImageVector = when {
     v == "NFL" || (v.startsWith("t:") && v.substring(2) in NFL_TEAMS) -> Icons.Filled.SportsFootball
+    v.startsWith("c:") && series(v.substring(2))?.sport == Sport.COMBAT -> Icons.Filled.SportsMma
+    v.startsWith("c:") && series(v.substring(2))?.sport == Sport.MOTORSPORT -> Icons.Filled.SportsMotorsports
     v.startsWith("c:") -> Icons.Filled.EmojiEvents
     v.startsWith("t:") -> Icons.Filled.Shield
     else -> Icons.Filled.SportsMotorsports
@@ -55,6 +76,8 @@ fun MyTab(choice: String, st: AppState, events: List<Event>, now: Instant, score
     val team = { t: String -> onPage("team:$t") }
     when {
         choice == "NFL" -> NflHub(events, now, scores, onOpen, team, change)
+        choice == "c:F1" -> F1Hub(events, now, onOpen, onPage, onChange = change)
+        choice.startsWith("c:") && series(choice.substring(2))?.sport != Sport.FOOTBALL -> SeriesHub(choice.substring(2), events, now, scores, onOpen, change)
         choice.startsWith("c:") -> LeagueHub(choice.substring(2), st, events, now, scores, onOpen, team, change)
         choice.startsWith("t:") -> TeamScreen(choice.substring(2), events, now, scores, onBack = null, onOpen = onOpen,
             header = { HubHeader("Your team", "Tap Change to show something else here", null, change) })
@@ -165,15 +188,16 @@ fun MyTabChoices(current: String?, follows: Set<String>, events: List<Event>, on
         }
         if (query.trim().length >= 2) {
             val q = query.trim()
-            val ls = leagues.filter { (series(it)?.name ?: it).contains(q, ignoreCase = true) || (LEAGUE_SHORT[it] ?: "").contains(q, ignoreCase = true) }
+            val ls = (SPORTS + leagues).filter { (series(it)?.name ?: it).contains(q, ignoreCase = true) || (LEAGUE_SHORT[it] ?: "").contains(q, ignoreCase = true) }
             val ts = teams.filter { it.contains(q, ignoreCase = true) || short(it).contains(q, ignoreCase = true) }.take(12)
-            items(ls, key = { "ql$it" }) { c -> PickRow(series(c)?.name ?: c, "A whole league", c, current == "c:$c") { onPick("c:$c") } }
+            items(ls, key = { "ql$it" }) { c -> PickRow(series(c)?.name ?: c, SPORT_LINE[c] ?: "A whole league", c.takeIf { logoFor(it) != null }, current == "c:$c") { onPick("c:$c") } }
             items(ts, key = { "qt$it" }) { t -> PickRow(t, if (t in NFL_TEAMS) "NFL team" else "Football team", null, current == "t:$t") { onPick("t:$t") } }
             if (ls.isEmpty() && ts.isEmpty()) item { Text("Nothing called \"$q\". Try part of the name, e.g. \"United\".", color = C.fg2, fontFamily = Inter,
                 modifier = Modifier.padding(20.dp)) }
         } else {
             item { PickRow("Formula 1", "Weekend, live timing, standings, season", "F1", current == "F1") { onPick("F1") } }
             item { PickRow("NFL", "Games, scores and standings", "NFL", current == "NFL") { onPick("NFL") } }
+            items(SPORTS, key = { "s$it" }) { c -> PickRow(series(c)?.name ?: c, SPORT_LINE[c].orEmpty(), c.takeIf { logoFor(it) != null }, current == "c:$c") { onPick("c:$c") } }
             item { SectionLabel("A whole league") }
             items(leagues, key = { "l$it" }) { c -> PickRow(series(c)?.name ?: c, "Matches and the table", c, current == "c:$c") { onPick("c:$c") } }
             val mine = follows.filter { it.startsWith("t:") }.sorted()
@@ -226,3 +250,59 @@ private fun PickRow(title: String, sub: String, logo: String?, on: Boolean, onCl
         }
         if (on) Text("Showing", color = C.lime, fontFamily = Inter, fontSize = 12.sp)
     }
+
+/* ---------- any other sport: MotoGP, IndyCar, NASCAR, UFC, boxing ---------- */
+
+internal val SPORTS = listOf("MGP", "INDY", "NAS", "UFC", "BOX")
+internal val SPORT_LINE = mapOf("MGP" to "Sessions, weekend results with gaps, news", "INDY" to "Races, latest results, news",
+    "NAS" to "Races, latest results, news", "UFC" to "Events, the latest card with results, news", "BOX" to "Upcoming fights and news")
+
+@Composable
+private fun SeriesHub(code: String, events: List<Event>, now: Instant, scores: Map<String, Score>, onOpen: (Event) -> Unit, onChange: () -> Unit) {
+    // boxing has no free results feed, so it gets the schedule and the news only
+    val parts = when (code) { "UFC" -> listOf("Upcoming", "Latest card", "News"); "BOX" -> listOf("Upcoming", "News"); else -> listOf("Upcoming", "Results", "News") }
+    var seg by rememberSaveable(code) { mutableIntStateOf(0) }
+    val coming = remember(events, code, now.epochSecond / 600) {
+        events.filter { it.code == code && !it.over(now) && it.start.isBefore(now.plusSeconds(90 * 86400)) }
+    }
+    Column(Modifier.fillMaxSize()) {
+        HubHeader(series(code)?.name ?: code, coming.firstOrNull()?.let { "Next: ${it.line1()} · ${dayWord(it.start, now)}" } ?: "Nothing scheduled yet",
+            code.takeIf { logoFor(it) != null }, onChange)
+        Segments(parts, seg) { seg = it }
+        Spacer(Modifier.height(8.dp))
+        when (parts.getOrElse(seg) { parts[0] }) {
+            "Upcoming" -> LazyColumn(Modifier.fillMaxSize()) {
+                if (coming.isEmpty()) item { Text("Nothing on the calendar in the next three months.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp)) }
+                dayGroups(coming, now, scores, onOpen)
+                item { Spacer(Modifier.height(24.dp)) }
+            }
+            "Results" -> WeekendView(code)
+            "Latest card" -> UfcView()
+            else -> SeriesNews(code)
+        }
+    }
+}
+
+@Composable
+private fun SeriesNews(code: String) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    var stories by remember(code) { mutableStateOf<List<Story>?>(null) }
+    LaunchedEffect(code) { stories = runCatching { news(setOf("c:$code")) }.getOrDefault(emptyList()) }
+    val s = stories
+    LazyColumn(Modifier.fillMaxSize()) {
+        when {
+            s == null -> items(5) { Skeleton(64.dp, Modifier.padding(horizontal = 16.dp, vertical = 3.dp)) }
+            s.isEmpty() -> item { Text("No news right now.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp)) }
+            else -> items(s.take(25), key = { it.link }) { n ->
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 3.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.tile)
+                    .clickable { runCatching { ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(n.link))) } }.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    n.image?.let { coil.compose.AsyncImage(it, null, Modifier.size(width = 72.dp, height = 48.dp).clip(RoundedCornerShape(8.dp)),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop); Spacer(Modifier.width(10.dp)) }
+                    Text(n.title, color = C.fg, fontFamily = Inter, fontSize = 14.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+        item { Text("News from BBC Sport.", color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(20.dp)) }
+    }
+}

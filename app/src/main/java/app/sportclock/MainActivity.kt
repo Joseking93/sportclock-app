@@ -149,7 +149,7 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
         bottomBar = {
             if (page == null) NavigationBar(containerColor = C.nav, tonalElevation = 0.dp) {
                 Tab.entries.forEach { t ->
-                    NavigationBarItem(selected = tab == t, onClick = { tab = t }, icon = { Icon(if (t == Tab.MINE) myTabIcon(myTab) else t.icon, null) },
+                    NavigationBarItem(selected = tab == t, onClick = { tab = t }, icon = { if (t == Tab.MINE) MyTabIcon(myTab, data?.events.orEmpty()) else Icon(t.icon, null) },
                         label = { Text(if (t == Tab.MINE) myTabLabel(myTab) else t.label, fontFamily = Inter, fontWeight = FontWeight.SemiBold, maxLines = 1) },
                         colors = NavigationBarItemDefaults.colors(selectedIconColor = C.onLime, indicatorColor = C.lime, selectedTextColor = C.lime,
                             unselectedIconColor = C.fg2, unselectedTextColor = C.fg2))

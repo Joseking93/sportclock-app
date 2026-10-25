@@ -26,7 +26,7 @@ import java.util.Locale
  * Polling stays light: scores only while a match is on, lineups from an hour before kick-off.
  */
 
-private const val UA = "SportClock/2.11 (personal Android app)"
+private const val UA = "SportClock/2.12 (personal Android app)"
 
 internal fun httpGet(url: String): String {
     val c = URL(url).openConnection() as HttpURLConnection
@@ -197,6 +197,7 @@ fun newsFeeds(follows: Set<String>): List<Pair<String, String>> {
             t == "c:UFC" -> out += "UFC" to "mixed-martial-arts"
             t == "c:BOX" -> out += "Boxing" to "boxing"
             t == "c:MGP" -> out += "MotoGP" to "motorsport"
+            t == "c:INDY" || t == "c:NAS" -> out += "Motorsport" to "motorsport"
             t.startsWith("t:") -> out += short(t.substring(2)) to "football/teams/" + t.substring(2).lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]+"), "-").trim('-')
             t.startsWith("c:") && series(t.substring(2))?.sport == Sport.FOOTBALL -> out += "Football" to "football"
         }

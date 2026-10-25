@@ -2,6 +2,14 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.12 (25 Oct 2026)
+- **Your tab can be any sport:** MotoGP, IndyCar, NASCAR, UFC and Boxing join F1, the NFL, the leagues and single teams in the picker (and on the welcome page).
+  - **Racing series:** upcoming sessions, the latest weekend's results (MotoGP with times and gaps), and news.
+  - **UFC:** upcoming events, the latest card with results, and news.
+  - **Boxing:** upcoming fights and news. There's no free boxing results feed.
+- **Real logos in the tab bar:** your tab shows the club's crest (United's, the Chiefs'…) or the league, F1, NFL, MotoGP or UFC logo, instead of a blank shield. The crest also heads the team page.
+- **Faster team pages:** the team, its schedule and its fixtures load at the same time (the schedule was fetched twice before). The club's ESPN id and crest are kept on the phone, the page stays loaded for ten minutes, and grey placeholders show while it loads.
+
 ## 2.11 (25 Oct 2026)
 - **Themes are back** (More → Settings → Theme), the same four looks as the website:
   - **Night:** lime on black.
