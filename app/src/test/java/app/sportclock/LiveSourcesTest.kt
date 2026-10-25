@@ -78,4 +78,12 @@ class LiveSourcesTest {
         println("Next GP: ${later.title} -> ${gpInfo(later)?.circuit}, key ${circuitKey(later)}, last year ${gpInfo(later)?.let { lastYear(it) }}")
         assertTrue(g.round == 18 && res.isNotEmpty())
     }
+
+    @Test fun f1Season() = runBlocking {
+        assumeTrue(live)
+        val l = season(2026)
+        println("Season: ${l.size} races; " + l.take(3).joinToString { "${it.round} ${it.name} ${it.winner}" } + " ... " + l.last().let { "${it.round} ${it.name} ${it.winner}" })
+        println("Current GP: " + currentGp(events, java.time.Instant.parse("2026-10-25T12:00:00Z"))?.let { "${it.title} ${it.start}" })
+        assertTrue(l.size > 20 && l.count { it.winner != null } >= 15)
+    }
 }
