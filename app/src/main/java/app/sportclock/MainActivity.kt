@@ -96,6 +96,9 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
     var now by remember { mutableStateOf(Instant.now()) }
     var tab by remember { mutableStateOf(Tab.HOME) }
     var page by remember { mutableStateOf<String?>(null) }
+    val history = remember { mutableStateListOf<String>() }
+    fun open(p: String) { page?.let { history.add(it) }; page = p }
+    fun back() { page = history.removeLastOrNull() }
     var myTab by remember { mutableStateOf(Settings.myTab(ctx)) }          // "follow" | "about" | "settings" | "update" | "report" pushed over More
     var detail by remember { mutableStateOf<Event?>(null) }
     var scores by remember { mutableStateOf(Scores(emptyMap(), null, null)) }
@@ -130,7 +133,14 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
     fun refreshWidget() = scope.launch { SportClockWidget().updateAll(ctx) }
     fun rearm() { data?.let { Alerts.reschedule(ctx, it.events) }; refreshWidget() }
 
-    BackHandler(enabled = page != null) { page = null }
+    // back walks the way you came: the open sheet, then the pages you opened, then Home; it only leaves the app from Home
+    BackHandler(enabled = detail != null || page != null || tab != Tab.HOME) {
+        when {
+            detail != null -> detail = null
+            page != null -> back()
+            else -> tab = Tab.HOME
+        }
+    }
 
     // a new phone: ask what this person follows before anything else
     if (welcome) {
@@ -160,18 +170,18 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
         Box(Modifier.padding(pad).fillMaxSize()) {
             val d = data
             when {
-                page == "follow" -> FollowScreen(st, d?.events.orEmpty(), now, onBack = { page = null }, onChanged = { rearm() })
-                page == "settings" -> SettingsScreen(onBack = { page = null }, onChanged = { rearm() }, onTextScale = onTextScale, onTheme = onTheme)
-                page == "about" -> AboutScreen(d, onBack = { page = null })
+                page == "follow" -> FollowScreen(st, d?.events.orEmpty(), now, onBack = { back() }, onChanged = { rearm() })
+                page == "settings" -> SettingsScreen(onBack = { back() }, onChanged = { rearm() }, onTextScale = onTextScale, onTheme = onTheme)
+                page == "about" -> AboutScreen(d, onBack = { back() })
                 page == "news" -> Column(Modifier.fillMaxSize()) {
-                    TextButton(onClick = { page = null }, modifier = Modifier.statusBarsPadding().padding(start = 4.dp)) { Text("‹ Back", color = C.lime, fontFamily = Inter) }
+                    TextButton(onClick = { back() }, modifier = Modifier.statusBarsPadding().padding(start = 4.dp)) { Text("‹ Back", color = C.lime, fontFamily = Inter) }
                     NewsScreen(st, now)
                 }
-                page == "update" -> UpdateScreen(onBack = { page = null; updateWaiting = Updater.waiting(ctx) })
-                page == "report" -> ReportScreen(onBack = { page = null })
-                page == "f1live" || page?.startsWith("upgrades:") == true -> F1Page(page!!, onBack = { page = null })
+                page == "update" -> UpdateScreen(onBack = { back(); updateWaiting = Updater.waiting(ctx) })
+                page == "report" -> ReportScreen(onBack = { back() })
+                page == "f1live" || page?.startsWith("upgrades:") == true -> F1Page(page!!, onBack = { back() })
                 page?.startsWith("team:") == true -> TeamScreen(page!!.removePrefix("team:"), d?.events.orEmpty(), now, scores.matches,
-                    onBack = { page = null }, onOpen = { detail = it })
+                    onBack = { back() }, onOpen = { detail = it })
                 d == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = C.lime) }
                 tab == Tab.HOME -> HomeScreen(st, d.events, now, scores.matches,
                     onPin = { h ->
@@ -179,18 +189,18 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
                         Repo.setPinned(ctx, newPin); st.pinned = newPin; refreshWidget()
                         Toast.makeText(ctx, if (newPin == null) "Unpinned" else "${tokenLabel(newPin)} stays on top", Toast.LENGTH_SHORT).show()
                     },
-                    onOpen = { detail = it }, onTeam = { page = "team:$it" })
-                tab == Tab.SCORES -> ScoresHub(st, d, now, scores, onOpen = { detail = it }, onTeam = { page = "team:$it" })
+                    onOpen = { detail = it }, onTeam = { open("team:$it") })
+                tab == Tab.SCORES -> ScoresHub(st, d, now, scores, onOpen = { detail = it }, onTeam = { open("team:$it") })
                 tab == Tab.CALENDAR -> CalendarScreen(st, d.events, now, scores.matches, onOpen = { detail = it })
-                tab == Tab.MINE -> MyTab(myTab, st, d.events, now, scores.matches, onOpen = { detail = it }, onPage = { page = it },
+                tab == Tab.MINE -> MyTab(myTab, st, d.events, now, scores.matches, onOpen = { detail = it }, onPage = { open(it) },
                     onChoose = { v -> myTab = v; Settings.setMyTab(ctx, v); if (v == "NFL") scope.launch { Repo.load(ctx, maxAgeMin = 600) } })
-                tab == Tab.MORE -> MoreScreen(updateWaiting, onFollow = { page = "follow" }, onSettings = { page = "settings" }, onAbout = { page = "about" },
-                    onUpdate = { page = "update" }, onReport = { page = "report" }, onNews = { page = "news" })
+                tab == Tab.MORE -> MoreScreen(updateWaiting, onFollow = { open("follow") }, onSettings = { open("settings") }, onAbout = { open("about") },
+                    onUpdate = { open("update") }, onReport = { open("report") }, onNews = { open("news") })
             }
             val u = updateWaiting
             if (page == null && tab == Tab.HOME && u != null && Updater.dismissed(ctx) != u) {
                 Row(Modifier.align(Alignment.BottomCenter).padding(12.dp).clip(RoundedCornerShape(50)).background(C.lime)
-                    .clickable { page = "update" }.padding(start = 18.dp, end = 6.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    .clickable { open("update") }.padding(start = 18.dp, end = 6.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("SportClock $u is ready · Update", color = C.onLime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     TextButton(onClick = { Updater.dismiss(ctx, u); updateWaiting = null }) { Text("✕", color = C.onLime, fontFamily = Inter) }
                 }
@@ -198,8 +208,8 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
         }
     }
     detail?.let { e -> ModalBottomSheet(onDismissRequest = { detail = null }, containerColor = C.tile, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        DetailSheet(e, now, scores.matches[e.id], scores.fetchedAt, onTeam = { detail = null; page = "team:$it" },
-            events = data?.events.orEmpty(), onPage = { detail = null; page = it })
+        DetailSheet(e, now, scores.matches[e.id], scores.fetchedAt, onTeam = { detail = null; open("team:$it") },
+            events = data?.events.orEmpty(), onPage = { detail = null; open(it) })
     } }
 }
 

@@ -2,6 +2,9 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.13 (25 Oct 2026)
+- **Back works the way you came.** Swiping back closes an open match sheet, then goes back through the pages you opened (Settings, a team page, Upgrades…), then to Home. It only leaves the app from Home. The app also opts in to Android's predictive back, so the system gesture can no longer skip past it and close the app.
+
 ## 2.12 (25 Oct 2026)
 - **Your tab can be any sport:** MotoGP, IndyCar, NASCAR, UFC and Boxing join F1, the NFL, the leagues and single teams in the picker (and on the welcome page).
   - **Racing series:** upcoming sessions, the latest weekend's results (MotoGP with times and gaps), and news.
