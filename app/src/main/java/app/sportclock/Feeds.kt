@@ -26,7 +26,7 @@ import java.util.Locale
  * Polling stays light: scores only while a match is on, lineups from an hour before kick-off.
  */
 
-private const val UA = "SportClock/2.4 (personal Android app)"
+private const val UA = "SportClock/2.5 (personal Android app)"
 
 internal fun httpGet(url: String): String {
     val c = URL(url).openConnection() as HttpURLConnection
@@ -81,6 +81,8 @@ suspend fun espnScoreboard(league: String, date: String): List<EspnMatch> = with
 private val STOP = setOf("fc", "cf", "afc", "sc", "ac", "ss", "us", "ssc", "club", "de", "the", "and", "calcio", "1", "cd", "rc", "fk", "sv", "vfb", "vfl", "tsg", "bv", "rb", "ud", "sd", "ca", "real", "1899", "1909", "1907", "1913", "1963", "05", "04", "07")
 fun nameWords(n: String): Set<String> = Normalizer.normalize(n.lowercase(Locale.ROOT), Normalizer.Form.NFD)
     .replace(Regex("\\p{Mn}+"), "").replace("&", " ").split(Regex("[^a-z0-9]+")).filter { it.length > 1 && it !in STOP }.toSet()
+/** True when two sources' names for a club are the same club. */
+fun sameTeam(a: String, b: String) = sameClub(a, b)
 private fun sameClub(a: String, b: String): Boolean {
     val x = nameWords(a); val y = nameWords(b)
     if (x.isEmpty() || y.isEmpty()) return false

@@ -277,7 +277,7 @@ fun PillView(p: Pill) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EventRow(e: Event, now: Instant, score: Score? = null, highlight: Boolean = false, onClick: () -> Unit = {}) {
-    val showScore = score != null && score.home != null && score.away != null && score.status in setOf("IN_PLAY", "PAUSED", "FINISHED")
+    val showScore = score != null && score.home != null && score.away != null && score.status in setOf("IN_PLAY", "PAUSED", "FINISHED") && !Spoilers.hidden(e)
     Row(
         Modifier.padding(horizontal = 16.dp).fillMaxWidth().heightIn(min = 60.dp).clip(RoundedCornerShape(12.dp)).background(C.tile)
             .combinedClickable(onClick = onClick).padding(vertical = 8.dp),

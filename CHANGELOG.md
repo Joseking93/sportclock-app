@@ -2,6 +2,19 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.5 (25 Oct 2026)
+- **Live match alerts** for your team and any match you belled: goals (with scorer and minute), red cards, half-time and full-time. More → Settings → Match day.
+- **Lineups out:** both starting elevens in a notification, about an hour before kick-off.
+- **Live score** in a quiet notification that updates during the match, and on the widget.
+- How often it checks: every 10 minutes from 70 minutes before kick-off, every 2.5 minutes during the match, and nothing at full time. Android can stretch this to about 9 minutes while the phone sleeps.
+- **Team pages:** badge, league position, league form, results and fixtures, and team news. Open one from a match sheet, Scores → Your teams, or a full-time card.
+- **Full-time cards on Home** for your teams' matches from the last 36 hours, with the scorers.
+- **Racing results:** F1, IndyCar, NASCAR and MotoGP, every session of the latest weekend. F1 race times come from Jolpica once it has the race.
+- **UFC:** the latest card, main event first, with winners, method, round and time.
+- **Form and head-to-head** in every football match sheet.
+- **Add to calendar** and **Highlights** (a YouTube search) in match sheets.
+- **Spoiler-free mode** (More → Settings): scores and results stay hidden until you tap, and no score alerts are sent.
+
 ## 2.4.1 (25 Oct 2026)
 - **Widget badges:** the widget showed the club colours but no badges, because it tried to download them on the main thread, which Android refuses. It now fetches and draws them in the background, and a cut-off download can no longer leave a broken badge behind.
 

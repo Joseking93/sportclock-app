@@ -31,6 +31,22 @@ object Settings {
     /** Text size as a font scale; 0 means "use the phone's own setting". */
     fun textScale(ctx: Context) = Repo.prefs(ctx).getFloat("textScale", 0f)
     fun setTextScale(ctx: Context, s: Float) = Repo.prefs(ctx).edit().putFloat("textScale", s).apply()
+    /** Goals, red cards, half-time and full-time for watched matches, and the live-score notification. */
+    fun liveAlerts(ctx: Context) = Repo.prefs(ctx).getBoolean("liveAlerts", true)
+    fun setLiveAlerts(ctx: Context, on: Boolean) = Repo.prefs(ctx).edit().putBoolean("liveAlerts", on).apply()
+    fun lineupAlerts(ctx: Context) = Repo.prefs(ctx).getBoolean("lineupAlerts", true)
+    fun setLineupAlerts(ctx: Context, on: Boolean) = Repo.prefs(ctx).edit().putBoolean("lineupAlerts", on).apply()
+    /** Hide scores until tapped, everywhere: lists, cards, the widget and notifications. */
+    fun spoilerFree(ctx: Context) = Repo.prefs(ctx).getBoolean("spoilerFree", false)
+    fun setSpoilerFree(ctx: Context, on: Boolean) { Repo.prefs(ctx).edit().putBoolean("spoilerFree", on).apply(); Spoilers.on = on }
+}
+
+/** Spoiler-free mode as Compose state, and the matches revealed this session. */
+object Spoilers {
+    var on by mutableStateOf(false)
+    val revealed = androidx.compose.runtime.mutableStateListOf<String>()
+    fun hidden(e: Event) = on && e.id !in revealed
+    fun load(ctx: Context) { on = Settings.spoilerFree(ctx) }
 }
 
 /**
@@ -106,7 +122,7 @@ object Alerts {
         val am = ctx.getSystemService(AlarmManager::class.java)
         val p = Repo.prefs(ctx)
         p.getStringSet("alarmCodes", emptySet())!!.forEach { am.cancel(pending(ctx, it.toInt(), null)) }
-        if (!Settings.alertsOn(ctx)) { p.edit().putStringSet("alarmCodes", emptySet()).apply(); return }
+        if (!Settings.alertsOn(ctx)) { p.edit().putStringSet("alarmCodes", emptySet()).apply(); Live.schedule(ctx, events); return }
         val now = Instant.now(); val lead = Settings.leadMins(ctx).toLong()
         AlertChoices.load(ctx); AlertChoices.prune(ctx, events, now)
         val codes = HashSet<String>()
@@ -121,6 +137,7 @@ object Alerts {
                 codes += code.toString()
             }
         p.edit().putStringSet("alarmCodes", codes).apply()
+        Live.schedule(ctx, events)
     }
 
     private fun pending(ctx: Context, code: Int, intent: Intent?) = PendingIntent.getBroadcast(ctx, code,

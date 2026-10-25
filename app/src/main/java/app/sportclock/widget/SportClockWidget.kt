@@ -53,10 +53,15 @@ class SportClockWidget : GlanceAppWidget() {
         val all = data?.events.orEmpty()
         val hero = heroes(all, follows, Repo.pinned(context), Filter.FOLLOWING, favs, now).firstOrNull()
         val next = all.filter { followed(it, follows) && !it.started(now) && !it.over(now) && it.id != hero?.event?.id }.take(2)
+        // while a watched match is on (and spoiler-free is off), the widget shows its live score instead of the next fixture
+        AlertChoices.load(context)
+        val live = if (Settings.spoilerFree(context)) null else all.firstOrNull { it.inProgress(now) && Live.watched(it, follows) }
+            ?.let { ev -> Live.score(context, ev)?.takeIf { it.third == "in" }?.let { ev to it } }
         // as on the app's card: a football player only when he is in one of the two squads, otherwise both clubs' badges
-        val e = hero?.event
+        val e = live?.first ?: hero?.event
         val look = if (e != null && e.sport == Sport.FOOTBALL && e.teams.size == 2) Looks.load(e) else null
-        val person = hero?.person?.takeIf { e?.sport != Sport.FOOTBALL || (look != null && personKey(it.name) in look.squad) }
+        val candidate = if (live != null && e?.id != hero?.event?.id) favs[Kind.PLAYER] else hero?.person
+        val person = candidate?.takeIf { e?.sport != Sport.FOOTBALL || (look != null && personKey(it.name) in look.squad) }
         // Glance calls this on the main thread, where Android refuses downloads: the badges are fetched and drawn on IO
         val (wideBmp, squareBmp) = withContext(Dispatchers.IO) {
             runCatching { person?.let { faded(context, it, 1080, 480, 0.22f, 0.72f, 1f) } ?: look?.let { badges(context, it, 1080, 480, 0.30f, 0.62f, 1f) } }
@@ -65,7 +70,7 @@ class SportClockWidget : GlanceAppWidget() {
                 .onFailure { Diag.log("widget art: $it") }.getOrNull()
         }
         Alerts.scheduleWidget(context, hero?.event?.takeIf { !it.isTbc }?.start)   // redraw when the wording next changes
-        provideContent { Content(hero, next, wideBmp, squareBmp, now) }
+        provideContent { Content(hero, next, wideBmp, squareBmp, now, live) }
     }
 
     /**
@@ -143,7 +148,7 @@ class SportClockWidget : GlanceAppWidget() {
     }.onFailure { Diag.log("widget badge ${side.name}: $it") }.getOrNull()
 
     @Composable
-    private fun Content(hero: Hero?, next: List<Event>, wideBmp: Bitmap?, squareBmp: Bitmap?, now: Instant) {
+    private fun Content(hero: Hero?, next: List<Event>, wideBmp: Bitmap?, squareBmp: Bitmap?, now: Instant, live: Pair<Event, Triple<String, String, String>>? = null) {
         val wide = LocalSize.current.width >= 250.dp
         val lime = ColorProvider(Color(0xFFC8F53C)); val fg = ColorProvider(Color(0xFFECEEE6)); val fg2 = ColorProvider(Color(0xFFA6A99E))
         Box(GlanceModifier.fillMaxSize().cornerRadius(24.dp).background(Color(0xFF0E100B)).clickable(actionStartActivity<MainActivity>())) {
@@ -151,10 +156,17 @@ class SportClockWidget : GlanceAppWidget() {
                 Image(ImageProvider(bmp), null, contentScale = androidx.glance.layout.ContentScale.Crop, modifier = GlanceModifier.fillMaxSize())
             }
             Column(GlanceModifier.fillMaxSize().padding(14.dp)) {
-                Text("NEXT UP", style = TextStyle(color = lime, fontSize = 11.sp, fontWeight = FontWeight.Bold))
-                if (hero == null) {
+                if (live != null) {
+                    val (ev, sc) = live
+                    Text("LIVE · ${sc.second}", style = TextStyle(color = lime, fontSize = 11.sp, fontWeight = FontWeight.Bold))
+                    Text(ev.line1(), maxLines = if (wide) 1 else 2, style = TextStyle(color = fg, fontSize = 14.sp, fontWeight = FontWeight.Bold))
+                    Text(sc.first, style = TextStyle(color = lime, fontSize = if (wide) 44.sp else 38.sp, fontWeight = FontWeight.Bold))
+                    Text("${short(ev.teams.getOrElse(0) { "" })} v ${short(ev.teams.getOrElse(1) { "" })} · scores can lag", maxLines = 1, style = TextStyle(color = fg2, fontSize = 12.sp))
+                } else if (hero == null) {
+                    Text("NEXT UP", style = TextStyle(color = lime, fontSize = 11.sp, fontWeight = FontWeight.Bold))
                     Text("Nothing coming up", style = TextStyle(color = fg2, fontSize = 13.sp))
                 } else {
+                    Text("NEXT UP", style = TextStyle(color = lime, fontSize = 11.sp, fontWeight = FontWeight.Bold))
                     val e = hero.event
                     val head = if (hero.token?.startsWith("t:") == true) e.line1() else "${tokenLabel(hero.token ?: "c:${e.code}").let { if (e.code == "UFC") e.comp else it }} · ${sessName(e.session)}"
                     Text(head, maxLines = if (wide) 1 else 2, style = TextStyle(color = fg, fontSize = 14.sp, fontWeight = FontWeight.Bold))

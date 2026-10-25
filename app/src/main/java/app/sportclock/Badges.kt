@@ -45,14 +45,26 @@ object Looks {
         if (t - (failed[e.id] ?: 0L) < 10 * 60_000) return null
         return lock.withLock {
             runCatching {
-                val key = lg to espnDate(e.start)
-                val board = boards[key]?.takeIf { t - it.first < 30 * 60_000 }?.second
-                    ?: espnScoreboard(lg, key.second).also { boards[key] = t to it }
-                val m = matchEspn(e, board) ?: error("no ESPN match")
+                val m = board(e, lg) ?: error("no ESPN match")
                 val h = m.homeSide ?: error("no badge"); val a = m.awaySide ?: error("no badge")
                 MatchLook(h, a, roster(lg, h.id) + roster(lg, a.id)).also { ready[e.id] = it }
             }.getOrElse { failed[e.id] = t; null }
         }
+    }
+
+    /** Our fixture's ESPN match (id, league, names), from a scoreboard kept for 30 minutes. */
+    suspend fun espnMatch(e: Event): EspnMatch? {
+        val lg = ESPN_LEAGUE[e.code] ?: return null
+        if (e.sport != Sport.FOOTBALL || e.teams.size != 2) return null
+        return runCatching { lock.withLock { board(e, lg) } }.getOrNull()
+    }
+
+    private suspend fun board(e: Event, lg: String): EspnMatch? {
+        val t = System.currentTimeMillis()
+        val key = lg to espnDate(e.start)
+        val board = boards[key]?.takeIf { t - it.first < 30 * 60_000 }?.second
+            ?: espnScoreboard(lg, key.second).also { boards[key] = t to it }
+        return matchEspn(e, board)
     }
 
     /** A club's current squad as person keys; empty when ESPN has none, so the badges still show. */

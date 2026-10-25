@@ -33,6 +33,7 @@
         </receiver>
         <receiver android:name=".AlertReceiver" android:exported="false" />
         <receiver android:name=".WidgetTick" android:exported="false" />
+        <receiver android:name=".LiveTick" android:exported="false" />
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

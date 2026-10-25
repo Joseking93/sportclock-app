@@ -74,28 +74,38 @@ fun ScreenTitle(title: String, sub: String? = null) {
 
 /* ---------- Scores · Tables · F1 ---------- */
 @Composable
-fun ScoresHub(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Event) -> Unit) {
+fun ScoresHub(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Event) -> Unit, onTeam: (String) -> Unit = {}) {
     var seg by rememberSaveable { mutableIntStateOf(0) }
     Column(Modifier.fillMaxSize()) {
-        ScreenTitle(listOf("Scores", "Tables", "F1 standings")[seg], listOf("Football, yours first", "League tables", "Drivers and teams")[seg])
-        Segments(listOf("Scores", "Tables", "F1"), seg) { seg = it }
+        ScreenTitle(listOf("Scores", "Tables", "Racing", "UFC")[seg],
+            listOf("Football, yours first", "League tables", "F1, IndyCar, NASCAR and MotoGP results", "The latest card")[seg])
+        Segments(listOf("Scores", "Tables", "Racing", "UFC"), seg) { seg = it }
         Spacer(Modifier.height(8.dp))
         when (seg) {
-            0 -> ScoresList(st, d, now, scores, onOpen)
+            0 -> ScoresList(st, d, now, scores, onOpen, onTeam)
             1 -> TablesView(st)
-            else -> F1View()
+            2 -> RacingView()
+            else -> UfcView()
         }
     }
 }
 
 @Composable
-private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Event) -> Unit) {
+private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Event) -> Unit, onTeam: (String) -> Unit) {
     val today = localDate(now)
     val recent = d.events.filter { it.sport == Sport.FOOTBALL && (localDate(it.start) == today || localDate(it.start) == today.minusDays(1) || it.inProgress(now)) }
     val mine = recent.filter { followed(it, st.follows) }
     val nextMine = d.events.filter { it.sport == Sport.FOOTBALL && followed(it, st.follows) && !it.started(now) }.take(2)
     LazyColumn(Modifier.fillMaxSize()) {
         item { SectionLabel("Your teams") }
+        st.follows.filter { it.startsWith("t:") }.takeIf { it.isNotEmpty() }?.let { ts ->
+            item {
+                Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ts.sorted().forEach { t -> AssistChip(onClick = { onTeam(t.substring(2)) }, label = { Text("${short(t.substring(2))} page ›", fontFamily = Inter) },
+                        colors = AssistChipDefaults.assistChipColors(labelColor = C.fg)) }
+                }
+            }
+        }
         val yours = (mine + nextMine).distinct().sortedBy { it.start }
         if (yours.isEmpty()) item { Text("No football you follow today", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp)) }
         yours.forEach { e -> item(key = "m" + e.id) { EventRow(e, now, scores.matches[e.id], onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) } }
@@ -170,7 +180,7 @@ private fun TablesView(st: AppState) {
 }
 
 @Composable
-private fun F1View() {
+fun F1View() {
     var teams by rememberSaveable { mutableStateOf(false) }
     var data by remember { mutableStateOf<Pair<String, List<Standing>>?>(null) }
     var failed by remember { mutableStateOf(false) }
@@ -300,6 +310,28 @@ fun SettingsScreen(onBack: () -> Unit, onChanged: () -> Unit, onTextScale: (Floa
                             colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
                     }
                 }
+            }
+        }
+        if (alerts) {
+            item { SectionLabel("Match day") }
+            item {
+                var live by remember { mutableStateOf(Settings.liveAlerts(ctx)) }
+                ToggleRow(C.lime, "Goals and results", "Goals, red cards, half-time, full-time and a live score, for your team and belled matches", live) { on ->
+                    live = on; Settings.setLiveAlerts(ctx, on); onChanged()
+                }
+            }
+            item {
+                var lineups by remember { mutableStateOf(Settings.lineupAlerts(ctx)) }
+                ToggleRow(C.lime, "Lineups out", "Both starting elevens, about an hour before kick-off", lineups) { on ->
+                    lineups = on; Settings.setLineupAlerts(ctx, on); onChanged()
+                }
+            }
+        }
+        item { SectionLabel("Scores") }
+        item {
+            var spoiler by remember { mutableStateOf(Settings.spoilerFree(ctx)) }
+            ToggleRow(C.lime, "Spoiler-free", "Hide scores and results until you tap; no goal or result alerts", spoiler) { on ->
+                spoiler = on; Settings.setSpoilerFree(ctx, on); onChanged()
             }
         }
         item { SectionLabel("Text size") }
