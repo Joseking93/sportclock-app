@@ -32,7 +32,7 @@ import java.time.Instant
  */
 
 internal val LEAGUE_SHORT = mapOf("MGP" to "MotoGP", "INDY" to "IndyCar", "NAS" to "NASCAR", "UFC" to "UFC", "BOX" to "Boxing", "ENG" to "PL", "ESP" to "La Liga", "ITA" to "Serie A", "GER" to "Bundesliga", "FRA" to "Ligue 1",
-    "UCL" to "UCL", "EFL" to "EFL", "NED" to "Eredivisie", "POR" to "Liga PT")
+    "UCL" to "UCL", "EFL" to "EFL", "FAC" to "FA Cup", "CAR" to "Carabao Cup", "NED" to "Eredivisie", "POR" to "Liga PT")
 
 fun myTabLabel(v: String) = when {
     v == "F1" -> "F1"; v == "NFL" -> "NFL"
@@ -111,9 +111,10 @@ private fun LeagueHub(code: String, st: AppState, events: List<Event>, now: Inst
     val ours = remember(events, code) { events.filter { it.code == code }.flatMap { it.teams }.distinct() }
     Column(Modifier.fillMaxSize()) {
         HubHeader(series(code)?.name ?: code, "${games.count { !it.started(now) }} matches in the next 10 days", code, onChange)
-        Segments(listOf("Matches", "Table"), seg) { seg = it }
+        val parts = if (code in ESPN_TABLE_CODES) listOf("Matches", "Table") else listOf("Matches")
+        Segments(parts, seg.coerceAtMost(parts.lastIndex)) { seg = it }
         Spacer(Modifier.height(8.dp))
-        if (seg == 0) LazyColumn(Modifier.fillMaxSize()) {
+        if (seg == 0 || code !in ESPN_TABLE_CODES) LazyColumn(Modifier.fillMaxSize()) {
             if (games.isEmpty()) item { Text("No matches in the last three days or the next ten.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp)) }
             dayGroups(games, now, scores, onOpen)
             item { Spacer(Modifier.height(24.dp)) }
@@ -179,7 +180,7 @@ private fun NflStandings(onTeam: (String) -> Unit) {
 fun MyTabChoices(current: String?, follows: Set<String>, events: List<Event>, onPick: (String) -> Unit, modifier: Modifier = Modifier) {
     var query by remember { mutableStateOf("") }
     val teams = remember(events) { (events.filter { it.sport == Sport.FOOTBALL }.flatMap { it.teams } + NFL_TEAMS.keys).distinct().sorted() }
-    val leagues = listOf("ENG", "ESP", "ITA", "GER", "FRA", "UCL", "EFL", "NED", "POR")
+    val leagues = listOf("ENG", "ESP", "ITA", "GER", "FRA", "UCL", "EFL", "FAC", "CAR", "NED", "POR")
     LazyColumn(modifier.imePadding()) {
         item {
             OutlinedTextField(query, { query = it }, placeholder = { Text("Find a team or league (e.g. United, Bundesliga)", fontFamily = Inter) }, singleLine = true,
@@ -199,7 +200,9 @@ fun MyTabChoices(current: String?, follows: Set<String>, events: List<Event>, on
             item { PickRow("NFL", "Games, scores and standings", "NFL", current == "NFL") { onPick("NFL") } }
             items(SPORTS, key = { "s$it" }) { c -> PickRow(series(c)?.name ?: c, SPORT_LINE[c].orEmpty(), c.takeIf { logoFor(it) != null }, current == "c:$c") { onPick("c:$c") } }
             item { SectionLabel("A whole league") }
-            items(leagues, key = { "l$it" }) { c -> PickRow(series(c)?.name ?: c, "Matches and the table", c, current == "c:$c") { onPick("c:$c") } }
+            items(leagues, key = { "l$it" }) { c ->
+                PickRow(series(c)?.name ?: c, if (c in ESPN_TABLE_CODES) "Matches and the table" else "Matches and results", c, current == "c:$c") { onPick("c:$c") }
+            }
             val mine = follows.filter { it.startsWith("t:") }.sorted()
             if (mine.isNotEmpty()) {
                 item { SectionLabel("Teams you follow") }

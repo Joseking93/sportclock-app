@@ -152,7 +152,7 @@ fun LastResults(st: AppState, events: List<Event>, now: Instant, scores: Map<Str
                 Text("${short(e.teams[0])} ${sc.home}–${sc.away} ${short(e.teams[1])}", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 20.sp,
                     modifier = Modifier.padding(top = 4.dp))
                 val (sheet, _) = loaded(e.id) { sc.league?.let { lg -> sc.espnId?.let { id -> espnSheet(lg, id) } } }
-                sheet?.goals?.takeIf { it.isNotEmpty() }?.let { gs ->
+                sheet?.incidents?.filter { it.type.contains("Goal", true) }?.takeIf { it.isNotEmpty() }?.let { gs ->
                     Text(gs.joinToString(" · ") { "${it.text.substringBefore(" (")} ${it.minute}" }, color = C.fg2, fontFamily = Inter, fontSize = 13.sp,
                         maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }

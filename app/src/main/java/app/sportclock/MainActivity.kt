@@ -102,6 +102,9 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
     var myTab by remember { mutableStateOf(Settings.myTab(ctx)) }          // "follow" | "about" | "settings" | "update" | "report" pushed over More
     var detail by remember { mutableStateOf<Event?>(null) }
     var scores by remember { mutableStateOf(Scores(emptyMap(), null, null)) }
+    var scoreRefresh by remember { mutableIntStateOf(0) }
+    var scoresRefreshing by remember { mutableStateOf(false) }
+    var cupScoresCheckedAt by remember { mutableStateOf<Instant?>(null) }
 
     LaunchedEffect(Unit) { Repo.load(ctx)?.let { Alerts.reschedule(ctx, it.events) }; SportClockWidget().updateAll(ctx) }
     LaunchedEffect(Unit) { while (true) { delay(30_000); now = Instant.now() } }
@@ -120,13 +123,27 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
     LaunchedEffect(tab, page) { Diag.log("screen ${page ?: tab.name.lowercase()}") }
     LaunchedEffect(detail) { detail?.let { Diag.log("open ${it.id} ${it.title}") } }
     // Scores from ESPN for today's and yesterday's football: every 2 minutes while a match is on, otherwise every 15.
-    LaunchedEffect(data) {
+    LaunchedEffect(data, tab, scoreRefresh) {
         while (true) {
             val t = Instant.now()
             val pool = data?.events.orEmpty().filter { (it.sport == Sport.FOOTBALL || it.sport == Sport.NFL) && it.started(t) && it.start.isAfter(t.minusSeconds(30 * 3600)) }
-            val live = pool.any { it.inProgress(t) }
-            if (pool.isNotEmpty()) scores = Repo.scores(if (live) pool.filter { it.inProgress(t) || scores.matches[it.id] == null } else pool)
-                .let { fresh -> if (live) Scores(scores.matches + fresh.matches, fresh.fetchedAt, fresh.error) else fresh }
+            val live = pool.any { it.inProgress(t) } || scores.extraEvents.any { it.inProgress(t) }
+            val cupRefreshMins = if (scores.extraEvents.any { it.inProgress(t) }) 2 else 15
+            val includeCups = tab == Tab.SCORES &&
+                (cupScoresCheckedAt == null || cupScoresCheckedAt!!.isBefore(t.minusSeconds(cupRefreshMins * 60L)))
+            if (pool.isNotEmpty() || tab == Tab.SCORES) {
+                scoresRefreshing = true
+                try {
+                    val fresh = Repo.scores(if (live) pool.filter { it.inProgress(t) || scores.matches[it.id] == null } else pool,
+                        includeCups = includeCups)
+                    val merged = scores.matches + fresh.matches
+                    scores = Scores(merged, fresh.fetchedAt ?: scores.fetchedAt, fresh.error, fresh.unmatched - merged.keys,
+                        if (fresh.error == null) fresh.extraEvents else fresh.extraEvents.ifEmpty { scores.extraEvents })
+                    if (includeCups) cupScoresCheckedAt = t
+                } finally {
+                    scoresRefreshing = false
+                }
+            } else scoresRefreshing = false
             delay(if (live) 120_000 else 900_000)
         }
     }
@@ -190,7 +207,8 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
                         Toast.makeText(ctx, if (newPin == null) "Unpinned" else "${tokenLabel(newPin)} stays on top", Toast.LENGTH_SHORT).show()
                     },
                     onOpen = { detail = it }, onTeam = { open("team:$it") })
-                tab == Tab.SCORES -> ScoresHub(st, d, now, scores, onOpen = { detail = it }, onTeam = { open("team:$it") })
+                tab == Tab.SCORES -> ScoresHub(st, d, now, scores, onOpen = { detail = it }, onTeam = { open("team:$it") },
+                    onRefresh = { cupScoresCheckedAt = null; scoreRefresh++ }, refreshing = scoresRefreshing)
                 tab == Tab.CALENDAR -> CalendarScreen(st, d.events, now, scores.matches, onOpen = { detail = it })
                 tab == Tab.MINE -> MyTab(myTab, st, d.events, now, scores.matches, onOpen = { detail = it }, onPage = { open(it) },
                     onChoose = { v -> myTab = v; Settings.setMyTab(ctx, v); if (v == "NFL") scope.launch { Repo.load(ctx, maxAgeMin = 600) } })

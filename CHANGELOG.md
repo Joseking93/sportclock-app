@@ -2,6 +2,12 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.14 (26 Oct 2026)
+- **Scores you can check:** the Scores screen has Live, Today, Results and Upcoming views, competition filters, a manual refresh, and a visible error when a feed fails or a fixture cannot be matched.
+- **FA Cup and Carabao Cup:** current and recent cup-day fixtures and scores load directly from ESPN; follow either cup, filter its scores, and open match details.
+- **Better match details:** lineups refresh while you have a match open; goals, yellow/red cards and substitutions appear in the event timeline alongside formations, starters and substitutes.
+- **Safer score matching:** a score only attaches when both teams match, avoiding a plausible-looking score from a different fixture.
+
 ## 2.13 (25 Oct 2026)
 - **Art on every NEXT UP card.** MotoGP, NASCAR, IndyCar, UFC and boxing cards were blank; now they have pictures, your choice in More → Settings → Card art:
   - **Photos:** free-licensed race and fight photos from Wikimedia Commons, credited in About.

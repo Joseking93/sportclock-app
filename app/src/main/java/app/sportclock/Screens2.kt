@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
 
@@ -75,15 +76,16 @@ fun ScreenTitle(title: String, sub: String? = null) {
 
 /* ---------- Scores · Tables · F1 ---------- */
 @Composable
-fun ScoresHub(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Event) -> Unit, onTeam: (String) -> Unit = {}) {
+fun ScoresHub(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Event) -> Unit, onTeam: (String) -> Unit = {},
+              onRefresh: () -> Unit = {}, refreshing: Boolean = false) {
     var seg by rememberSaveable { mutableIntStateOf(0) }
     Column(Modifier.fillMaxSize()) {
         ScreenTitle(listOf("Scores", "Tables", "Racing", "UFC")[seg],
-            listOf("Football, yours first", "League tables", "F1, IndyCar, NASCAR and MotoGP results", "The latest card")[seg])
+            listOf("Live, today, results and cup scores", "League tables", "F1, IndyCar, NASCAR and MotoGP results", "The latest card")[seg])
         Segments(listOf("Scores", "Tables", "Racing", "UFC"), seg) { seg = it }
         Spacer(Modifier.height(8.dp))
         when (seg) {
-            0 -> ScoresList(st, d, now, scores, onOpen, onTeam)
+            0 -> ScoresList(st, d, now, scores, onOpen, onTeam, onRefresh, refreshing)
             1 -> TablesView(st)
             2 -> RacingView()
             else -> UfcView()
@@ -92,12 +94,51 @@ fun ScoresHub(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Even
 }
 
 @Composable
-private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Event) -> Unit, onTeam: (String) -> Unit) {
+private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Event) -> Unit, onTeam: (String) -> Unit,
+                       onRefresh: () -> Unit, refreshing: Boolean) {
     val today = localDate(now)
-    val recent = d.events.filter { it.sport == Sport.FOOTBALL && (localDate(it.start) == today || localDate(it.start) == today.minusDays(1) || it.inProgress(now)) }
-    val mine = recent.filter { followed(it, st.follows) }
-    val nextMine = d.events.filter { it.sport == Sport.FOOTBALL && followed(it, st.follows) && !it.started(now) }.take(2)
+    var period by rememberSaveable { mutableStateOf("Today") }
+    var competition by rememberSaveable { mutableStateOf("ALL") }
+    val recent = (d.events + scores.extraEvents).distinctBy { it.id }.filter { it.sport == Sport.FOOTBALL &&
+        (localDate(it.start) == today || localDate(it.start) == today.minusDays(1) || it.inProgress(now)) }
+    val nextMine = (d.events + scores.extraEvents).filter { it.sport == Sport.FOOTBALL && followed(it, st.follows) && !it.started(now) }.take(2)
+    val all = (recent + nextMine).distinct().sortedBy { it.start }
+    val competitions = all.map { it.code }.distinct().sortedBy { series(it)?.name ?: it }
+    val filtered = all.filter { competition == "ALL" || it.code == competition }.filter { e ->
+        when (period) {
+            "Live" -> scores.matches[e.id]?.status == "IN_PLAY" || scores.matches[e.id]?.status == "PAUSED"
+            "Results" -> scores.matches[e.id]?.status == "FINISHED" || (e.started(now) && !e.inProgress(now))
+            "Upcoming" -> !e.started(now)
+            else -> localDate(e.start) == today
+        }
+    }
     LazyColumn(Modifier.fillMaxSize()) {
+        item {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Scores update automatically", color = C.fg2, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                TextButton(onClick = onRefresh, enabled = !refreshing) {
+                    if (refreshing) CircularProgressIndicator(Modifier.size(16.dp), color = C.lime, strokeWidth = 2.dp)
+                    else Text("Refresh", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        item {
+            Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Live", "Today", "Results", "Upcoming").forEach { option ->
+                    FilterChip(period == option, { period = option }, label = { Text(option, fontFamily = Inter) },
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
+                }
+            }
+        }
+        if (competitions.isNotEmpty()) item {
+            Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                (listOf("ALL") + competitions).forEach { code ->
+                    FilterChip(competition == code, { competition = code },
+                        label = { Text(if (code == "ALL") "All comps" else series(code)?.name ?: code, fontFamily = Inter) },
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
+                }
+            }
+        }
         item { SectionLabel("Your teams") }
         st.follows.filter { it.startsWith("t:") }.takeIf { it.isNotEmpty() }?.let { ts ->
             item {
@@ -107,27 +148,24 @@ private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOp
                 }
             }
         }
-        val yours = (mine + nextMine).distinct().sortedBy { it.start }
-        if (yours.isEmpty()) item { Text("No football you follow today", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp)) }
-        yours.forEach { e -> item(key = "m" + e.id) { EventRow(e, now, scores.matches[e.id], onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) } }
-        listOf(today to "Today", today.minusDays(1) to "Yesterday").forEach { (day, label) ->
-            val list = recent.filter { it !in mine && localDate(it.start) == day }
-            if (list.isNotEmpty()) {
-                item(key = "d$day") { SectionLabel(label) }
-                list.groupBy { it.code }.forEach { (code, l) ->
-                    item(key = "c$day$code") {
-                        Row(Modifier.padding(start = 20.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            LogoChip(code, 20.dp); Spacer(Modifier.width(8.dp))
-                            Text(series(code)?.name ?: code, color = C.fg2, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                        }
-                    }
-                    l.forEach { e -> item(key = "o" + e.id) { EventRow(e, now, scores.matches[e.id], showDay = false, onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) } }
-                }
-            }
+        if (filtered.isEmpty()) item {
+            Text(when (period) {
+                "Live" -> "No live matches right now."
+                "Results" -> "No recent results found."
+                "Upcoming" -> "No upcoming games found for your teams."
+                else -> "No football fixtures for today."
+            }, color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp))
         }
+        filtered.forEach { e -> item(key = e.id) { EventRow(e, now, scores.matches[e.id], onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) } }
         item {
-            Text("Scores from ESPN · ${scores.fetchedAt?.let { "checked ${hm(it)}" } ?: "checking…"}", color = C.fg3, fontFamily = Inter, fontSize = 12.sp,
-                modifier = Modifier.padding(20.dp))
+            Column(Modifier.padding(20.dp)) {
+                scores.error?.let { Text(it, color = C.live, fontFamily = Inter, fontSize = 12.sp) }
+                val relevantUnmatched = scores.unmatched.intersect(all.map { it.id }.toSet())
+                if (relevantUnmatched.isNotEmpty()) Text("${relevantUnmatched.size} fixture(s) didn’t match the score feed. Try refreshing; if it continues, the fixture details may need correcting.",
+                    color = C.live, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+                Text("Scores from ESPN · ${scores.fetchedAt?.let { "checked ${hm(it)}" } ?: "not checked yet"}",
+                    color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+            }
         }
     }
 }
@@ -136,7 +174,7 @@ private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOp
 fun TablesView(st: AppState, only: String? = null, onTeam: ((String) -> Unit)? = null) {
     val comps = remember(st.follows) {
         val followedComps = st.follows.filter { it.startsWith("c:") }.map { it.substring(2) }.filter { it in ESPN_LEAGUE }
-        (listOf("ENG", "UCL") + followedComps + ESPN_LEAGUE.keys).distinct()
+        (listOf("ENG", "UCL") + followedComps + ESPN_TABLE_CODES).filter { it in ESPN_TABLE_CODES }.distinct()
     }
     var picked by rememberSaveable { mutableStateOf("ENG") }
     val code = only ?: picked
@@ -397,31 +435,64 @@ fun SettingsScreen(onBack: () -> Unit, onChanged: () -> Unit, onTextScale: (Floa
     }
 }
 
-/* ---------- lineups and goals in the match sheet ---------- */
+/* ---------- lineups and match events in the match sheet ---------- */
 @Composable
 fun MatchSheetView(e: Event, score: Score?, now: Instant) {
     var sheet by remember(e.id) { mutableStateOf<MatchSheet?>(null) }
     var looked by remember(e.id) { mutableStateOf(false) }
+    var loadFailed by remember(e.id) { mutableStateOf(false) }
     val minsToKick = Duration.between(now, e.start).toMinutes()
     LaunchedEffect(e.id, score?.espnId) {
-        if (minsToKick > 75) return@LaunchedEffect
-        val (lg, id) = (score?.league to score?.espnId).let { (l, i) ->
-            if (l != null && i != null) l to i
-            else ESPN_LEAGUE[e.code]?.let { league -> runCatching { matchEspn(e, espnScoreboard(league, espnDate(e.start))) }.getOrNull()?.let { league to it.id } } ?: (null to null)
+        sheet = null
+        looked = false
+        loadFailed = false
+        while (true) {
+            val minsLeft = Duration.between(Instant.now(), e.start).toMinutes()
+            if (minsLeft > 75) delay((minsLeft - 75).coerceAtLeast(1) * 60_000L)
+            val (lg, id) = (score?.league to score?.espnId).let { (league, eventId) ->
+                if (league != null && eventId != null) league to eventId
+                else ESPN_LEAGUE[e.code]?.let { league ->
+                    try {
+                        matchEspn(e, espnScoreboard(league, espnDate(e.start)))?.let { league to it.id }
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        loadFailed = true
+                        null
+                    }
+                }
+            } ?: (null to null)
+            if (lg != null && id != null) {
+                try {
+                    sheet = espnSheet(lg, id)
+                    loadFailed = false
+                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    loadFailed = true
+                }
+            }
+            looked = true
+            val hasLineups = sheet?.let { it.home != null && it.away != null } == true
+            val ended = score?.status == "FINISHED" || e.start.plusSeconds(4 * 3600).isBefore(Instant.now())
+            if (hasLineups || ended) break
+            delay(180_000)
         }
-        if (lg != null && id != null) sheet = runCatching { espnSheet(lg, id) }.getOrNull()
-        looked = true
     }
     Column(Modifier.padding(top = 14.dp)) {
         when {
             minsToKick > 75 -> Text("Lineups usually appear about an hour before kick-off.", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
             !looked -> Text("Looking for lineups…", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
-            sheet == null || (sheet!!.home == null && sheet!!.goals.isEmpty()) -> Text("Lineups not announced yet.", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
+            loadFailed -> Text("Couldn’t load match details. Check your connection; SportClock will try again shortly.", color = C.live, fontFamily = Inter, fontSize = 13.sp)
+            sheet == null || (sheet!!.home == null && sheet!!.incidents.isEmpty()) -> Text("Lineups and match events aren’t available yet.", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
             else -> {
                 val s = sheet!!
-                if (s.goals.isNotEmpty()) {
-                    Text("Goals", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    s.goals.forEach { g -> Text("${g.minute}  ${g.text}", color = C.fg, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp)) }
+                if (s.incidents.isNotEmpty()) {
+                    Text("Match events", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    s.incidents.forEach { event ->
+                        Text("${event.minute}  ${event.type}: ${event.text}", color = C.fg, fontFamily = Inter, fontSize = 14.sp,
+                            modifier = Modifier.padding(top = 2.dp))
+                    }
                     Spacer(Modifier.height(10.dp))
                 }
                 if (s.home != null && s.away != null) {
@@ -438,7 +509,7 @@ fun MatchSheetView(e: Event, score: Score?, now: Instant) {
                         }
                     }
                 }
-                Text("Lineups and goals from ESPN", color = C.fg3, fontFamily = Inter, fontSize = 11.sp, modifier = Modifier.padding(top = 8.dp))
+                Text("Lineups and match events from ESPN", color = C.fg3, fontFamily = Inter, fontSize = 11.sp, modifier = Modifier.padding(top = 8.dp))
             }
         }
     }

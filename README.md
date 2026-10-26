@@ -35,7 +35,7 @@ The keystore lives outside the repo (`../sportclock-android/android.keystore`) a
 - `app/src/main/java/app/sportclock/Model.kt`: events, series, time wording, status pills
 - `Repo.kt`: data and scores fetching, follows, favourites, pin, and which NEXT UP cards show
 - `Ui.kt`: hero card, pager, rows; `MainActivity.kt`: screens; `FollowScreen.kt`: Following and Favourites
-- `Feeds.kt`: scores, lineups, goals and tables from ESPN, F1 standings from Jolpica, news from BBC Sport (all fetched by the phone)
+- `Feeds.kt`: scores, lineups, match events and tables from ESPN (including match-day FA Cup and Carabao Cup boards), F1 standings from Jolpica, news from BBC Sport (all fetched by the phone)
 - `Alerts.kt`: "starting soon" alarms, settings, widget redraw timing; `Screens2.kt`: Scores/Tables/F1, News, Settings, lineups
 - `widget/SportClockWidget.kt`: the home-screen widget
 - `Nfl.kt`: NFL schedule, scores and standings from ESPN, merged into the events; `MyTab.kt`: the customisable fourth tab

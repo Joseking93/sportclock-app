@@ -26,7 +26,7 @@ import java.util.Locale
  * Polling stays light: scores only while a match is on, lineups from an hour before kick-off.
  */
 
-private const val UA = "SportClock/2.13 (personal Android app)"
+private const val UA = "SportClock/2.14 (personal Android app)"
 
 internal fun httpGet(url: String): String {
     val c = URL(url).openConnection() as HttpURLConnection
@@ -40,8 +40,10 @@ internal fun httpGet(url: String): String {
 
 /* ======================= ESPN football ======================= */
 
-val ESPN_LEAGUE = mapOf("ENG" to "eng.1", "EFL" to "eng.2", "ESP" to "esp.1", "ITA" to "ita.1", "GER" to "ger.1",
-    "FRA" to "fra.1", "NED" to "ned.1", "POR" to "por.1", "UCL" to "uefa.champions")
+val ESPN_LEAGUE = mapOf("ENG" to "eng.1", "EFL" to "eng.2", "FAC" to "eng.fa", "CAR" to "eng.league_cup",
+    "ESP" to "esp.1", "ITA" to "ita.1", "GER" to "ger.1", "FRA" to "fra.1", "NED" to "ned.1", "POR" to "por.1",
+    "UCL" to "uefa.champions")
+val ESPN_TABLE_CODES = ESPN_LEAGUE.keys - setOf("FAC", "CAR")
 
 data class EspnMatch(val id: String, val league: String, val start: Instant, val home: String, val away: String,
                      val homeScore: Int?, val awayScore: Int?, val state: String, val detail: String,
@@ -89,20 +91,18 @@ private fun sameClub(a: String, b: String): Boolean {
     return x.intersect(y).isNotEmpty() || x.any { w -> y.any { it.startsWith(w) || w.startsWith(it) } }
 }
 
-/** Our fixture's ESPN twin: same league, kick-off within three hours, and at least one of the two clubs matching. */
+/** Our fixture's ESPN twin: same league, kick-off within three hours, and both clubs matching. */
 fun matchEspn(e: Event, pool: List<EspnMatch>): EspnMatch? {
     if (e.teams.size != 2) return null
     return pool.filter { Math.abs(it.start.epochSecond - e.start.epochSecond) <= 3 * 3600 }
-        .firstOrNull { (sameClub(it.home, e.teams[0]) && sameClub(it.away, e.teams[1])) }
-        ?: pool.filter { Math.abs(it.start.epochSecond - e.start.epochSecond) <= 3 * 3600 }
-            .firstOrNull { sameClub(it.home, e.teams[0]) || sameClub(it.away, e.teams[1]) }
+        .firstOrNull { sameClub(it.home, e.teams[0]) && sameClub(it.away, e.teams[1]) }
 }
 
 /** Scores for our football events, fetched per league and ESPN day only for the events asked about. */
 suspend fun espnScores(events: List<Event>): Map<String, Score> = coroutineScope {
     val wanted = events.filter { it.sport == Sport.FOOTBALL && ESPN_LEAGUE.containsKey(it.code) }
     val keys = wanted.map { ESPN_LEAGUE.getValue(it.code) to espnDate(it.start) }.distinct()
-    val boards = keys.map { (lg, d) -> async { (lg to d) to runCatching { espnScoreboard(lg, d) }.getOrDefault(emptyList()) } }.awaitAll().toMap()
+    val boards = keys.map { (lg, d) -> async { (lg to d) to espnScoreboard(lg, d) } }.awaitAll().toMap()
     val out = HashMap<String, Score>()
     for (e in wanted) {
         val m = matchEspn(e, boards[ESPN_LEAGUE.getValue(e.code) to espnDate(e.start)].orEmpty()) ?: continue
@@ -112,14 +112,46 @@ suspend fun espnScores(events: List<Event>): Map<String, Score> = coroutineScope
     out
 }
 
+data class CupScores(val events: List<Event>, val matches: Map<String, Score>)
+
+/** Cup fixtures are not in SportClock's hosted schedule, so load today's and yesterday's ESPN boards directly. */
+suspend fun espnCupScores(now: Instant): CupScores = coroutineScope {
+    val codes = listOf("FAC", "CAR")
+    val keys = codes.flatMap { code -> listOf(now, now.minusSeconds(86400)).map { ESPN_LEAGUE.getValue(code) to espnDate(it) } }.distinct()
+    val boards = keys.map { (league, date) -> async { (league to date) to espnScoreboard(league, date) } }.awaitAll().toMap()
+    val events = ArrayList<Event>()
+    val matches = HashMap<String, Score>()
+    for (code in codes) {
+        val league = ESPN_LEAGUE.getValue(code)
+        for (date in listOf(now, now.minusSeconds(86400)).map(::espnDate).distinct()) {
+            for (match in boards[league to date].orEmpty()) {
+                val id = "espn:$code:${match.id}"
+                val event = Event(id, Sport.FOOTBALL, code, series(code)?.name ?: code, "${match.home} v ${match.away}", "Kick-off",
+                    match.start, 120, "", "confirmed", listOf(match.home, match.away), null, null, null)
+                val status = when (match.state) {
+                    "in" -> if (match.detail.contains("HT", true) || match.detail.contains("Half", true)) "PAUSED" else "IN_PLAY"
+                    "post" -> "FINISHED"
+                    else -> "TIMED"
+                }
+                events += event
+                matches[id] = Score(status, match.homeScore, match.awayScore, null, match.detail, match.id, league)
+            }
+        }
+    }
+    CupScores(events.sortedBy { it.start }, matches)
+}
+
 data class Player(val name: String, val number: String, val position: String)
 data class TeamSheet(val team: String, val formation: String, val starters: List<Player>, val subs: List<Player>)
-data class Goal(val minute: String, val text: String)
-data class MatchSheet(val home: TeamSheet?, val away: TeamSheet?, val goals: List<Goal>)
+data class MatchIncident(val minute: String, val type: String, val text: String)
+data class MatchSheet(val home: TeamSheet?, val away: TeamSheet?, val incidents: List<MatchIncident>)
 
-/** Lineups (once announced, usually about an hour before kick-off) and goals, from ESPN's match summary. */
+/** Lineups (once announced, usually about an hour before kick-off) and key match events, from ESPN's match summary. */
 suspend fun espnSheet(league: String, id: String): MatchSheet = withContext(Dispatchers.IO) {
-    val o = JSONObject(httpGet("https://site.api.espn.com/apis/site/v2/sports/soccer/$league/summary?event=$id"))
+    parseMatchSheet(JSONObject(httpGet("https://site.api.espn.com/apis/site/v2/sports/soccer/$league/summary?event=$id")))
+}
+
+fun parseMatchSheet(o: JSONObject): MatchSheet {
     val rosters = o.optJSONArray("rosters") ?: JSONArray()
     val sheets = (0 until rosters.length()).map { i ->
         val r = rosters.getJSONObject(i)
@@ -132,12 +164,15 @@ suspend fun espnSheet(league: String, id: String): MatchSheet = withContext(Disp
             ps.filter { it.first }.map { it.second }, ps.filter { !it.first }.map { it.second })
     }.toMap()
     val ke = o.optJSONArray("keyEvents") ?: JSONArray()
-    val goals = (0 until ke.length()).map { ke.getJSONObject(it) }.filter { it.optBoolean("scoringPlay") }.map {
-        // "Goal! Arsenal 1, Everton 0. Ezri Konsa (Arsenal) right footed shot..." -> "Ezri Konsa (Arsenal)"
-        val who = it.optString("text").substringAfter(". ", "").substringBefore(")", "").let { w -> if (w.isEmpty()) "" else "$w)" }
-        Goal(it.optJSONObject("clock")?.optString("displayValue").orEmpty(), who.ifEmpty { it.optJSONObject("type")?.optString("text").orEmpty() })
+    val incidents = (0 until ke.length()).map { ke.getJSONObject(it) }.mapNotNull { event ->
+        val type = event.optJSONObject("type")?.optString("text").orEmpty()
+        val scoring = event.optBoolean("scoringPlay")
+        if (!scoring && type !in setOf("Yellow Card", "Red Card", "Substitution")) return@mapNotNull null
+        val text = event.optString("text")
+        MatchIncident(event.optJSONObject("clock")?.optString("displayValue").orEmpty(), type,
+            if (scoring) Live.scorer(text) else text)
     }
-    MatchSheet(sheets["home"]?.takeIf { it.starters.isNotEmpty() }, sheets["away"]?.takeIf { it.starters.isNotEmpty() }, goals)
+    MatchSheet(sheets["home"]?.takeIf { it.starters.isNotEmpty() }, sheets["away"]?.takeIf { it.starters.isNotEmpty() }, incidents)
 }
 
 data class TableRow(val rank: Int, val team: String, val played: String, val gd: String, val points: String)

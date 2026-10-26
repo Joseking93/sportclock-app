@@ -25,4 +25,12 @@ class LiveParseTest {
         assertEquals("Nicolas Jackson", Live.scorer("Goal! Aston Villa 1, Manchester City 0. Nicolas Jackson (Aston Villa) right footed shot from the centre of the box."))
         assertEquals("Marc Guehi (own goal)", Live.scorer("Own Goal by Marc Guehi, Manchester City.  Aston Villa 1, Manchester City 0."))
     }
+
+    @Test fun matchSheetIncludesGoalsCardsAndSubstitutions() {
+        val sheet = parseMatchSheet(o)
+        assertTrue(sheet.home != null && sheet.away != null)
+        assertTrue(sheet.incidents.any { it.type.contains("Goal") && it.text == "Nicolas Jackson" })
+        assertTrue(sheet.incidents.any { it.type == "Yellow Card" })
+        assertTrue(sheet.incidents.any { it.type == "Substitution" })
+    }
 }

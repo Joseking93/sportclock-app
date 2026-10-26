@@ -47,6 +47,8 @@ val SERIES = listOf(
     Series("ENG", "Premier League", Sport.FOOTBALL, Color(0xFFE95FC4)),
     Series("UCL", "Champions League", Sport.FOOTBALL, Color(0xFF5C8DFF)),
     Series("EFL", "Championship", Sport.FOOTBALL, Color(0xFF3FD0C0)),
+    Series("FAC", "FA Cup", Sport.FOOTBALL, Color(0xFF59B987)),
+    Series("CAR", "Carabao Cup", Sport.FOOTBALL, Color(0xFF45A9D1)),
     Series("ESP", "La Liga", Sport.FOOTBALL, Color(0xFFFF8A65)),
     Series("ITA", "Serie A", Sport.FOOTBALL, Color(0xFF3FB8E8)),
     Series("GER", "Bundesliga", Sport.FOOTBALL, Color(0xFFE5484D)),

@@ -65,7 +65,8 @@ data class TeamInfo(val id: String, val league: String, val name: String, val lo
 fun leagueFor(team: String, events: List<Event>): String? {
     if (team in NFL_TEAMS) return "football/nfl"
     val codes = events.filter { team in it.teams }.map { it.code }.distinct()
-    return (codes.firstOrNull { it != "UCL" && it in ESPN_LEAGUE } ?: codes.firstOrNull { it in ESPN_LEAGUE })?.let { "soccer/" + ESPN_LEAGUE[it] }
+    return (codes.firstOrNull { it != "UCL" && it in ESPN_TABLE_CODES } ?: codes.firstOrNull { it in ESPN_TABLE_CODES })
+        ?.let { "soccer/" + ESPN_LEAGUE.getValue(it) }
 }
 
 private val teamIds = HashMap<String, String>()

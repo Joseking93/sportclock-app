@@ -3,6 +3,7 @@ package app.sportclock
 import android.content.Context
 import android.content.SharedPreferences
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
@@ -21,7 +22,13 @@ fun Filter.sport(): Sport? = when (this) { Filter.FOOTBALL -> Sport.FOOTBALL; Fi
 data class Data(val events: List<Event>, val generated: String, val attribution: String, val fetchedAt: Instant?)
 /** A match state as the score source sent it; [detail] is its own wording ("45'", "HT", "FT"). */
 data class Score(val status: String, val home: Int?, val away: Int?, val minute: Int?, val detail: String = "", val espnId: String? = null, val league: String? = null)
-data class Scores(val matches: Map<String, Score>, val fetchedAt: Instant?, val error: String?)
+data class Scores(
+    val matches: Map<String, Score>,
+    val fetchedAt: Instant?,
+    val error: String?,
+    val unmatched: Set<String> = emptySet(),
+    val extraEvents: List<Event> = emptyList(),
+)
 
 /** One card in the swipeable NEXT UP pager: the next event for one thing you follow. */
 data class Hero(val token: String?, val event: Event, val person: Person?)
@@ -68,13 +75,29 @@ object Repo {
     }
 
     /** Football scores for these events, fetched by the phone from ESPN (see Feeds.kt). Keyed by our event id. */
-    suspend fun scores(events: List<Event>): Scores {
-        if (events.isEmpty()) return Scores(emptyMap(), null, null)
-        return runCatching {
+    suspend fun scores(events: List<Event>, includeCups: Boolean = false): Scores {
+        if (events.isEmpty() && !includeCups) return Scores(emptyMap(), null, null)
+        return try {
             val nfl = events.filter { it.code == "NFL" }
-            Scores(espnScores(events.filter { it.code != "NFL" }) + (if (nfl.isEmpty()) emptyMap() else runCatching { Nfl.scores(nfl) }.getOrDefault(emptyMap())),
-                Instant.now(), null)
-        }.getOrElse { Scores(emptyMap(), null, "network") }
+            val matches = espnScores(events.filter { it.code != "NFL" }) + (if (nfl.isEmpty()) emptyMap() else Nfl.scores(nfl))
+            val cups = if (includeCups) {
+                try {
+                    espnCupScores(Instant.now())
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    null
+                }
+            } else CupScores(emptyList(), emptyMap())
+            val error = if (includeCups && cups == null) "Couldn’t load FA Cup or Carabao Cup scores. Try refreshing." else null
+            val supported = events.filter { it.code == "NFL" || ESPN_LEAGUE.containsKey(it.code) }
+            Scores(matches + cups?.matches.orEmpty(), Instant.now(), error, supported.map { it.id }.filterNot(matches::containsKey).toSet(),
+                cups?.events.orEmpty())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            Scores(emptyMap(), null, "Could not update scores. Check your connection and try again.")
+        }
     }
 
     /* ---------- what Jose chose ---------- */
