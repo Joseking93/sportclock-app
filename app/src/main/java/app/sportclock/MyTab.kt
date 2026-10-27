@@ -32,7 +32,7 @@ import java.time.Instant
  */
 
 internal val LEAGUE_SHORT = mapOf("MGP" to "MotoGP", "INDY" to "IndyCar", "NAS" to "NASCAR", "UFC" to "UFC", "BOX" to "Boxing", "ENG" to "PL", "ESP" to "La Liga", "ITA" to "Serie A", "GER" to "Bundesliga", "FRA" to "Ligue 1",
-    "UCL" to "UCL", "EFL" to "EFL", "NED" to "Eredivisie", "POR" to "Liga PT")
+    "UCL" to "UCL", "EFL" to "EFL", "FACUP" to "FA Cup", "CARABAO" to "Carabao", "NED" to "Eredivisie", "POR" to "Liga PT")
 
 fun myTabLabel(v: String) = when {
     v == "F1" -> "F1"; v == "NFL" -> "NFL"
@@ -47,7 +47,7 @@ fun MyTabIcon(v: String, events: List<Event>) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     when {
         v == "F1" || v == "NFL" -> LogoChip(v, 26.dp)
-        v.startsWith("c:") && logoFor(v.substring(2)) != null -> LogoChip(v.substring(2), 26.dp)
+        v.startsWith("c:") && (logoFor(v.substring(2)) != null || cupLogoUrl(v.substring(2)) != null) -> LogoChip(v.substring(2), 26.dp)
         v.startsWith("t:") -> {
             val team = v.substring(2)
             var logo by remember(team) { mutableStateOf(Repo.prefs(ctx).getString("logo:$team", null)) }
@@ -107,16 +107,36 @@ private fun LeagueHub(code: String, st: AppState, events: List<Event>, now: Inst
     val games = remember(events, code, now.epochSecond / 600) {
         events.filter { it.code == code && it.start.isAfter(now.minusSeconds(3 * 86400)) && it.start.isBefore(now.plusSeconds(10 * 86400)) }
     }
+    val cupDraw = remember(events, code) {
+        events.filter { it.code == code && it.start.isAfter(Instant.now().minusSeconds(3 * 86400)) }
+            .groupBy { it.session.ifBlank { "Cup ties" } }.entries.sortedBy { (_, ties) -> ties.minOf { it.start } }
+    }
     // the table names clubs ESPN's way ("AFC Bournemouth"); open the page under our own name when we know it
     val ours = remember(events, code) { events.filter { it.code == code }.flatMap { it.teams }.distinct() }
     Column(Modifier.fillMaxSize()) {
         HubHeader(series(code)?.name ?: code, "${games.count { !it.started(now) }} matches in the next 10 days", code, onChange)
-        Segments(listOf("Matches", "Table"), seg) { seg = it }
+        Segments(if (code in CUP_CODES) listOf("Matches", "Draw") else listOf("Matches", "Table"), seg) { seg = it }
         Spacer(Modifier.height(8.dp))
         if (seg == 0) LazyColumn(Modifier.fillMaxSize()) {
-            if (games.isEmpty()) item { Text("No matches in the last three days or the next ten.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp)) }
+            if (games.isEmpty()) item {
+                Text(if (code in CUP_CODES) "No matches in the next 10 days. Open Draw for the confirmed round schedule."
+                    else "No matches in the last three days or the next ten.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp))
+            }
             dayGroups(games, now, scores, onOpen)
             item { Spacer(Modifier.height(24.dp)) }
+        } else if (code in CUP_CODES) LazyColumn(Modifier.fillMaxSize()) {
+            if (cupDraw.isEmpty()) item { Text("No confirmed ties yet.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp)) }
+            cupDraw.forEach { (round, ties) ->
+                item(key = "cup-round:$round") { SectionLabel("$round · draw") }
+                items(ties, key = { it.id }) { event ->
+                    EventRow(event, now, scores[event.id], showDay = true, onClick = { onOpen(event) })
+                    Spacer(Modifier.height(4.dp))
+                }
+            }
+            item {
+                Text("Confirmed ties and kick-off times · ESPN", color = C.fg3, fontFamily = Inter, fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp))
+            }
         } else TablesView(st, only = code, onTeam = { espn -> onTeam(ours.firstOrNull { sameTeam(it, espn) } ?: espn) })
     }
 }
@@ -179,7 +199,7 @@ private fun NflStandings(onTeam: (String) -> Unit) {
 fun MyTabChoices(current: String?, follows: Set<String>, events: List<Event>, onPick: (String) -> Unit, modifier: Modifier = Modifier) {
     var query by remember { mutableStateOf("") }
     val teams = remember(events) { (events.filter { it.sport == Sport.FOOTBALL }.flatMap { it.teams } + NFL_TEAMS.keys).distinct().sorted() }
-    val leagues = listOf("ENG", "ESP", "ITA", "GER", "FRA", "UCL", "EFL", "NED", "POR")
+    val leagues = listOf("ENG", "ESP", "ITA", "GER", "FRA", "UCL", "EFL", "FACUP", "CARABAO", "NED", "POR")
     LazyColumn(modifier.imePadding()) {
         item {
             OutlinedTextField(query, { query = it }, placeholder = { Text("Find a team or league (e.g. United, Bundesliga)", fontFamily = Inter) }, singleLine = true,
@@ -190,16 +210,16 @@ fun MyTabChoices(current: String?, follows: Set<String>, events: List<Event>, on
             val q = query.trim()
             val ls = (SPORTS + leagues).filter { (series(it)?.name ?: it).contains(q, ignoreCase = true) || (LEAGUE_SHORT[it] ?: "").contains(q, ignoreCase = true) }
             val ts = teams.filter { it.contains(q, ignoreCase = true) || short(it).contains(q, ignoreCase = true) }.take(12)
-            items(ls, key = { "ql$it" }) { c -> PickRow(series(c)?.name ?: c, SPORT_LINE[c] ?: "A whole league", c.takeIf { logoFor(it) != null }, current == "c:$c") { onPick("c:$c") } }
+            items(ls, key = { "ql$it" }) { c -> PickRow(series(c)?.name ?: c, SPORT_LINE[c] ?: "A whole league", c.takeIf { logoFor(it) != null || cupLogoUrl(it) != null }, current == "c:$c") { onPick("c:$c") } }
             items(ts, key = { "qt$it" }) { t -> PickRow(t, if (t in NFL_TEAMS) "NFL team" else "Football team", null, current == "t:$t") { onPick("t:$t") } }
             if (ls.isEmpty() && ts.isEmpty()) item { Text("Nothing called \"$q\". Try part of the name, e.g. \"United\".", color = C.fg2, fontFamily = Inter,
                 modifier = Modifier.padding(20.dp)) }
         } else {
             item { PickRow("Formula 1", "Weekend, live timing, standings, season", "F1", current == "F1") { onPick("F1") } }
             item { PickRow("NFL", "Games, scores and standings", "NFL", current == "NFL") { onPick("NFL") } }
-            items(SPORTS, key = { "s$it" }) { c -> PickRow(series(c)?.name ?: c, SPORT_LINE[c].orEmpty(), c.takeIf { logoFor(it) != null }, current == "c:$c") { onPick("c:$c") } }
+            items(SPORTS, key = { "s$it" }) { c -> PickRow(series(c)?.name ?: c, SPORT_LINE[c].orEmpty(), c.takeIf { logoFor(it) != null || cupLogoUrl(it) != null }, current == "c:$c") { onPick("c:$c") } }
             item { SectionLabel("A whole league") }
-            items(leagues, key = { "l$it" }) { c -> PickRow(series(c)?.name ?: c, "Matches and the table", c, current == "c:$c") { onPick("c:$c") } }
+            items(leagues, key = { "l$it" }) { c -> PickRow(series(c)?.name ?: c, if (c in CUP_CODES) "Fixtures, rounds and scores" else "Matches and the table", c.takeIf { logoFor(it) != null || cupLogoUrl(it) != null }, current == "c:$c") { onPick("c:$c") } }
             val mine = follows.filter { it.startsWith("t:") }.sorted()
             if (mine.isNotEmpty()) {
                 item { SectionLabel("Teams you follow") }

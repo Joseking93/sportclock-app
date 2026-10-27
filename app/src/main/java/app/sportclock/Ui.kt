@@ -121,7 +121,8 @@ private fun heroTexts(h: Hero, now: Instant): Triple<String, String, String> {
             val homeAway = if (e.teams.firstOrNull() == me) "v" else "at"
             Triple(short(me), "$homeAway ${short(other)}", "${series(e.code)?.name ?: e.comp} · $day")
         }
-        e.sport == Sport.FOOTBALL -> Triple(series(e.code)?.name ?: e.comp, e.line1(), day)
+        e.        sport == Sport.FOOTBALL -> Triple(series(e.code)?.name ?: e.comp, e.line1(),
+            if (e.code in CUP_CODES) "$day · ${e.session}" else day)
         e.code == "UFC" || e.code == "BOX" -> Triple(e.comp.ifEmpty { series(e.code)?.name ?: e.code }, sessName(e.session), "${e.title} · $day")
         else -> Triple(series(e.code)?.name ?: e.comp, sessName(e.session), "${e.line2()} · $day")
     }
@@ -163,7 +164,8 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
         if (person == null && look != null) BadgeLogos(look, Modifier.matchParentSize())
 
         // the card grows with its text (large font settings), so the time is never clipped
-        Column(Modifier.padding(start = 20.dp, top = 16.dp, end = 16.dp, bottom = 14.dp)) {
+        val textWidth = if (look != null) Modifier.widthIn(max = 225.dp) else Modifier
+        Column(textWidth.padding(start = 20.dp, top = 16.dp, end = 16.dp, bottom = 14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (pinned) { Icon(Icons.Filled.PushPin, null, Modifier.size(13.dp), tint = C.lime); Spacer(Modifier.width(4.dp)) }
                 Text(if (pinned) "PINNED" else "NEXT UP", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 2.4.sp)
@@ -171,12 +173,15 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 LogoChip(e.code, 26.dp); Spacer(Modifier.width(10.dp))
-                Text(series, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.ExtraBold, fontSize = 25.sp, letterSpacing = (-0.5).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(series, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.ExtraBold,
+                    fontSize = if (e.code in CUP_CODES && look != null) 20.sp else if (e.code in CUP_CODES) 22.sp else 25.sp,
+                    letterSpacing = (-0.5).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(sess, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(meta, color = C.fg2, fontFamily = Inter, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 230.dp))
-            Text(timeText(e), style = Digits, color = C.lime, fontWeight = FontWeight.ExtraBold, fontSize = 80.sp, lineHeight = 80.sp,
-                modifier = Modifier.offset(x = (-3).dp))
+            Text(timeText(e), style = Digits, color = C.lime, fontWeight = FontWeight.ExtraBold,
+                fontSize = if (look != null) 68.sp else 80.sp, lineHeight = if (look != null) 70.sp else 80.sp,
+                maxLines = 1, overflow = TextOverflow.Clip, modifier = Modifier.offset(x = (-3).dp).widthIn(max = 185.dp))
         }
 
         Row(Modifier.align(Alignment.TopEnd).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -288,7 +293,17 @@ fun EventRow(e: Event, now: Instant, score: Score? = null, highlight: Boolean = 
     ) {
         Column(Modifier.width(80.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(if (showScore) "${score!!.home}–${score.away}" else timeText(e), style = Digits, fontSize = 24.sp, color = if (highlight) C.lime else C.fg)
-            val cue = if (showScore) when (score!!.status) { "FINISHED" -> "FT"; "PAUSED" -> "HT"; else -> score.detail.takeIf { it.isNotEmpty() && it.length <= 7 } ?: "Live" }
+            val cue = if (showScore) when (score!!.status) {
+                "FINISHED" -> when {
+                    score.detail.contains("pen", true) -> if (score.shootoutHome != null && score.shootoutAway != null)
+                        "Pens ${score.shootoutHome}–${score.shootoutAway}" else "Pens"
+                    score.detail.contains("AET", true) -> "AET"
+                    e.code in CUP_CODES && score.home == score.away -> "Draw"
+                    else -> "FT"
+                }
+                "PAUSED" -> "HT"
+                else -> score.detail.takeIf { it.isNotEmpty() && it.length <= 7 } ?: "Live"
+            }
                 else tonightCue(e, now) ?: dayWord(e.start, now).takeIf { showDay && !e.isTbc && localDate(e.start) != localDate(now) }   // lists without day headings say the day
             cue?.let { Text(it, color = C.lime, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, lineHeight = 13.sp) }
         }
@@ -300,7 +315,7 @@ fun EventRow(e: Event, now: Instant, score: Score? = null, highlight: Boolean = 
             }
             Text(e.line2(), color = C.fg2, fontFamily = Inter, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 28.dp))
         }
-        val pill = if (showScore && score!!.status == "FINISHED") null else pillFor(e, now)
+        val pill = if (showScore && score!!.status == "FINISHED") null else pillFor(e, now).takeUnless { e.code in CUP_CODES && it is Pill.In }
         val bell = AlertChoices.on && !e.isTbc && e.start.isAfter(now)
         pill?.let { Box(Modifier.padding(end = if (bell) 0.dp else 12.dp)) { PillView(it) } }
         if (bell) AlertBell(e)

@@ -5,6 +5,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -41,11 +43,70 @@ internal fun httpGet(url: String): String {
 /* ======================= ESPN football ======================= */
 
 val ESPN_LEAGUE = mapOf("ENG" to "eng.1", "EFL" to "eng.2", "ESP" to "esp.1", "ITA" to "ita.1", "GER" to "ger.1",
-    "FRA" to "fra.1", "NED" to "ned.1", "POR" to "por.1", "UCL" to "uefa.champions")
+    "FRA" to "fra.1", "NED" to "ned.1", "POR" to "por.1", "UCL" to "uefa.champions",
+    "FACUP" to "eng.fa", "CARABAO" to "eng.league_cup")
+
+private val CUP_LEAGUES = mapOf("FACUP" to "eng.fa", "CARABAO" to "eng.league_cup")
+
+fun parseCupEvents(json: String, code: String): List<Event> {
+    val league = series(code) ?: return emptyList()
+    val events = JSONObject(json).optJSONArray("events") ?: return emptyList()
+    return (0 until events.length()).mapNotNull { i ->
+        runCatching {
+            val e = events.getJSONObject(i)
+            val comp = e.getJSONArray("competitions").getJSONObject(0)
+            val teams = comp.getJSONArray("competitors")
+            val home = (0 until teams.length()).map { teams.getJSONObject(it) }.first { it.optString("homeAway") == "home" }
+            val away = (0 until teams.length()).map { teams.getJSONObject(it) }.first { it.optString("homeAway") == "away" }
+            val stage = e.optJSONObject("season")?.optString("slug").orEmpty()
+                .replace('-', ' ').split(' ').filter(String::isNotBlank)
+                .joinToString(" ") { it.replaceFirstChar { c -> c.titlecase(Locale.ROOT) } }
+            val start = e.optString("date").let { if (it.length == 17) it.dropLast(1) + ":00Z" else it }
+            Event(
+                id = "${code}|${e.getString("id")}", sport = Sport.FOOTBALL, code = code, comp = league.name,
+                title = e.optString("name"), session = stage.ifEmpty { "Cup match" }, start = Instant.parse(start),
+                mins = 120, venue = comp.optJSONObject("venue")?.optString("fullName").orEmpty(), status = "confirmed",
+                teams = listOf(home.getJSONObject("team").optString("displayName"), away.getJSONObject("team").optString("displayName")),
+                window = null, fdid = null, movedFrom = null,
+            )
+        }.getOrNull()
+    }
+}
+
+object CupSchedule {
+    private val cache = HashMap<Int, Pair<Long, List<Event>>>()
+    private val lock = Mutex()
+
+    suspend fun events(now: Instant): List<Event> = coroutineScope {
+        val firstYear = now.atZone(ZoneId.systemDefault()).year
+        (firstYear..firstYear + 1).map { year ->
+            async {
+                runCatching { year(year) }
+                    .onFailure { Diag.log("cup schedule $year: $it") }
+                    .getOrDefault(emptyList())
+            }
+        }.awaitAll().flatten().filter { it.start.isAfter(now.minusSeconds(14 * 86400L)) }.distinctBy { it.id }
+    }
+
+    private suspend fun year(year: Int): List<Event> = lock.withLock {
+        cache[year]?.takeIf { System.currentTimeMillis() - it.first < 30 * 60_000L }?.second?.let { return@withLock it }
+        val fresh = coroutineScope {
+            CUP_LEAGUES.map { (code, league) ->
+                async {
+                    val url = "https://site.api.espn.com/apis/site/v2/sports/soccer/$league/scoreboard?dates=$year&limit=1000"
+                    code to parseCupEvents(httpGet(url), code)
+                }
+            }.awaitAll().flatMap { it.second }
+        }
+        cache[year] = System.currentTimeMillis() to fresh
+        fresh
+    }
+}
 
 data class EspnMatch(val id: String, val league: String, val start: Instant, val home: String, val away: String,
                      val homeScore: Int?, val awayScore: Int?, val state: String, val detail: String,
-                     val homeSide: TeamSide? = null, val awaySide: TeamSide? = null)
+                     val homeSide: TeamSide? = null, val awaySide: TeamSide? = null,
+                     val homeShootout: Int? = null, val awayShootout: Int? = null)
 /** A club as ESPN draws it: badge URL and its two colours ("da020e"), for the NEXT UP card. */
 data class TeamSide(val id: String, val name: String, val logo: String, val color: String, val alt: String)
 private fun side(c: JSONObject) = c.getJSONObject("team").let { t ->
@@ -72,7 +133,7 @@ suspend fun espnScoreboard(league: String, date: String): List<EspnMatch> = with
             EspnMatch(e.getString("id"), league, Instant.parse(e.getString("date").let { if (it.length == 17) it.dropLast(1) + ":00Z" else it }),
                 h.getJSONObject("team").optString("displayName"), a.getJSONObject("team").optString("displayName"),
                 if (state == "pre") null else h.optString("score").toIntOrNull(), if (state == "pre") null else a.optString("score").toIntOrNull(),
-                state, st.optString("shortDetail"), side(h), side(a))
+                state, st.optString("shortDetail"), side(h), side(a), h.optString("shootoutScore").toIntOrNull(), a.optString("shootoutScore").toIntOrNull())
         }.getOrNull()
     }
 }
@@ -107,7 +168,7 @@ suspend fun espnScores(events: List<Event>): Map<String, Score> = coroutineScope
     for (e in wanted) {
         val m = matchEspn(e, boards[ESPN_LEAGUE.getValue(e.code) to espnDate(e.start)].orEmpty()) ?: continue
         val status = when (m.state) { "in" -> if (m.detail.contains("HT", true) || m.detail.contains("Half", true)) "PAUSED" else "IN_PLAY"; "post" -> "FINISHED"; else -> "TIMED" }
-        out[e.id] = Score(status, m.homeScore, m.awayScore, null, m.detail, m.id, m.league)
+        out[e.id] = Score(status, m.homeScore, m.awayScore, null, m.detail, m.id, m.league, m.homeShootout, m.awayShootout)
     }
     out
 }

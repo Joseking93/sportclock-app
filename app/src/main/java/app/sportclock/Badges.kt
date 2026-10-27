@@ -129,6 +129,8 @@ fun BadgeBackdrop(look: MatchLook, modifier: Modifier = Modifier) {
 
 @Composable
 fun BadgeLogos(look: MatchLook, modifier: Modifier = Modifier) = Box(modifier) {
-    AsyncImage(look.away.logo, look.away.name, Modifier.align(Alignment.TopEnd).padding(top = 40.dp, end = 34.dp).size(64.dp))
-    AsyncImage(look.home.logo, look.home.name, Modifier.align(Alignment.TopEnd).padding(top = 40.dp, end = 138.dp).size(64.dp))
+    Row(Modifier.align(Alignment.TopEnd).padding(top = 52.dp, end = 24.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        AsyncImage(look.home.logo, look.home.name, Modifier.size(44.dp))
+        AsyncImage(look.away.logo, look.away.name, Modifier.size(44.dp))
+    }
 }

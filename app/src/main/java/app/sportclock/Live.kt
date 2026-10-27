@@ -39,7 +39,7 @@ object Live {
     private fun inF1Window(e: Event, now: Instant) = !now.isBefore(e.start.minusSeconds(F1_BEFORE)) && !now.isAfter(e.start.plusSeconds(AFTER))
 
     fun watched(e: Event, follows: Set<String>) = e.sport == Sport.FOOTBALL && e.teams.size == 2 && !e.isTbc && ESPN_LEAGUE.containsKey(e.code) &&
-        (e.teams.any { "t:$it" in follows } || AlertChoices.wants(e))
+        (follows.any { it.startsWith("t:") && tokenMatches(it, e) } || AlertChoices.wants(e))
     private fun inWindow(e: Event, now: Instant) = !now.isBefore(e.start.minusSeconds(BEFORE)) && !now.isAfter(e.start.plusSeconds(AFTER))
     private fun wanted(ctx: Context) = Settings.alertsOn(ctx) && (Settings.liveAlerts(ctx) || Settings.lineupAlerts(ctx) || Settings.f1Alerts(ctx))
 
@@ -53,7 +53,7 @@ object Live {
         AlertChoices.load(ctx)
         val now = Instant.now(); val st = state(ctx)
         val footballOn = Settings.liveAlerts(ctx) || Settings.lineupAlerts(ctx)
-        val football: List<Instant> = events.filter { footballOn && watched(it, AlertChoices.follows) && it.start.plusSeconds(AFTER).isAfter(now) && it.start.isBefore(now.plusSeconds(8 * 86400)) }
+        val football: List<Instant> = events.filter { footballOn && watched(it, AlertChoices.follows) && it.start.plusSeconds(AFTER).isAfter(now) }
             .filter { st.optJSONObject(alertKey(it))?.optBoolean("ft") != true }          // a finished match needs no more looks
             .map { it.start.minusSeconds(BEFORE) }
         val nextF1 = if (!Settings.f1Alerts(ctx)) emptyList() else events
