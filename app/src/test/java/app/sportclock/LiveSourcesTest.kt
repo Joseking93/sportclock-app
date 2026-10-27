@@ -95,4 +95,15 @@ class LiveSourcesTest {
         val st = Nfl.standings(); println("Standings: ${st.size} divisions, ${st.first().first}: " + st.first().second.joinToString { "${short(it.team)} ${it.wins}-${it.losses}" })
         assertTrue(t.results.isNotEmpty() && t.fixtures.isNotEmpty() && st.size == 8)
     }
+
+    @Test fun f1RaceWeek() = runBlocking {
+        assumeTrue(live)
+        val fia = fiaDocs()!!
+        println("FIA: ${fia.name} · ${fia.docs.size} docs; stewards: " + fia.docs.filter { it.stewards }.take(4).joinToString(" | ") { "${it.number} ${it.title} ${it.at}" })
+        assertTrue(fia.docs.size > 10 && fia.docs.all { it.url.endsWith(".pdf") })
+        val t = titleFight()!!
+        println("Title (${t.asOf}): ${t.leader.name} ${t.leader.points}; " + t.rest.take(3).joinToString { "${it.name} -${it.behind}${if (it.alive) "" else " (out)"}" } +
+            " · ${t.racesLeft} races, ${t.sprintsLeft} sprints, ${t.available} pts left · ${t.clinchNote}")
+        assertTrue(t.available > 0)
+    }
 }

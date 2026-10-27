@@ -26,7 +26,18 @@ import java.util.Locale
  * Polling stays light: scores only while a match is on, lineups from an hour before kick-off.
  */
 
-private const val UA = "SportClock/2.13 (personal Android app)"
+private const val UA = "SportClock/2.14 (personal Android app)"
+
+/** Like [httpGet] but with a given User-Agent, for sites that serve browsers only (the FIA). */
+internal fun httpGetAs(url: String, ua: String): String {
+    val c = URL(url).openConnection() as HttpURLConnection
+    c.connectTimeout = 10_000; c.readTimeout = 20_000
+    c.setRequestProperty("User-Agent", ua)
+    try {
+        if (c.responseCode != 200) error("HTTP ${c.responseCode}")
+        return c.inputStream.bufferedReader().readText()
+    } finally { c.disconnect() }
+}
 
 internal fun httpGet(url: String): String {
     val c = URL(url).openConnection() as HttpURLConnection
@@ -210,7 +221,7 @@ suspend fun news(follows: Set<String>): List<Story> = coroutineScope {
         .awaitAll().flatten().distinctBy { it.link.substringBefore("?") }.sortedByDescending { it.at ?: Instant.EPOCH }.take(60)
 }
 
-private suspend fun rss(url: String, tag: String): List<Story> = withContext(Dispatchers.IO) {
+internal suspend fun rss(url: String, tag: String): List<Story> = withContext(Dispatchers.IO) {
     val p = Xml.newPullParser().apply { setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false); setInput(httpGet(url).reader()) }
     val out = ArrayList<Story>()
     var inItem = false; var title = ""; var link = ""; var img: String? = null; var date: Instant? = null
@@ -222,6 +233,8 @@ private suspend fun rss(url: String, tag: String): List<Story> = withContext(Dis
                 "link" -> if (inItem) link = p.nextText().trim()
                 "pubDate" -> if (inItem) date = runCatching { ZonedDateTime.parse(p.nextText().trim(), RFC1123).toInstant() }.getOrNull()
                 "media:thumbnail" -> if (inItem) img = p.getAttributeValue(null, "url")?.replace("/240/", "/480/")
+                "enclosure", "media:content" -> if (inItem && img == null) img = p.getAttributeValue(null, "url")?.takeIf { u ->
+                    p.getAttributeValue(null, "type")?.startsWith("image") != false }
             }
             XmlPullParser.END_TAG -> if (p.name == "item" && inItem) { inItem = false; if (title.isNotEmpty() && link.isNotEmpty()) out += Story(title, link, img, date, tag) }
         }

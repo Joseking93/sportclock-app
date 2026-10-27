@@ -202,6 +202,13 @@ object Live {
             val top = f.lines.filter { it.pos in 1..3 }.joinToString(" · ") { "${it.pos} ${f.tla(it.number)}" }
             notify(ctx, GOALS, code + 33, "🏁 Chequered flag · $gp ${f.session}", if (f.racing) top else "Pole: ${f.lines.firstOrNull()?.let { f.tla(it.number) } ?: ""} · $top", "F1")
         }
+        // stewards' penalties, from race control ("FIA STEWARDS: 5 SECOND TIME PENALTY FOR CAR 63 (RUS) ...")
+        val seenRc = s.optInt("rc", -1)
+        if (!quiet && !first && seenRc >= 0) f.messages.drop(seenRc).filter { it.message.contains("PENALTY") && !it.message.contains("NO FURTHER") }.forEach { m ->
+            notify(ctx, GOALS, code + 50 + (m.message.hashCode() and 0xffff), "⚖️ Penalty · $gp ${f.session}", m.message.removePrefix("FIA STEWARDS: ").lowercase()
+                .replaceFirstChar { it.uppercase() }, "F1")
+        }
+        s.put("rc", f.messages.size)
         s.put("ts", f.track).put("lead", leader).put("out", org.json.JSONArray(out + nowOut))
         if (f.over) s.put("ft", true)
         return when { f.live -> "in"; f.over -> "post"; else -> null }

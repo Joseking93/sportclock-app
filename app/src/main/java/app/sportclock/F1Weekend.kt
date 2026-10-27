@@ -118,7 +118,7 @@ fun weatherWord(code: Int) = when (code) {
 /* ---------- the season ---------- */
 
 data class SeasonRace(val round: Int, val name: String, val start: Instant?, val circuit: String, val locality: String, val country: String,
-                      val winner: String?, val winnerTeam: String?)
+                      val winner: String?, val winnerTeam: String?, val sprint: Boolean = false)
 
 /** Every Grand Prix of the season from Jolpica, with the winner of each one already run. */
 suspend fun season(year: Int): List<SeasonRace> {
@@ -134,6 +134,6 @@ suspend fun season(year: Int): List<SeasonRace> {
         val c = r.getJSONObject("Circuit"); val loc = c.optJSONObject("Location") ?: JSONObject()
         val start = runCatching { Instant.parse(r.optString("date") + "T" + r.optString("time", "12:00:00Z")) }.getOrNull()
         SeasonRace(r.optInt("round"), r.optString("raceName"), start, c.optString("circuitName"), loc.optString("locality"), loc.optString("country"),
-            winners[r.optInt("round")]?.first, winners[r.optInt("round")]?.second)
+            winners[r.optInt("round")]?.first, winners[r.optInt("round")]?.second, r.has("Sprint"))
     }
 }

@@ -179,7 +179,7 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
                 }
                 page == "update" -> UpdateScreen(onBack = { back(); updateWaiting = Updater.waiting(ctx) })
                 page == "report" -> ReportScreen(onBack = { back() })
-                page == "f1live" || page?.startsWith("upgrades:") == true -> F1Page(page!!, onBack = { back() })
+                page == "f1live" || page == "f1news" || page?.startsWith("upgrades:") == true -> F1Page(page!!, onBack = { back() })
                 page?.startsWith("team:") == true -> TeamScreen(page!!.removePrefix("team:"), d?.events.orEmpty(), now, scores.matches,
                     onBack = { back() }, onOpen = { detail = it })
                 d == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = C.lime) }

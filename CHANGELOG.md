@@ -2,7 +2,18 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
-## 2.13.1 (27 Oct 2026)
+## 2.14 (27 Oct 2026)
+- **F1 Live goes deeper.** The tabs now scroll: Timing, Map, Radio, Strategy, Laps, Speeds, Control, Pits, Upgrades.
+  - **Sector colours in the timing tower:** purple for the session's best, green for a driver's own best, yellow otherwise, with the mini-sectors filling in while a sector is still running.
+  - **Team radio:** the actual clips from the session, newest first. Tap to listen.
+  - **Strategy:** every driver's tyre stints as coloured bars, with compound and laps. Paler means a used set.
+  - **Lap chart:** each car's position at the end of every lap, in team colours. Top 10 or everyone.
+  - **Speeds:** the fastest laps and the speed trap of the session.
+- **Race week on the weekend page** (F1 tab → Weekend, or tap the current Grand Prix):
+  - **Title fight:** the top of the standings, the gaps, who can still win, the points still available, and what the leader needs to clinch at the next round.
+  - **Stewards and FIA:** the FIA's documents for the Grand Prix, with penalties and decisions highlighted. Tap one to open the PDF.
+  - **Latest F1 news** from F1.com, BBC Sport, Autosport, Motorsport.com and RaceFans, with an All news page.
+- **Penalty alerts:** with F1 live alerts on, you get a notification when the stewards hand out a penalty in a session you follow.
 - **The countdown ring says days once it's more than a day away:** "3d 10h" instead of "82:55:37". The ticking hours, minutes and seconds take over for the final 24 hours.
 
 ## 2.13 (25 Oct 2026)

@@ -32,12 +32,26 @@ data class F1Line(val number: String, val pos: Int, val gap: String, val interva
 data class F1Msg(val utc: String, val category: String, val flag: String, val message: String, val sector: Int?, val lap: Int?)
 data class F1Pit(val number: String, val lap: String, val duration: String)
 data class F1Weather(val air: String, val track: String, val rain: Boolean, val wind: String, val humidity: String)
+/** One sector: its time, whether it's the session's best (purple) or the driver's (green), and its mini-sector colours. */
+data class F1Sector(val value: String, val overall: Boolean, val personal: Boolean, val segments: List<Int>)
+data class F1Stint(val compound: String, val new: Boolean, val laps: Int)
+data class F1Radio(val at: Instant?, val number: String, val url: String)
+data class F1Best(val number: String, val value: String, val pos: Int)
 data class F1Snapshot(
     val meeting: String, val session: String, val type: String, val start: Instant?, val circuitKey: Int?, val year: Int,
     val status: String,                // Inactive | Started | Aborted | Finished | Finalised | Ends
     val track: String,                 // 1 green, 2 yellow, 4 safety car, 5 red, 6 VSC, 7 VSC ending
     val lap: Int?, val totalLaps: Int?,
     val drivers: Map<String, F1Driver>, val lines: List<F1Line>, val messages: List<F1Msg>, val pits: List<F1Pit>, val weather: F1Weather?,
+    val sectors: Map<String, List<F1Sector>> = emptyMap(),
+    /** Speed-trap speed (km/h) per car, and whose is the session's best. */
+    val trap: Map<String, Int> = emptyMap(),
+    /** Position at the end of each lap, per car: the lap chart. */
+    val laps: Map<String, List<Int>> = emptyMap(),
+    val stints: Map<String, List<F1Stint>> = emptyMap(),
+    val radio: List<F1Radio> = emptyList(),
+    val bestLaps: List<F1Best> = emptyList(),
+    val topSpeeds: List<F1Best> = emptyList(),
 ) {
     val live get() = status == "Started" || status == "Aborted"
     val over get() = status == "Finished" || status == "Finalised" || status == "Ends"
@@ -53,7 +67,7 @@ fun trackWord(code: String) = when (code) {
 private const val SR = "https://livetiming.formula1.com/signalrcore"
 private const val RS = "\u001e"
 private val TOPICS = listOf("SessionInfo", "SessionStatus", "TrackStatus", "LapCount", "DriverList", "TimingData", "TimingAppData",
-    "RaceControlMessages", "WeatherData", "PitLaneTimeCollection")
+    "RaceControlMessages", "WeatherData", "PitLaneTimeCollection", "TeamRadio", "TimingStats", "LapSeries", "TyreStintSeries")
 
 /** One HTTP call that keeps the load balancer's cookies, which the long-polling transport needs on every request. */
 private class SrConn {
@@ -142,10 +156,39 @@ internal fun parseF1(r: JSONObject): F1Snapshot {
     val w = r.optJSONObject("WeatherData")?.let { F1Weather(it.optString("AirTemp"), it.optString("TrackTemp"), it.optString("Rainfall") == "1",
         it.optString("WindSpeed"), it.optString("Humidity")) }
     val lc = r.optJSONObject("LapCount")
+    val timing = r.optJSONObject("TimingData")?.optJSONObject("Lines").entries()
+    val sectors = timing.associate { (n, l) ->
+        n to l.anyArray("Sectors").map { sc ->
+            F1Sector(sc.optString("Value"), sc.optBoolean("OverallFastest"), sc.optBoolean("PersonalFastest"),
+                sc.anyArray("Segments").map { it.optInt("Status") })
+        }
+    }
+    val trap = timing.mapNotNull { (n, l) -> l.optJSONObject("Speeds")?.optJSONObject("ST")?.optString("Value")?.toIntOrNull()?.let { n to it } }.toMap()
+    val laps = r.optJSONObject("LapSeries").entries().associate { (n, l) ->
+        n to (l.optJSONArray("LapPosition")?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).toIntOrNull() } } ?: emptyList())
+    }
+    val stintSeries = r.optJSONObject("TyreStintSeries")?.optJSONObject("Stints")
+    val stints = (stintSeries?.keys()?.asSequence()?.toList() ?: emptyList()).associateWith { n ->
+        val a = stintSeries!!.optJSONArray(n)
+        (0 until (a?.length() ?: 0)).mapNotNull { a!!.optJSONObject(it) }.map { F1Stint(it.optString("Compound"), it.optString("New") == "true", it.optInt("TotalLaps")) }
+    }.ifEmpty {
+        r.optJSONObject("TimingAppData")?.optJSONObject("Lines").entries().associate { (n, l) ->
+            n to l.anyArray("Stints").map { F1Stint(it.optString("Compound"), it.optString("New") == "true", it.optInt("TotalLaps")) }
+        }
+    }
+    val base = "https://livetiming.formula1.com/static/" + si.optString("Path")
+    val radio = r.optJSONObject("TeamRadio")?.anyArray("Captures").orEmpty().map {
+        F1Radio(runCatching { Instant.parse(it.optString("Utc").let { u -> if (u.endsWith("Z")) u else u + "Z" }) }.getOrNull(), it.optString("RacingNumber"), base + it.optString("Path"))
+    }.sortedByDescending { it.at }
+    val stats = r.optJSONObject("TimingStats")?.optJSONObject("Lines").entries()
+    val bestLaps = stats.mapNotNull { (n, l) -> l.optJSONObject("PersonalBestLapTime")?.let { b ->
+        b.optString("Value").takeIf { it.isNotBlank() }?.let { F1Best(n, it, b.optInt("Position", 99)) } } }.sortedBy { it.pos }
+    val topSpeeds = stats.mapNotNull { (n, l) -> l.optJSONObject("BestSpeeds")?.optJSONObject("ST")?.let { b ->
+        b.optString("Value").takeIf { it.isNotBlank() }?.let { F1Best(n, it, b.optInt("Position", 99)) } } }.sortedBy { it.pos }
     return F1Snapshot(si.optJSONObject("Meeting")?.optString("Name").orEmpty(), si.optString("Name"), si.optString("Type"), start,
         si.optJSONObject("Meeting")?.optJSONObject("Circuit")?.optInt("Key"), start?.atZone(ZoneOffset.UTC)?.year ?: 0,
         r.optJSONObject("SessionStatus")?.optString("Status").orEmpty(), r.optJSONObject("TrackStatus")?.optString("Status").orEmpty(),
-        lc?.optInt("CurrentLap"), lc?.optInt("TotalLaps"), drivers, lines, msgs, pits, w)
+        lc?.optInt("CurrentLap"), lc?.optInt("TotalLaps"), drivers, lines, msgs, pits, w, sectors, trap, laps, stints, radio, bestLaps, topSpeeds)
 }
 
 /** Marshal sectors under a flag right now, from the race control messages in order: "YELLOW IN TRACK SECTOR 7" until "CLEAR IN TRACK SECTOR 7". */

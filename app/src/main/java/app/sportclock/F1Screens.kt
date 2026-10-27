@@ -88,13 +88,17 @@ fun F1LiveView() {
         else -> Column(Modifier.fillMaxSize()) {
             StatusBanner(s)
             Spacer(Modifier.height(8.dp))
-            Segments(listOf("Timing", "Map", "Control", "Pits", "Upgrades"), tab) { tab = it }
+            ChipTabs(LIVE_TABS, tab) { tab = it }
             Spacer(Modifier.height(6.dp))
-            when (tab) {
-                0 -> TimingTower(s)
-                1 -> TrackMapView(s)
-                2 -> RaceControl(s)
-                3 -> PitStops(s)
+            when (LIVE_TABS[tab.coerceIn(LIVE_TABS.indices)]) {
+                "Timing" -> TimingTower(s)
+                "Map" -> TrackMapView(s)
+                "Radio" -> RadioView(s)
+                "Strategy" -> StrategyView(s)
+                "Laps" -> LapChartView(s)
+                "Speeds" -> SpeedsView(s)
+                "Control" -> RaceControl(s)
+                "Pits" -> PitStops(s)
                 else -> UpgradesView(s)
             }
         }
@@ -128,7 +132,9 @@ private fun TimingTower(s: F1Snapshot) = LazyColumn {
             Text(if (l.pos == 99) "–" else "${l.pos}", Modifier.width(36.dp).padding(start = 8.dp), style = Digits, fontSize = 19.sp, color = if (l.pos == 1) C.lime else C.fg)
             Column(Modifier.weight(1f)) {
                 Text(s.tla(l.number), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text(d?.team.orEmpty(), color = C.fg3, fontFamily = Inter, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val sec = s.sectors[l.number].orEmpty()
+                if (s.live && sec.any { it.value.isNotBlank() || it.segments.isNotEmpty() }) SectorBars(sec)
+                else Text(d?.team.orEmpty(), color = C.fg3, fontFamily = Inter, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             val tag = when { l.retired -> "OUT"; l.stopped -> "STOPPED"; l.inPit -> "PIT"; l.knockedOut -> "KO"; else -> null }
             tag?.let { Text(it, color = if (it == "PIT") C.lime else RED, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(end = 8.dp)) }
@@ -142,7 +148,7 @@ private fun TimingTower(s: F1Snapshot) = LazyColumn {
             }
         }
     }
-    item { F1Note("Live timing from Formula 1. Gaps can lag the TV picture by a few seconds.") }
+    item { F1Note("Live timing from Formula 1. Gaps can lag the TV picture by a few seconds. Sector bars: purple is the session's best, green the driver's own best.") }
 }
 
 @Composable private fun F1Note(t: String) = Text(t, color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp))
@@ -481,6 +487,9 @@ fun F1WeekendView(e: Event, events: List<Event>, now: Instant, onPage: (String) 
 
         if (!trackFirst) Track()
 
+        // race week extras for the Grand Prix that's on now or next: title fight, stewards, news
+        if (remember(e.title, events) { currentGp(events, now)?.title == e.title }) F1RaceWeek(onPage)
+
         Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { onPage("f1live") }) { Text("Live timing", color = C.lime, fontFamily = Inter) }
             OutlinedButton(onClick = { onPage("upgrades:${e.start.atZone(ZoneOffset.UTC).year}:${e.title}") }) { Text("Upgrades", color = C.lime, fontFamily = Inter) }
@@ -576,10 +585,11 @@ private fun SeasonView(events: List<Event>, now: Instant, onOpen: (Event) -> Uni
     }
 }
 
-/** Full-screen pages the weekend sheet opens: F1 Live and the upgrades document. */
+/** Full-screen pages the weekend sheet opens: F1 Live, the news and the upgrades document. */
 @Composable
 fun F1Page(page: String, onBack: () -> Unit) = Column(Modifier.fillMaxSize().statusBarsPadding()) {
     TextButton(onClick = onBack, modifier = Modifier.padding(start = 4.dp, top = 4.dp)) { Text("‹ Back", color = C.lime, fontFamily = Inter) }
     if (page == "f1live") F1LiveView()
+    else if (page == "f1news") F1NewsScreen()
     else page.removePrefix("upgrades:").split(":", limit = 2).let { parts -> UpgradesDoc(parts.getOrElse(1) { "" }, parts[0].toIntOrNull() ?: 2026) }
 }
