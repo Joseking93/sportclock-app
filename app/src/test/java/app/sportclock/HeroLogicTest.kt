@@ -55,5 +55,8 @@ class HeroLogicTest {
         assertEquals("19:00:05", countdown(19 * 3600 + 5))
         assertEquals("00:00", countdown(0))
         assertEquals("5d", countdown(5 * 86400 + 10))
+        assertEquals("3d 10h", countdown(82 * 3600 + 55 * 60 + 37))         // was "82:55:37"
+        assertEquals("1d 1h", countdown(25 * 3600))
+        assertEquals("23:59:59", countdown(86399))
     }
 }

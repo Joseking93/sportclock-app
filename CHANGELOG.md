@@ -2,6 +2,9 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.13.1 (27 Oct 2026)
+- **The countdown ring says days once it's more than a day away:** "3d 10h" instead of "82:55:37". The ticking hours, minutes and seconds take over for the final 24 hours.
+
 ## 2.13 (25 Oct 2026)
 - **Art on every NEXT UP card.** MotoGP, NASCAR, IndyCar, UFC and boxing cards were blank; now they have pictures, your choice in More → Settings → Card art:
   - **Photos:** free-licensed race and fight photos from Wikimedia Commons, credited in About.

@@ -221,7 +221,7 @@ fun Ring(start: Instant, modifier: Modifier = Modifier) {
 fun countdown(secs: Long): String {
     val h = secs / 3600; val m = (secs % 3600) / 60; val s = secs % 60
     return when {
-        secs >= 96 * 3600 -> "${secs / 86400}d"
+        secs >= 86400 -> (secs / 86400).let { d -> val hh = (secs % 86400) / 3600; if (hh == 0L) "${d}d" else "${d}d ${hh}h" }   // over a day: days and hours
         h > 0 -> "%d:%02d:%02d".format(h, m, s)
         else -> "%02d:%02d".format(m, s)
     }
