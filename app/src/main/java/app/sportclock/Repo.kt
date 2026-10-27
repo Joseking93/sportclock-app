@@ -20,7 +20,10 @@ fun Filter.sport(): Sport? = when (this) { Filter.FOOTBALL -> Sport.FOOTBALL; Fi
 
 data class Data(val events: List<Event>, val generated: String, val attribution: String, val fetchedAt: Instant?)
 /** A match state as the score source sent it; [detail] is its own wording ("45'", "HT", "FT"). */
-data class Score(val status: String, val home: Int?, val away: Int?, val minute: Int?, val detail: String = "", val espnId: String? = null, val league: String? = null)
+data class Score(
+    val status: String, val home: Int?, val away: Int?, val minute: Int?, val detail: String = "",
+    val espnId: String? = null, val league: String? = null, val shootoutHome: Int? = null, val shootoutAway: Int? = null,
+)
 data class Scores(val matches: Map<String, Score>, val fetchedAt: Instant?, val error: String?)
 
 /** One card in the swipeable NEXT UP pager: the next event for one thing you follow. */
@@ -47,6 +50,10 @@ object Repo {
         if (Nfl.enabled(ctx)) _data.value?.let { d ->
             val nfl = runCatching { Nfl.events(ctx) }.getOrDefault(emptyList())
             if (nfl.isNotEmpty()) _data.value = d.copy(events = (d.events.filter { it.code != "NFL" } + nfl).sortedBy { it.start })
+        }
+        _data.value?.let { d ->
+            val cups = CupSchedule.events(Instant.now())
+            _data.value = d.copy(events = (d.events.filterNot { it.code in CUP_CODES } + cups).sortedBy { it.start })
         }
         _data.value
     }

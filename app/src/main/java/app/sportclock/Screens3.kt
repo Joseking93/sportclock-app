@@ -141,7 +141,7 @@ fun TeamLinks(e: Event, onTeam: (String) -> Unit) {
 fun LastResults(st: AppState, events: List<Event>, now: Instant, scores: Map<String, Score>, onTeam: (String) -> Unit) {
     val mine = st.follows.filter { it.startsWith("t:") }.map { it.substring(2) }
     val recent = mine.mapNotNull { team ->
-        events.lastOrNull { team in it.teams && it.over(now) && it.end.isAfter(now.minusSeconds(36 * 3600)) }?.let { team to it }
+        events.lastOrNull { tokenMatches("t:$team", it) && it.over(now) && it.end.isAfter(now.minusSeconds(36 * 3600)) }?.let { team to it }
     }.distinctBy { it.second.id }
     recent.forEach { (team, e) ->
         val sc = scores[e.id]?.takeIf { it.status == "FINISHED" && it.home != null }

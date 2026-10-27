@@ -35,8 +35,8 @@ The keystore lives outside the repo (`../sportclock-android/android.keystore`) a
 - `app/src/main/java/app/sportclock/Model.kt`: events, series, time wording, status pills
 - `Repo.kt`: data and scores fetching, follows, favourites, pin, and which NEXT UP cards show
 - `Ui.kt`: hero card, pager, rows; `MainActivity.kt`: screens; `FollowScreen.kt`: Following and Favourites
-- `Feeds.kt`: scores, lineups, goals and tables from ESPN, F1 standings from Jolpica, news from BBC Sport (all fetched by the phone)
-- `Alerts.kt`: "starting soon" alarms, settings, widget redraw timing; `Screens2.kt`: Scores/Tables/F1, News, Settings, lineups
+- `Feeds.kt`: scores, lineups, goals and tables from ESPN, including FA Cup and Carabao Cup fixtures; F1 standings from Jolpica; news from BBC Sport (all fetched by the phone)
+- `Alerts.kt`: "starting soon" alarms, settings, widget redraw timing; `Screens2.kt`: Scores/Tables/F1, News, Settings, lineups with pitch and list views
 - `widget/SportClockWidget.kt`: the home-screen widget
 - `Nfl.kt`: NFL schedule, scores and standings from ESPN, merged into the events; `MyTab.kt`: the customisable fourth tab
 - `F1Weekend.kt`: the F1 weekend page's data (Jolpica calendar and history, OpenF1 circuit keys, Open-Meteo forecast)
@@ -44,6 +44,8 @@ The keystore lives outside the repo (`../sportclock-android/android.keystore`) a
 - `Live.kt`: match-day alerts (lineups, goals, cards, HT, FT, live score); `Results.kt`: form, head-to-head, team pages, racing and UFC results; `Screens3.kt`: their screens
 - `Badges.kt`: club badges, colours and squads from ESPN for football cards; `Diag.kt`: crash catcher and bug reports; `Updater.kt`: in-app updates; `ServiceScreens.kt`: their screens
 - `Photos.kt`: the bundled photo library (generated)
+
+The FA Cup and Carabao Cup tabs include official competition marks, upcoming fixtures and a round-by-round draw. Cup match details show the round, extra-time and penalty information when ESPN provides it. Selecting a cup or following a club adds its matches across competitions to Home; lineups appear in a formation pitch with the full substitutes list once ESPN publishes them.
 
 ## Updates and bug reports
 The app talks to a small service on the website (`functions/api/app` in the `sportclock` repo) because this repo is private:

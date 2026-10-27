@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -31,7 +34,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.drawscope.Stroke
 import coil.compose.AsyncImage
+import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
 
@@ -43,10 +48,24 @@ fun logoFor(code: String): Int? = when (code) {
     "UCL" -> R.drawable.logo_ucl; "UFC" -> R.drawable.logo_ufc; "NFL" -> R.drawable.logo_nfl; else -> null
 }
 
+fun cupLogoUrl(code: String): String? = when (code) {
+    "FACUP" -> "https://a.espncdn.com/i/leaguelogos/soccer/500/40.png"
+    "CARABAO" -> "https://a.espncdn.com/i/leaguelogos/soccer/500/41.png"
+    else -> null
+}
+
 @Composable
 fun LogoChip(code: String, size: Dp = 22.dp) {
     val res = logoFor(code)
-    if (res == null) { Dot(seriesColor(code), (size.value * 0.45f).dp); return }
+    if (res == null) {
+        val url = cupLogoUrl(code)
+        if (url == null) { Dot(seriesColor(code), (size.value * 0.45f).dp); return }
+        Box(Modifier.size(size).clip(RoundedCornerShape(size / 4)).background(Color.White).padding(size / 10),
+            contentAlignment = Alignment.Center) {
+            AsyncImage(url, series(code)?.name, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+        }
+        return
+    }
     Box(Modifier.size(size).clip(RoundedCornerShape(size / 4)).background(Color.White).padding(size / 9), contentAlignment = Alignment.Center) {
         Image(painterResource(res), series(code)?.name, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
     }
@@ -135,8 +154,8 @@ private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOp
 @Composable
 fun TablesView(st: AppState, only: String? = null, onTeam: ((String) -> Unit)? = null) {
     val comps = remember(st.follows) {
-        val followedComps = st.follows.filter { it.startsWith("c:") }.map { it.substring(2) }.filter { it in ESPN_LEAGUE }
-        (listOf("ENG", "UCL") + followedComps + ESPN_LEAGUE.keys).distinct()
+        val followedComps = st.follows.filter { it.startsWith("c:") }.map { it.substring(2) }.filter { it in ESPN_LEAGUE && it !in CUP_CODES }
+        (listOf("ENG", "UCL") + followedComps + ESPN_LEAGUE.keys.filterNot { it in CUP_CODES }).distinct()
     }
     var picked by rememberSaveable { mutableStateOf("ENG") }
     val code = only ?: picked
@@ -403,18 +422,27 @@ fun MatchSheetView(e: Event, score: Score?, now: Instant) {
     var sheet by remember(e.id) { mutableStateOf<MatchSheet?>(null) }
     var looked by remember(e.id) { mutableStateOf(false) }
     val minsToKick = Duration.between(now, e.start).toMinutes()
-    LaunchedEffect(e.id, score?.espnId) {
-        if (minsToKick > 75) return@LaunchedEffect
-        val (lg, id) = (score?.league to score?.espnId).let { (l, i) ->
-            if (l != null && i != null) l to i
-            else ESPN_LEAGUE[e.code]?.let { league -> runCatching { matchEspn(e, espnScoreboard(league, espnDate(e.start))) }.getOrNull()?.let { league to it.id } } ?: (null to null)
+    val inLookupWindow = minsToKick in -180L..75L
+    LaunchedEffect(e.id, score?.espnId, inLookupWindow) {
+        if (!inLookupWindow) return@LaunchedEffect
+        while (true) {
+            val (lg, id) = (score?.league to score?.espnId).let { (l, i) ->
+                if (l != null && i != null) l to i
+                else ESPN_LEAGUE[e.code]?.let { league -> runCatching { matchEspn(e, espnScoreboard(league, espnDate(e.start))) }.getOrNull()?.let { league to it.id } } ?: (null to null)
+            }
+            if (lg != null && id != null) {
+                val latest = runCatching { espnSheet(lg, id) }.getOrNull()
+                if (latest != null) sheet = latest
+            }
+            looked = true
+            if (sheet?.home != null && sheet?.away != null) return@LaunchedEffect
+            delay(60_000)
         }
-        if (lg != null && id != null) sheet = runCatching { espnSheet(lg, id) }.getOrNull()
-        looked = true
     }
     Column(Modifier.padding(top = 14.dp)) {
         when {
-            minsToKick > 75 -> Text("Lineups usually appear about an hour before kick-off.", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
+            minsToKick > 75 -> Text("Lineups usually appear about an hour before kick-off. ESPN will be checked when they are due.", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
+            minsToKick < -180 -> Text("Lineups and match events are no longer available for this match.", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
             !looked -> Text("Looking for lineups…", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
             sheet == null || (sheet!!.home == null && sheet!!.goals.isEmpty()) -> Text("Lineups not announced yet.", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
             else -> {
@@ -426,19 +454,96 @@ fun MatchSheetView(e: Event, score: Score?, now: Instant) {
                 }
                 if (s.home != null && s.away != null) {
                     Text("Lineups", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Row(Modifier.padding(top = 6.dp)) {
-                        listOf(s.home, s.away).forEach { t ->
-                            Column(Modifier.weight(1f)) {
-                                Text(short(t.team), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                if (t.formation.isNotEmpty()) Text(t.formation, color = C.fg2, fontFamily = Inter, fontSize = 12.sp)
-                                t.starters.forEach { p -> Text("${p.number.padStart(2)}  ${p.name}", color = C.fg, fontFamily = Inter, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                                if (t.subs.isNotEmpty()) Text("Subs: " + t.subs.joinToString(", ") { it.name.substringAfterLast(' ') }, color = C.fg3, fontFamily = Inter,
-                                    fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp, end = 6.dp))
+                    var pitch by rememberSaveable(e.id) { mutableStateOf(true) }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        FilterChip(pitch, { pitch = true }, label = { Text("Pitch", fontFamily = Inter) },
+                            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
+                        Spacer(Modifier.width(6.dp))
+                        FilterChip(!pitch, { pitch = false }, label = { Text("List", fontFamily = Inter) },
+                            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
+                    }
+                    if (pitch) {
+                        LineupPitch(s.home, s.away)
+                    } else {
+                        Row(Modifier.padding(top = 6.dp)) {
+                            listOf(s.home, s.away).forEach { t ->
+                                Column(Modifier.weight(1f)) {
+                                    Text(short(t.team), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    if (t.formation.isNotEmpty()) Text(t.formation, color = C.fg2, fontFamily = Inter, fontSize = 12.sp)
+                                    t.starters.forEach { p -> Text("${p.number.padStart(2)}  ${p.name}", color = C.fg, fontFamily = Inter, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                                    if (t.subs.isNotEmpty()) Text("Subs: " + t.subs.joinToString(", ") { it.name.substringAfterLast(' ') }, color = C.fg3, fontFamily = Inter,
+                                        fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp, end = 6.dp))
+                                }
                             }
                         }
                     }
                 }
                 Text("Lineups and goals from ESPN", color = C.fg3, fontFamily = Inter, fontSize = 11.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun LineupPitch(home: TeamSheet, away: TeamSheet) {
+            Column(Modifier.fillMaxWidth().padding(top = 6.dp).clip(RoundedCornerShape(14.dp)).background(C.tile2).padding(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(short(home.team), Modifier.weight(1f), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(listOf(home.formation, away.formation).filter(String::isNotBlank).joinToString("  ·  "), color = C.fg2, fontFamily = Inter, fontSize = 11.sp)
+                    Text(short(away.team), Modifier.weight(1f), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.End, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Box(Modifier.fillMaxWidth().height(280.dp).padding(top = 8.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF31543A))) {
+                    Canvas(Modifier.fillMaxSize().padding(7.dp)) {
+                        val line = Color.White.copy(alpha = .35f)
+                        drawRoundRect(line, cornerRadius = CornerRadius(8.dp.toPx()), style = Stroke(1.dp.toPx()))
+                        drawLine(line, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), 1.dp.toPx())
+                        drawCircle(line, size.minDimension * .14f, Offset(size.width / 2, size.height / 2), style = Stroke(1.dp.toPx()))
+                        val boxWidth = size.width * .42f
+                        drawRect(line, Offset((size.width - boxWidth) / 2, 0f), androidx.compose.ui.geometry.Size(boxWidth, size.height * .13f), style = Stroke(1.dp.toPx()))
+                        drawRect(line, Offset((size.width - boxWidth) / 2, size.height * .87f), androidx.compose.ui.geometry.Size(boxWidth, size.height * .13f), style = Stroke(1.dp.toPx()))
+                    }
+                    Column(Modifier.fillMaxSize().padding(vertical = 5.dp), verticalArrangement = Arrangement.SpaceEvenly) {
+                        PitchHalf(home, towardGoal = true)
+                        PitchHalf(away, towardGoal = false)
+                    }
+                }
+                if (home.subs.isNotEmpty() || away.subs.isNotEmpty()) {
+                    Text("Subs · ${short(home.team)}: ${home.subs.joinToString(", ") { it.name }.ifEmpty { "—" }}",
+                        color = C.fg2, fontFamily = Inter, fontSize = 11.sp, modifier = Modifier.padding(top = 8.dp))
+                    Text("Subs · ${short(away.team)}: ${away.subs.joinToString(", ") { it.name }.ifEmpty { "—" }}",
+                        color = C.fg2, fontFamily = Inter, fontSize = 11.sp)
+                }
+            }
+}
+
+@Composable
+private fun PitchHalf(team: TeamSheet, towardGoal: Boolean) {
+            val counts = team.formation.split('-').mapNotNull(String::toIntOrNull).takeIf { it.sum() == 10 } ?: listOf(4, 3, 3)
+            val starters = team.starters
+            val rows = buildList {
+                add(starters.take(1))
+                var offset = 1
+                counts.forEach { count ->
+                    add(starters.drop(offset).take(count))
+                    offset += count
+                }
+            }.filter { it.isNotEmpty() }.let { if (towardGoal) it else it.reversed() }
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                rows.forEach { players ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                        players.forEach { player ->
+                            Column(Modifier.widthIn(max = 62.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(Modifier.size(16.dp).clip(RoundedCornerShape(50)).background(if (towardGoal) C.lime else Color.White),
+                                    contentAlignment = Alignment.Center) {
+                                    Text(player.number.ifBlank { "·" }, color = if (towardGoal) C.onLime else Color(0xFF17321F), fontFamily = Inter,
+                                        fontWeight = FontWeight.Bold, fontSize = 8.sp)
+                                }
+                                Text(player.name.substringAfterLast(' '), color = Color.White, fontFamily = Inter, fontSize = 8.sp,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
             }
         }
     }

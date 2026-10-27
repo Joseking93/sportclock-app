@@ -47,6 +47,8 @@ val SERIES = listOf(
     Series("ENG", "Premier League", Sport.FOOTBALL, Color(0xFFE95FC4)),
     Series("UCL", "Champions League", Sport.FOOTBALL, Color(0xFF5C8DFF)),
     Series("EFL", "Championship", Sport.FOOTBALL, Color(0xFF3FD0C0)),
+    Series("FACUP", "FA Cup", Sport.FOOTBALL, Color(0xFF5AA7F8)),
+    Series("CARABAO", "Carabao Cup", Sport.FOOTBALL, Color(0xFF9B7BEA)),
     Series("ESP", "La Liga", Sport.FOOTBALL, Color(0xFFFF8A65)),
     Series("ITA", "Serie A", Sport.FOOTBALL, Color(0xFF3FB8E8)),
     Series("GER", "Bundesliga", Sport.FOOTBALL, Color(0xFFE5484D)),
@@ -77,11 +79,15 @@ fun Event.line1(): String = if (sport == Sport.NFL) teams.takeIf { it.size == 2 
     else if (sport == Sport.FOOTBALL) teams.takeIf { it.size == 2 }?.let { "${short(it[0])} v ${short(it[1])}" } ?: title
     else "${if (code == "F1") "F1" else series(code)?.name ?: comp} · ${sessName(session)}"
 fun Event.line2(): String = when {
-    sport == Sport.FOOTBALL -> series(code)?.name ?: comp
+    sport == Sport.FOOTBALL -> if (code in CUP_CODES) {
+        listOfNotNull(series(code)?.name ?: comp, session.takeIf { it.isNotBlank() }).joinToString(" · ")
+    } else series(code)?.name ?: comp
     sport == Sport.NFL -> "NFL · $session"
     sport == Sport.MOTORSPORT -> title.replace("Grand Prix", "GP")
     else -> title
 }
+
+val CUP_CODES = setOf("FACUP", "CARABAO")
 
 fun parseEvents(json: String): Pair<List<Event>, JSONObject> {
     val root = JSONObject(json)
@@ -109,8 +115,15 @@ fun parseEvents(json: String): Pair<List<Event>, JSONObject> {
 }
 
 /* ---------- follows: "c:CODE" for a whole series, "t:Team" for one club ---------- */
-fun followed(e: Event, follows: Set<String>) = "c:${e.code}" in follows || e.teams.any { "t:$it" in follows }
-fun tokenMatches(token: String, e: Event) = if (token.startsWith("c:")) e.code == token.substring(2) else token.substring(2) in e.teams
+fun followed(e: Event, follows: Set<String>) = follows.any { tokenMatches(it, e) }
+fun tokenMatches(token: String, e: Event) = when {
+    token.startsWith("c:") -> e.code == token.substring(2)
+    token.startsWith("t:") -> e.teams.any { teamTokenMatches(token.substring(2), it) }
+    else -> false
+}
+fun teamTokenMatches(tokenTeam: String, eventTeam: String) =
+    if (tokenTeam in NFL_TEAMS || eventTeam in NFL_TEAMS) tokenTeam.equals(eventTeam, ignoreCase = true)
+    else sameTeam(tokenTeam, eventTeam) || sameTeam(short(tokenTeam), short(eventTeam))
 fun tokenSport(token: String) = if (token.startsWith("t:")) (if (token.substring(2) in NFL_TEAMS) Sport.NFL else Sport.FOOTBALL)
     else series(token.substring(2))?.sport ?: Sport.MOTORSPORT
 fun tokenLabel(token: String) = if (token.startsWith("t:")) short(token.substring(2)) else series(token.substring(2))?.name ?: token.substring(2)

@@ -132,6 +132,20 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
     }
     fun refreshWidget() = scope.launch { SportClockWidget().updateAll(ctx) }
     fun rearm() { data?.let { Alerts.reschedule(ctx, it.events) }; refreshWidget() }
+    LaunchedEffect(Unit) {
+        val prefs = Repo.prefs(ctx)
+        if (!prefs.getBoolean("cupTabFollowMigrated", false)) {
+            prefs.edit().putBoolean("cupTabFollowMigrated", true).apply()
+            val code = myTab.removePrefix("c:")
+            val token = "c:$code"
+            if (myTab.startsWith("c:") && code in CUP_CODES && token !in st.follows) {
+                st.follows = st.follows + token
+                Repo.setFollows(ctx, st.follows)
+                AlertChoices.follows = st.follows
+                Repo.data.value?.let { Alerts.reschedule(ctx, it.events) }
+            }
+        }
+    }
 
     // back walks the way you came: the open sheet, then the pages you opened, then Home; it only leaves the app from Home
     BackHandler(enabled = detail != null || page != null || tab != Tab.HOME) {
@@ -193,7 +207,23 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
                 tab == Tab.SCORES -> ScoresHub(st, d, now, scores, onOpen = { detail = it }, onTeam = { open("team:$it") })
                 tab == Tab.CALENDAR -> CalendarScreen(st, d.events, now, scores.matches, onOpen = { detail = it })
                 tab == Tab.MINE -> MyTab(myTab, st, d.events, now, scores.matches, onOpen = { detail = it }, onPage = { open(it) },
-                    onChoose = { v -> myTab = v; Settings.setMyTab(ctx, v); if (v == "NFL") scope.launch { Repo.load(ctx, maxAgeMin = 600) } })
+                    onChoose = { v ->
+                        myTab = v; Settings.setMyTab(ctx, v)
+                        val followToken = when {
+                            v.startsWith("t:") -> v
+                            v.startsWith("c:") && v.substring(2) in CUP_CODES -> v
+                            else -> null
+                        }
+                        if (followToken != null) {
+                            val next = if (followToken.startsWith("t:")) {
+                                val team = followToken.substring(2)
+                                if (st.follows.any { it.startsWith("t:") && teamTokenMatches(it.substring(2), team) }) st.follows
+                                else st.follows + followToken
+                            } else st.follows + followToken
+                            Repo.setFollows(ctx, next); st.follows = next; AlertChoices.follows = next; rearm()
+                        }
+                        if (v == "NFL") scope.launch { Repo.load(ctx, maxAgeMin = 600) }
+                    })
                 tab == Tab.MORE -> MoreScreen(updateWaiting, onFollow = { open("follow") }, onSettings = { open("settings") }, onAbout = { open("about") },
                     onUpdate = { open("update") }, onReport = { open("report") }, onNews = { open("news") })
             }
@@ -209,6 +239,14 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
     }
     detail?.let { e -> ModalBottomSheet(onDismissRequest = { detail = null }, containerColor = C.tile, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         DetailSheet(e, now, scores.matches[e.id], scores.fetchedAt, onTeam = { detail = null; open("team:$it") },
+            follows = st.follows, onFollowTeam = { team ->
+                val token = "t:$team"
+                val alreadyFollowing = st.follows.any { it.startsWith("t:") && teamTokenMatches(it.substring(2), team) }
+                val next = if (alreadyFollowing) st.follows.filterNot { it.startsWith("t:") && teamTokenMatches(it.substring(2), team) }.toSet()
+                    else st.follows + token
+                Repo.setFollows(ctx, next); st.follows = next; AlertChoices.follows = next; rearm()
+                Toast.makeText(ctx, if (alreadyFollowing) "Stopped following ${short(team)}" else "Following ${short(team)} across competitions", Toast.LENGTH_SHORT).show()
+            },
             events = data?.events.orEmpty(), onPage = { detail = null; open(it) })
     } }
 }
@@ -326,6 +364,7 @@ fun AboutScreen(d: Data?, onBack: () -> Unit) {
 
 @Composable
 fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTeam: (String) -> Unit = {},
+                follows: Set<String> = emptySet(), onFollowTeam: (String) -> Unit = {},
                 events: List<Event> = emptyList(), onPage: (String) -> Unit = {}) {
     val today = localDate(now)
     Column(Modifier.verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
@@ -334,10 +373,22 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTe
             Text(series(e.code)?.name ?: e.comp, color = C.fg2, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
         }
         Text(e.line1(), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 22.sp, modifier = Modifier.padding(top = 10.dp))
-        if (e.sport != Sport.FOOTBALL) Text(e.line2(), color = C.fg2, fontFamily = Inter, fontSize = 15.sp)
+        if (e.sport != Sport.FOOTBALL || e.code in CUP_CODES) Text(e.line2(), color = C.fg2, fontFamily = Inter, fontSize = 15.sp)
         val showScore = score?.home != null && score.away != null && !Spoilers.hidden(e)
         Text(if (showScore) "${score!!.home}–${score.away}" else timeText(e), style = Digits, color = C.lime, fontWeight = FontWeight.ExtraBold, fontSize = 64.sp,
             modifier = Modifier.padding(top = 6.dp))
+        score?.takeIf { showScore && it.shootoutHome != null && it.shootoutAway != null }?.let {
+            Text("Pens ${it.shootoutHome}–${it.shootoutAway}", color = C.fg2, fontFamily = Inter, fontSize = 15.sp)
+        }
+        if (showScore && e.code in CUP_CODES) {
+            val cupStatus = when {
+                score!!.detail.contains("pen", true) -> "Cup tie decided on penalties"
+                score!!.detail.contains("AET", true) -> "After extra time"
+                score!!.home == score.away -> "Draw after full time"
+                else -> null
+            }
+            cupStatus?.let { Text(it, color = C.fg2, fontFamily = Inter, fontSize = 14.sp) }
+        }
         val d = localDate(e.start)
         val dayLine = if (d == today || d == today.plusDays(1)) "${dayTitle(d, today)} · ${daySub(d)}" else "${dayTitle(d, today)} ${d.dayOfMonth} ${d.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }}"
         Text(when {
@@ -365,6 +416,21 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTe
                 Text("Score hidden · tap to show", color = C.lime, fontFamily = Inter)
             }
             TeamLinks(e, onTeam)
+            if (e.teams.size == 2) {
+                Text("Follow across competitions", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+                    modifier = Modifier.padding(top = 12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    e.teams.forEach { team ->
+                        val selected = follows.any { it.startsWith("t:") && teamTokenMatches(it.substring(2), team) }
+                        FilterChip(selected = selected, onClick = { onFollowTeam(team) }, modifier = Modifier.weight(1f),
+                            label = { Text(if (selected) "Following ${short(team)}" else "Follow ${short(team)}", maxLines = 1) },
+                            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime,
+                                selectedLabelColor = C.onLime, labelColor = C.fg))
+                    }
+                }
+                Text("Their league and cup matches will show on Home, with team alerts when enabled.", color = C.fg3,
+                    fontFamily = Inter, fontSize = 12.sp)
+            }
             if (!Spoilers.hidden(e) || !e.started(now)) MatchSheetView(e, score, now)
             MatchExtrasView(e)
             Text("Scores can lag behind the match${fetchedAt?.let { " · checked ${hm(it)}" } ?: ""}", color = C.fg3, fontFamily = Inter, fontSize = 12.sp,
