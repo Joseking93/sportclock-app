@@ -40,7 +40,7 @@ object Looks {
     suspend fun load(e: Event): MatchLook? {
         ready[e.id]?.let { return it }
         if (e.code == "NFL") return Nfl.sides[e.id]?.let { (h, a) -> MatchLook(h, a, emptySet()).also { ready[e.id] = it } }
-        val lg = ESPN_LEAGUE[e.code] ?: return null
+        val lg = ESPN_COMP[e.code] ?: return null
         if (e.sport != Sport.FOOTBALL || e.teams.size != 2) return null
         val t = System.currentTimeMillis()
         if (t - (failed[e.id] ?: 0L) < 10 * 60_000) return null
@@ -55,7 +55,7 @@ object Looks {
 
     /** Our fixture's ESPN match (id, league, names), from a scoreboard kept for 30 minutes. */
     suspend fun espnMatch(e: Event): EspnMatch? {
-        val lg = ESPN_LEAGUE[e.code] ?: return null
+        val lg = ESPN_COMP[e.code] ?: return null
         if (e.sport != Sport.FOOTBALL || e.teams.size != 2) return null
         return runCatching { lock.withLock { board(e, lg) } }.getOrNull()
     }

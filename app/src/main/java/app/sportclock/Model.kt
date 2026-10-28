@@ -58,7 +58,7 @@ val SERIES = listOf(
     Series("NFL", "NFL", Sport.NFL, Color(0xFF4F7CFF)),
 )
 fun series(code: String) = SERIES.firstOrNull { it.code == code }
-fun seriesColor(code: String) = series(code)?.color ?: Color(0xFF8E9186)
+fun seriesColor(code: String) = series(code)?.color ?: cup(code)?.color ?: Color(0xFF8E9186)
 
 private val SESS = mapOf("Free Practice 1" to "Practice 1", "Free Practice 2" to "Practice 2", "Free Practice 3" to "Practice 3",
     "Sprint Qualifying" to "Sprint qualifying", "Sprint Shootout" to "Sprint qualifying", "Warm Up" to "Warm-up",

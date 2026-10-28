@@ -26,7 +26,7 @@ import java.util.Locale
  * Polling stays light: scores only while a match is on, lineups from an hour before kick-off.
  */
 
-private const val UA = "SportClock/2.14 (personal Android app)"
+private const val UA = "SportClock/2.15 (personal Android app)"
 
 /** Like [httpGet] but with a given User-Agent, for sites that serve browsers only (the FIA). */
 internal fun httpGetAs(url: String, ua: String): String {
@@ -111,12 +111,12 @@ fun matchEspn(e: Event, pool: List<EspnMatch>): EspnMatch? {
 
 /** Scores for our football events, fetched per league and ESPN day only for the events asked about. */
 suspend fun espnScores(events: List<Event>): Map<String, Score> = coroutineScope {
-    val wanted = events.filter { it.sport == Sport.FOOTBALL && ESPN_LEAGUE.containsKey(it.code) }
-    val keys = wanted.map { ESPN_LEAGUE.getValue(it.code) to espnDate(it.start) }.distinct()
+    val wanted = events.filter { it.sport == Sport.FOOTBALL && ESPN_COMP.containsKey(it.code) }
+    val keys = wanted.map { ESPN_COMP.getValue(it.code) to espnDate(it.start) }.distinct()
     val boards = keys.map { (lg, d) -> async { (lg to d) to runCatching { espnScoreboard(lg, d) }.getOrDefault(emptyList()) } }.awaitAll().toMap()
     val out = HashMap<String, Score>()
     for (e in wanted) {
-        val m = matchEspn(e, boards[ESPN_LEAGUE.getValue(e.code) to espnDate(e.start)].orEmpty()) ?: continue
+        val m = matchEspn(e, boards[ESPN_COMP.getValue(e.code) to espnDate(e.start)].orEmpty()) ?: continue
         val status = when (m.state) { "in" -> if (m.detail.contains("HT", true) || m.detail.contains("Half", true)) "PAUSED" else "IN_PLAY"; "post" -> "FINISHED"; else -> "TIMED" }
         out[e.id] = Score(status, m.homeScore, m.awayScore, null, m.detail, m.id, m.league)
     }

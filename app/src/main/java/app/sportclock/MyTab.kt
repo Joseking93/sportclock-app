@@ -50,7 +50,7 @@ fun MyTabIcon(v: String, events: List<Event>) {
         v.startsWith("c:") && logoFor(v.substring(2)) != null -> LogoChip(v.substring(2), 26.dp)
         v.startsWith("t:") -> {
             val team = v.substring(2)
-            var logo by remember(team) { mutableStateOf(Repo.prefs(ctx).getString("logo:$team", null)) }
+            var logo by remember(team) { mutableStateOf(Repo.prefs(ctx).getString("logo2:$team", null)) }
             LaunchedEffect(team, events.isNotEmpty()) { if (logo == null && events.isNotEmpty()) logo = runCatching { teamLogo(ctx, team, events) }.getOrNull() }
             val l = logo
             if (l != null) coil.compose.AsyncImage(l, team, Modifier.size(26.dp)) else Icon(myTabIcon(v), null)

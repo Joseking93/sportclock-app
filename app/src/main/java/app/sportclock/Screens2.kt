@@ -407,7 +407,7 @@ fun MatchSheetView(e: Event, score: Score?, now: Instant) {
         if (minsToKick > 75) return@LaunchedEffect
         val (lg, id) = (score?.league to score?.espnId).let { (l, i) ->
             if (l != null && i != null) l to i
-            else ESPN_LEAGUE[e.code]?.let { league -> runCatching { matchEspn(e, espnScoreboard(league, espnDate(e.start))) }.getOrNull()?.let { league to it.id } } ?: (null to null)
+            else ESPN_COMP[e.code]?.let { league -> runCatching { matchEspn(e, espnScoreboard(league, espnDate(e.start))) }.getOrNull()?.let { league to it.id } } ?: (null to null)
         }
         if (lg != null && id != null) sheet = runCatching { espnSheet(lg, id) }.getOrNull()
         looked = true

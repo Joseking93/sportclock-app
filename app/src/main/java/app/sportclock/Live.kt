@@ -38,7 +38,7 @@ object Live {
     private const val F1_BEFORE = 10L * 60
     private fun inF1Window(e: Event, now: Instant) = !now.isBefore(e.start.minusSeconds(F1_BEFORE)) && !now.isAfter(e.start.plusSeconds(AFTER))
 
-    fun watched(e: Event, follows: Set<String>) = e.sport == Sport.FOOTBALL && e.teams.size == 2 && !e.isTbc && ESPN_LEAGUE.containsKey(e.code) &&
+    fun watched(e: Event, follows: Set<String>) = e.sport == Sport.FOOTBALL && e.teams.size == 2 && !e.isTbc && ESPN_COMP.containsKey(e.code) &&
         (e.teams.any { "t:$it" in follows } || AlertChoices.wants(e))
     private fun inWindow(e: Event, now: Instant) = !now.isBefore(e.start.minusSeconds(BEFORE)) && !now.isAfter(e.start.plusSeconds(AFTER))
     private fun wanted(ctx: Context) = Settings.alertsOn(ctx) && (Settings.liveAlerts(ctx) || Settings.lineupAlerts(ctx) || Settings.f1Alerts(ctx))

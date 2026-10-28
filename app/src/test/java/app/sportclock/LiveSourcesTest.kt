@@ -106,4 +106,15 @@ class LiveSourcesTest {
             " · ${t.racesLeft} races, ${t.sprintsLeft} sprints, ${t.available} pts left · ${t.clinchNote}")
         assertTrue(t.available > 0)
     }
+    @Test fun cupRunsForBigClubs() = runBlocking {
+        assumeTrue(live)
+        val now = java.time.Instant.now()
+        for (team in listOf("Manchester United", "Arsenal", "FC Bayern München", "Real Madrid CF", "FC Internazionale Milano")) {
+            val name = events.flatMap { it.teams }.firstOrNull { it == team } ?: events.flatMap { it.teams }.distinct().first { sameTeam(it, team) }
+            val code = events.filter { name in it.teams }.map { it.code }.first { it != "UCL" && it in ESPN_LEAGUE }
+            val id = espnTeamId("soccer/" + ESPN_LEAGUE.getValue(code), name)!!
+            val ties = cupTies(code, id, now)
+            println("$name ($code, $id): " + cupRuns(code, id, ties, now).joinToString(" | ") { "${it.cup.name}: ${it.line}" })
+        }
+    }
 }

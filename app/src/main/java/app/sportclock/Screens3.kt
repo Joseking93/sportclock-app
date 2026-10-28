@@ -31,7 +31,7 @@ import java.time.format.DateTimeFormatter
 
 private val DAY_MON = DateTimeFormatter.ofPattern("d MMM")
 private val DAY_MON_YEAR = DateTimeFormatter.ofPattern("d MMM yyyy")
-private fun dayMon(i: Instant) = DAY_MON.format(i.atZone(zone))
+internal fun dayMon(i: Instant) = DAY_MON.format(i.atZone(zone))
 
 /** Loads [load] once per [key]; null while loading, and [failed] when it threw (a cancelled load is not a failure). */
 @Composable
@@ -171,8 +171,8 @@ fun TeamScreen(team: String, events: List<Event>, now: Instant, scores: Map<Stri
     val league = remember(team, events) { leagueFor(team, events) }
     val (info, failed) = loaded(team) { league?.let { lg -> espnTeamId(lg, team, ctx)?.let { teamInfo(lg, it) } } }
     // the crest from the phone's copy shows at once; the page saves it the first time it loads
-    val crest = info?.logo?.takeIf { it.isNotBlank() } ?: remember(team) { Repo.prefs(ctx).getString("logo:$team", null) }
-    LaunchedEffect(info?.logo) { info?.logo?.takeIf { it.isNotBlank() }?.let { Repo.prefs(ctx).edit().putString("logo:$team", it).apply() } }
+    val crest = info?.logo?.takeIf { it.isNotBlank() } ?: remember(team) { Repo.prefs(ctx).getString("logo2:$team", null) }
+    LaunchedEffect(info?.logo) { info?.logo?.takeIf { it.isNotBlank() }?.let { Repo.prefs(ctx).edit().putString("logo2:$team", it).apply() } }
     val (stories, _) = loaded("news:$team") { news(setOf("t:$team")).take(5) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var all by rememberSaveable { mutableStateOf(false) }
@@ -196,6 +196,11 @@ fun TeamScreen(team: String, events: List<Event>, now: Instant, scores: Map<Stri
                 Reveal("form:$team") { FormChips(info.form().reversed()) }
             }
         }
+        val runs = info?.runs(now).orEmpty()
+        if (runs.isNotEmpty()) {
+            item { SectionLabel("Cups") }
+            items(runs, key = { "cup" + it.cup.code }) { r -> CupRunRow(r) }
+        }
         if (next.isNotEmpty()) {
             item { SectionLabel("Next up") }
             items(next, key = { "n" + it.id }) { e -> EventRow(e, now, scores[e.id], onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) }
@@ -205,11 +210,14 @@ fun TeamScreen(team: String, events: List<Event>, now: Instant, scores: Map<Stri
             info == null -> items(5) { Skeleton(48.dp, Modifier.padding(horizontal = 16.dp, vertical = 3.dp)) }
             else -> {
                 item { Spacer(Modifier.height(10.dp)); Segments(listOf("Results", "Fixtures"), tab) { tab = it; all = false }; Spacer(Modifier.height(6.dp)) }
-                val list = if (tab == 0) info.results else info.fixtures
+                val list = if (tab == 0) info.allResults() else info.allFixtures()
                 items(if (all) list else list.take(8), key = { "g" + tab + it.date }) { g ->
                     Row(Modifier.padding(horizontal = 16.dp, vertical = 2.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(C.tile)
                         .padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(dayMon(g.date), Modifier.width(58.dp), color = C.fg3, fontFamily = Inter, fontSize = 13.sp)
+                        Column(Modifier.width(76.dp)) {
+                            Text(dayMon(g.date), color = C.fg3, fontFamily = Inter, fontSize = 13.sp)
+                            g.cup?.let { Text(it.name, color = it.color, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 10.sp, maxLines = 1) }
+                        }
                         if (g.done) {
                             Box(Modifier.weight(1f)) {
                                 Reveal("g:${g.date}") {
@@ -225,7 +233,7 @@ fun TeamScreen(team: String, events: List<Event>, now: Instant, scores: Map<Stri
                 }
                 if (!all && list.size > 8) item { TextButton(onClick = { all = true }, modifier = Modifier.padding(start = 12.dp)) { Text("Show all ${list.size}", color = C.lime, fontFamily = Inter) } }
                 if (list.isEmpty()) item { Note(if (tab == 0) "No results yet this season." else "No fixtures listed.") }
-                item { Note("League games from ESPN; cup games are in the fixture list above.") }
+                item { Note("League and cup games from ESPN.") }
             }
         }
         if (!stories.isNullOrEmpty()) {
@@ -242,6 +250,21 @@ fun TeamScreen(team: String, events: List<Event>, now: Instant, scores: Map<Stri
         item { Spacer(Modifier.height(40.dp)) }
     }
 }
+
+/** One cup and how the club is doing in it: a coloured mark, the cup's name and the state of the run. */
+@Composable
+private fun CupRunRow(r: CupRun) =
+    Row(Modifier.padding(horizontal = 16.dp, vertical = 2.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(C.tile).height(IntrinsicSize.Min),
+        verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(5.dp).fillMaxHeight().background(r.cup.color))
+        Column(Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 9.dp)) {
+            Text(r.cup.name, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Text(r.line, color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
+        }
+        Text(when (r.alive) { true -> "IN"; false -> if (r.line.startsWith("Winners")) "WON" else "OUT"; null -> "–" },
+            color = when (r.alive) { true -> C.lime; false -> if (r.line.startsWith("Winners")) C.lime else C.live; null -> C.fg3 },
+            fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.padding(end = 12.dp))
+    }
 
 /* ======================= racing results ======================= */
 

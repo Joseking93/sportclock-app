@@ -2,6 +2,24 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.15 (28 Oct 2026)
+- **Cup games for the clubs you follow.** Domestic cups and the smaller European competitions now appear alongside league games on Home, in NEXT UP, the calendar and the widget, with live scores and starting-soon and goal alerts:
+  - **England:** Carabao Cup and FA Cup.
+  - **Spain:** Copa del Rey.
+  - **Germany:** DFB-Pokal.
+  - **Italy:** Coppa Italia.
+  - **France:** Coupe de France.
+  - **Netherlands:** KNVB Beker.
+  - **Portugal:** Taça de Portugal.
+  - **Europe:** Europa League and Conference League.
+- **Still in it? The team page says so.** A new Cups section shows, for each cup:
+  - **Still in:** the next tie and when it is.
+  - **Through:** waiting for the draw.
+  - **Out:** who knocked them out, penalties included.
+  - **Not started:** the club joins in a later round.
+- Cup games also appear in the team page's Results and Fixtures, marked with the cup's name.
+- **The right club on team pages.** "FC Bayern München" was matched to Bayer Leverkusen, "Real Madrid CF" to another Madrid club and Inter to AC Milan. The lookup now prefers whole-word matches, and saved club IDs and crests are fetched again once.
+
 ## 2.14 (27 Oct 2026)
 - **F1 Live goes deeper.** The tabs now scroll: Timing, Map, Radio, Strategy, Laps, Speeds, Control, Pits, Upgrades.
   - **Sector colours in the timing tower:** purple for the session's best, green for a driver's own best, yellow otherwise, with the mini-sectors filling in while a sector is still running.
