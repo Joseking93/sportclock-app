@@ -117,4 +117,11 @@ class LiveSourcesTest {
             println("$name ($code, $id): " + cupRuns(code, id, ties, now).joinToString(" | ") { "${it.cup.name}: ${it.line}" })
         }
     }
+    @Test fun cupScoreboards() = runBlocking {
+        assumeTrue(live)
+        val b = cupBoards(java.time.Instant.now())
+        println("Cup games: " + b.groupBy { it.first.code }.map { (c, l) -> "$c ${l.size}" })
+        b.filter { it.first.teams.any { t -> t.contains("Arsenal") || t.contains("Bayern") } }.forEach { (e, s) -> println("  ${e.comp}: ${e.title} ${s.home}-${s.away} ${s.status} ${s.detail}") }
+        assertTrue(b.isNotEmpty())
+    }
 }

@@ -2,6 +2,10 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.16 (28 Oct 2026)
+- **Every cup game in Scores.** Today and Yesterday on the Scores tab now list all the cup games, whoever plays, with live scores: Carabao Cup, FA Cup, Copa del Rey, DFB-Pokal, Coppa Italia, Coupe de France, KNVB Beker, Taça de Portugal, Europa League and Conference League. Before, you only saw cup games of clubs you follow.
+- **Calendar filters work.** Football, Motorsport and Fight on the Calendar now show just that sport. Before, only Following and All responded.
+
 ## 2.15 (28 Oct 2026)
 - **Cup games for the clubs you follow.** Domestic cups and the smaller European competitions now appear alongside league games on Home, in NEXT UP, the calendar and the widget, with live scores and starting-soon and goal alerts:
   - **England:** Carabao Cup and FA Cup.

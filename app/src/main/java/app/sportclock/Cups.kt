@@ -45,6 +45,24 @@ fun cupsFor(leagueCode: String) = DOMESTIC[leagueCode].orEmpty() + EUROPE
 /** Every competition the phone can score from ESPN: the leagues and the cups. */
 val ESPN_COMP: Map<String, String> = ESPN_LEAGUE + CUPS.associate { it.code to it.slug }
 
+/**
+ * Every cup game on ESPN's scoreboards from yesterday to tomorrow, whoever plays, for the Scores tab: each as an event
+ * with its score. Ids match [Cups.toEvents], so a followed club's tie isn't listed twice.
+ */
+suspend fun cupBoards(now: Instant): List<Pair<Event, Score>> = coroutineScope {
+    val dates = listOf(-36L, -12L, 0L, 12L).map { espnDate(now.plusSeconds(it * 3600)) }.distinct()
+    val boards: List<Pair<Cup, List<EspnMatch>>> = CUPS.flatMap { c ->
+        dates.map { day -> async { c to runCatching { espnScoreboard(c.slug, day) }.getOrDefault(emptyList<EspnMatch>()) } }
+    }.awaitAll()
+    boards.flatMap { (c, ms) ->
+            ms.map { m ->
+                val status = when (m.state) { "in" -> if (m.detail.contains("HT", true) || m.detail.contains("Half", true)) "PAUSED" else "IN_PLAY"; "post" -> "FINISHED"; else -> "TIMED" }
+                Event("CUP|${m.id}", Sport.FOOTBALL, c.code, c.name, "${m.home} v ${m.away}", "Kick-off", m.start, 120, "", "confirmed",
+                    listOf(m.home, m.away), null, null, null) to Score(status, m.homeScore, m.awayScore, null, m.detail, m.id, m.league)
+            }
+        }.distinctBy { it.first.id }
+}
+
 /** One cup tie as ESPN lists it. Winner flags settle ties that went to penalties, where the scores are level. */
 data class CupTie(val cup: String, val id: String, val date: Instant, val homeId: String, val home: String, val awayId: String, val away: String,
                   val homeScore: String?, val awayScore: String?, val state: String, val round: String, val venue: String, val note: String,

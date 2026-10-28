@@ -239,10 +239,12 @@ fun HomeScreen(st: AppState, events: List<Event>, now: Instant, scores: Map<Stri
 
 @Composable
 fun CalendarScreen(st: AppState, events: List<Event>, now: Instant, scores: Map<String, Score>, onOpen: (Event) -> Unit) {
-    var all by remember { mutableStateOf(false) }
+    var filter by remember { mutableStateOf(Filter.FOLLOWING) }
     val today = localDate(now)
     var day by remember { mutableStateOf(today) }
-    val pool = remember(events, st.follows, all, now) { events.filter { !it.over(now) && (all || followed(it, st.follows)) } }
+    val pool = remember(events, st.follows, filter, now) {
+        events.filter { e -> !e.over(now) && when (filter) { Filter.FOLLOWING -> followed(e, st.follows); Filter.ALL -> true; else -> e.sport == filter.sport() } }
+    }
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             Column(Modifier.statusBarsPadding().padding(start = 20.dp, top = 8.dp, bottom = 10.dp)) {
@@ -250,7 +252,7 @@ fun CalendarScreen(st: AppState, events: List<Event>, now: Instant, scores: Map<
                 Text("Your time · ${zone.id}", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
             }
         }
-        item { FilterPills(if (all) Filter.ALL else Filter.FOLLOWING) { all = it == Filter.ALL } }
+        item { FilterPills(filter) { filter = it } }
         item {
             LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items((0..20).map { today.plusDays(it.toLong()) }) { d ->

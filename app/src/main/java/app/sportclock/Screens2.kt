@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,7 +95,19 @@ fun ScoresHub(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Even
 @Composable
 private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Event) -> Unit, onTeam: (String) -> Unit) {
     val today = localDate(now)
-    val recent = d.events.filter { it.sport == Sport.FOOTBALL && (localDate(it.start) == today || localDate(it.start) == today.minusDays(1) || it.inProgress(now)) }
+    // every cup game around today (Carabao Cup, FA Cup, DFB-Pokal…), not just the followed clubs' ones already in the events
+    var boards by remember { mutableStateOf<List<Pair<Event, Score>>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            runCatching { cupBoards(Instant.now()) }.onSuccess { boards = it }
+            delay(if (boards.any { it.second.status == "IN_PLAY" || it.second.status == "PAUSED" }) 60_000 else 180_000)
+        }
+    }
+    val known = remember(d.events) { d.events.map { it.id }.toSet() }
+    val cupGames = boards.map { it.first }.filter { it.id !in known }
+    val matches = boards.associate { it.first.id to it.second } + scores.matches
+    val recent = (d.events + cupGames).filter { it.sport == Sport.FOOTBALL && (localDate(it.start) == today || localDate(it.start) == today.minusDays(1) || it.inProgress(now)) }
+        .sortedBy { it.start }
     val mine = recent.filter { followed(it, st.follows) }
     val nextMine = d.events.filter { it.sport == Sport.FOOTBALL && followed(it, st.follows) && !it.started(now) }.take(2)
     LazyColumn(Modifier.fillMaxSize()) {
@@ -109,7 +122,7 @@ private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOp
         }
         val yours = (mine + nextMine).distinct().sortedBy { it.start }
         if (yours.isEmpty()) item { Text("No football you follow today", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp)) }
-        yours.forEach { e -> item(key = "m" + e.id) { EventRow(e, now, scores.matches[e.id], onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) } }
+        yours.forEach { e -> item(key = "m" + e.id) { EventRow(e, now, matches[e.id], onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) } }
         listOf(today to "Today", today.minusDays(1) to "Yesterday").forEach { (day, label) ->
             val list = recent.filter { it !in mine && localDate(it.start) == day }
             if (list.isNotEmpty()) {
@@ -118,10 +131,10 @@ private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOp
                     item(key = "c$day$code") {
                         Row(Modifier.padding(start = 20.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             LogoChip(code, 20.dp); Spacer(Modifier.width(8.dp))
-                            Text(series(code)?.name ?: code, color = C.fg2, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            Text(series(code)?.name ?: cup(code)?.name ?: code, color = C.fg2, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                         }
                     }
-                    l.forEach { e -> item(key = "o" + e.id) { EventRow(e, now, scores.matches[e.id], showDay = false, onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) } }
+                    l.forEach { e -> item(key = "o" + e.id) { EventRow(e, now, matches[e.id], showDay = false, onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) } }
                 }
             }
         }
