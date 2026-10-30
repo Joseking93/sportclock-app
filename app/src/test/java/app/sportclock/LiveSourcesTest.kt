@@ -53,6 +53,7 @@ class LiveSourcesTest {
         println("F1: ${f.meeting} · ${f.session} (${f.type}) · start ${f.start} · status ${f.status} · ${trackWord(f.track)} · lap ${f.lap}/${f.totalLaps}")
         println("  top: " + f.lines.take(4).joinToString { "${it.pos} ${f.tla(it.number)} ${it.gap} ${it.tyre} pits=${it.pits}" })
         println("  ${f.drivers.size} drivers, ${f.messages.size} messages, flagged now ${flaggedSectors(f.messages)}, weather ${f.weather}")
+        println("  clock ${f.clockLeft} at ${f.clockAt} running=${f.clockRunning} -> left now ${f.left(java.time.Instant.now())?.let { clock(it) }}; last message ${f.messages.lastOrNull()?.message}")
         assertTrue(f.lines.size >= 20 && f.messages.isNotEmpty())
         val tmp = kotlin.io.path.createTempDirectory().toFile()
         val map = circuitMap(tmp, f.circuitKey!!, f.year)

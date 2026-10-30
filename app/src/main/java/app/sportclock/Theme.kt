@@ -44,6 +44,8 @@ val PADDOCK_LIGHT = Palette(false, c(0xFFF2F4F5), c(0xFFFFFFFF), c(0xFFE6EAED), 
 /** The palette on screen now. Set by [SportClockTheme] from the setting and the phone's own light/dark mode. */
 object Themes {
     var current by mutableStateOf(NIGHT_DARK)
+    /** A live F1 session's flag colours (see F1Now.kt), shown in place of the reader's palette while a flag is out. */
+    var flag by mutableStateOf<Palette?>(null)
     /** "photos" or "drawn", for the sports with no person or badges on their card (see SportArt.kt). */
     var cardArt by mutableStateOf("photos")
     fun pick(palette: String, dark: Boolean) = when (palette) { "paddock" -> if (dark) PADDOCK_DARK else PADDOCK_LIGHT; else -> if (dark) NIGHT_DARK else NIGHT_LIGHT }
@@ -83,7 +85,7 @@ val Digits = TextStyle(fontFamily = Barlow, fontWeight = FontWeight.Bold, fontFe
 @Composable
 fun SportClockTheme(palette: String = "night", mode: String = "system", content: @Composable () -> Unit) {
     val dark = when (mode) { "light" -> false; "dark" -> true; else -> isSystemInDarkTheme() }
-    val p = Themes.pick(palette, dark)
+    val p = Themes.flag ?: Themes.pick(palette, dark)
     if (Themes.current != p) Themes.current = p
     val base = Typography()
     val t = Typography(

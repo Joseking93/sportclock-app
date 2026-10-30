@@ -53,12 +53,12 @@ import java.time.ZoneOffset
 import kotlin.math.cos
 import kotlin.math.sin
 
-private val GREEN = Color(0xFF2E7D32); private val YELLOW = Color(0xFFF9A825); private val ORANGE = Color(0xFFFB8C00); private val RED = Color(0xFFD32F2F)
-private fun trackColor(code: String) = when (code) { "2" -> YELLOW; "4", "6", "7" -> ORANGE; "5" -> RED; else -> GREEN }
-private fun teamColor(hex: String) = hex.takeIf { it.length == 6 }?.toLongOrNull(16)?.let { Color(0xFF000000 or it) } ?: C.fg3
-private fun tyreColor(t: String) = when (t.uppercase()) { "SOFT" -> Color(0xFFE53935); "MEDIUM" -> Color(0xFFFDD835); "HARD" -> Color(0xFFEEEEEE)
+internal val GREEN = Color(0xFF2E7D32); internal val YELLOW = Color(0xFFF9A825); internal val ORANGE = Color(0xFFFB8C00); internal val RED = Color(0xFFD32F2F)
+internal fun trackColor(code: String) = when (code) { "2" -> YELLOW; "4", "6", "7" -> ORANGE; "5" -> RED; else -> GREEN }
+internal fun teamColor(hex: String) = hex.takeIf { it.length == 6 }?.toLongOrNull(16)?.let { Color(0xFF000000 or it) } ?: C.fg3
+internal fun tyreColor(t: String) = when (t.uppercase()) { "SOFT" -> Color(0xFFE53935); "MEDIUM" -> Color(0xFFFDD835); "HARD" -> Color(0xFFEEEEEE)
     "INTERMEDIATE" -> Color(0xFF43A047); "WET" -> Color(0xFF1E88E5); else -> C.fg3 }
-private fun utcHm(utc: String) = runCatching { hm(LocalDateTime.parse(utc.removeSuffix("Z")).toInstant(ZoneOffset.UTC)) }.getOrDefault("")
+internal fun utcHm(utc: String) = runCatching { hm(LocalDateTime.parse(utc.removeSuffix("Z")).toInstant(ZoneOffset.UTC)) }.getOrDefault("")
 
 /**
  * F1 Live: the live or latest session from F1's own timing feed. While on screen it takes a fresh snapshot every
@@ -76,6 +76,7 @@ fun F1LiveView() {
         }
     }
     val s = snap
+    FlagColours(s)
     when {
         s == null && failed -> Text("Couldn't reach F1 live timing. Check your connection.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp))
         s == null -> Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = C.lime) }
@@ -112,7 +113,7 @@ private fun StatusBanner(s: F1Snapshot) {
         val ink = if (s.live) Color.White else C.fg                     // white on a flag colour, the theme's text on a plain card
         Text("${s.meeting} · ${s.session}", color = ink, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(when {
-            s.live -> "LIVE · ${trackWord(s.track)}${s.lap?.let { l -> " · Lap $l${s.totalLaps?.let { "/$it" } ?: ""}" } ?: ""}${if (s.status == "Aborted") " · session stopped" else ""}"
+            s.live -> "LIVE · ${trackWord(s.track)}${s.lap?.let { l -> " · Lap $l${s.totalLaps?.let { "/$it" } ?: ""}" } ?: s.left(Instant.now())?.let { " · ${clock(it)} left" } ?: ""}${if (s.status == "Aborted") " · session stopped" else ""}"
             s.over -> "Finished${s.start?.let { " · ${dayWord(it, Instant.now())}" } ?: ""}"
             else -> "Not started yet${s.start?.let { " · ${dayWord(it, Instant.now())} ${hm(it)}" } ?: ""}"
         }, color = ink, fontFamily = Inter, fontSize = 14.sp)
@@ -523,6 +524,7 @@ fun F1Hub(events: List<Event>, now: Instant, onOpen: (Event) -> Unit, onPage: (S
             0 -> if (race == null) Text("No Grand Prix coming up.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp))
                  else Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
                      WeekendHeader(race, events, now, onOpen)
+                     f1LiveSession(f1Weekend(race, events), now)?.let { F1NowPanel(it, onPage) }
                      F1WeekendView(race, events, now, onPage, trackFirst = true)
                  }
             1 -> F1LiveView()

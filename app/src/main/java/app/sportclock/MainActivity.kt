@@ -6,6 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -209,7 +211,9 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
             }
         }
     }
-    detail?.let { e -> ModalBottomSheet(onDismissRequest = { detail = null }, containerColor = C.tile, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    // a live F1 session's flag recolours the palette (F1Now.kt); the sheet fades into it rather than snapping
+    val sheetColor by animateColorAsState(C.tile, tween(600), label = "sheet")
+    detail?.let { e -> ModalBottomSheet(onDismissRequest = { detail = null }, containerColor = sheetColor, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         DetailSheet(e, now, scores.matches[e.id] ?: ExtraScores.map[e.id], scores.fetchedAt, onTeam = { detail = null; open("team:$it") },
             events = data?.events.orEmpty(), onPage = { detail = null; open(it) })
     } }
@@ -343,11 +347,14 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTe
         Text(e.line1(), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 22.sp, modifier = Modifier.padding(top = 10.dp))
         if (e.sport != Sport.FOOTBALL) Text(e.line2(), color = C.fg2, fontFamily = Inter, fontSize = 15.sp)
         val showScore = score?.home != null && score.away != null && !Spoilers.hidden(e)
-        Text(if (showScore) "${score!!.home}–${score.away}" else timeText(e), style = Digits, color = C.lime, fontWeight = FontWeight.ExtraBold, fontSize = 64.sp,
+        val f1Live = if (e.code == "F1") remember(e, events, now.epochSecond / 30, F1Now.snap) { f1LiveSession(f1Weekend(e, events), now) } else null
+        // another session of the weekend on now still comes first; this one's own countdown follows it
+        if (f1Live != null) F1NowPanel(f1Live, onPage)
+        if (f1Live?.id != e.id) Text(if (showScore) "${score!!.home}–${score.away}" else timeText(e), style = Digits, color = C.lime, fontWeight = FontWeight.ExtraBold, fontSize = 64.sp,
             modifier = Modifier.padding(top = 6.dp))
         val d = localDate(e.start)
         val dayLine = if (d == today || d == today.plusDays(1)) "${dayTitle(d, today)} · ${daySub(d)}" else "${dayTitle(d, today)} ${d.dayOfMonth} ${d.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }}"
-        Text(when {
+        if (f1Live?.id != e.id) Text(when {
             showScore -> "${score!!.detail.ifEmpty { "Live" }} · kick-off ${hm(e.start)}, $dayLine"
             e.isTbc -> e.window?.let { "Time not published yet · expected between ${hm(it.first)} and ${hm(it.second)}" } ?: "Time not published yet"
             else -> "$dayLine · ${hm(e.start)}, your time"

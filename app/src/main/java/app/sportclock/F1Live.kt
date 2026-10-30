@@ -52,11 +52,16 @@ data class F1Snapshot(
     val radio: List<F1Radio> = emptyList(),
     val bestLaps: List<F1Best> = emptyList(),
     val topSpeeds: List<F1Best> = emptyList(),
+    /** The session clock: time left when F1 last stamped it, and whether it's counting down (it stops under a red flag). */
+    val clockLeft: Duration? = null, val clockAt: Instant? = null, val clockRunning: Boolean = false,
 ) {
     val live get() = status == "Started" || status == "Aborted"
     val over get() = status == "Finished" || status == "Finalised" || status == "Ends"
     val racing get() = type == "Race" || session.contains("Sprint") && !session.contains("Qualifying") && !session.contains("Shootout")
     fun tla(n: String) = drivers[n]?.tla ?: "#$n"
+    fun left(now: Instant): Duration? = clockLeft?.let { l ->
+        if (clockRunning && clockAt != null) l.minus(Duration.between(clockAt, now)).let { if (it.isNegative) Duration.ZERO else it } else l
+    }
 }
 
 fun trackWord(code: String) = when (code) {
@@ -67,7 +72,7 @@ fun trackWord(code: String) = when (code) {
 private const val SR = "https://livetiming.formula1.com/signalrcore"
 private const val RS = "\u001e"
 private val TOPICS = listOf("SessionInfo", "SessionStatus", "TrackStatus", "LapCount", "DriverList", "TimingData", "TimingAppData",
-    "RaceControlMessages", "WeatherData", "PitLaneTimeCollection", "TeamRadio", "TimingStats", "LapSeries", "TyreStintSeries")
+    "RaceControlMessages", "WeatherData", "PitLaneTimeCollection", "TeamRadio", "TimingStats", "LapSeries", "TyreStintSeries", "ExtrapolatedClock")
 
 /** One HTTP call that keeps the load balancer's cookies, which the long-polling transport needs on every request. */
 private class SrConn {
@@ -185,10 +190,15 @@ internal fun parseF1(r: JSONObject): F1Snapshot {
         b.optString("Value").takeIf { it.isNotBlank() }?.let { F1Best(n, it, b.optInt("Position", 99)) } } }.sortedBy { it.pos }
     val topSpeeds = stats.mapNotNull { (n, l) -> l.optJSONObject("BestSpeeds")?.optJSONObject("ST")?.let { b ->
         b.optString("Value").takeIf { it.isNotBlank() }?.let { F1Best(n, it, b.optInt("Position", 99)) } } }.sortedBy { it.pos }
+    val ck = r.optJSONObject("ExtrapolatedClock")
+    val clockLeft = ck?.optString("Remaining")?.split(":")?.takeIf { it.size == 3 }?.let { p ->
+        runCatching { Duration.ofHours(p[0].toLong()).plusMinutes(p[1].toLong()).plusSeconds(p[2].toDouble().toLong()) }.getOrNull() }
+    val clockAt = ck?.optString("Utc")?.takeIf { it.isNotBlank() }?.let { u -> runCatching { Instant.parse(if (u.endsWith("Z")) u else u + "Z") }.getOrNull() }
     return F1Snapshot(si.optJSONObject("Meeting")?.optString("Name").orEmpty(), si.optString("Name"), si.optString("Type"), start,
         si.optJSONObject("Meeting")?.optJSONObject("Circuit")?.optInt("Key"), start?.atZone(ZoneOffset.UTC)?.year ?: 0,
         r.optJSONObject("SessionStatus")?.optString("Status").orEmpty(), r.optJSONObject("TrackStatus")?.optString("Status").orEmpty(),
-        lc?.optInt("CurrentLap"), lc?.optInt("TotalLaps"), drivers, lines, msgs, pits, w, sectors, trap, laps, stints, radio, bestLaps, topSpeeds)
+        lc?.optInt("CurrentLap"), lc?.optInt("TotalLaps"), drivers, lines, msgs, pits, w, sectors, trap, laps, stints, radio, bestLaps, topSpeeds,
+        clockLeft, clockAt, ck?.optBoolean("Extrapolating") == true)
 }
 
 /** Marshal sectors under a flag right now, from the race control messages in order: "YELLOW IN TRACK SECTOR 7" until "CLEAR IN TRACK SECTOR 7". */

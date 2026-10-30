@@ -12,8 +12,8 @@ android {
         applicationId = "app.sportclock"   // same id and key as the web-app APK, so this installs as an update
         minSdk = 26
         targetSdk = 36
-        versionCode = 24
-        versionName = "2.17"
+        versionCode = 25
+        versionName = "2.18"
     }
 
     signingConfigs {

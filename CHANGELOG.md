@@ -2,6 +2,17 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.18 (30 Oct 2026)
+- **Live F1 comes first.** While a session is on, its sheet opens on what's happening now instead of a countdown:
+  - The flag that's out in big letters, with its symbol: a waving yellow flag, the VSC or SC board, a stop sign for a red flag, a chequered flag at the end.
+  - What it's for: the sectors under yellow, or race control's latest message.
+  - Two tiles: the time left (practice and qualifying, counting down by the second; "clock stopped" under a red flag) or the lap in a race, and the track with the flagged sectors marked.
+  - The running order (top 10 or all) with gaps and tyres, then race control's last four messages.
+  - "Full live timing" opens the map, radio and strategy as before.
+- **The app takes the flag's colours.** Yellow for yellows and the VSC, amber for the safety car, red for a red flag. That covers the sheet, F1 → Weekend and the full Live timing page, and it goes back to your own theme when the track is green again or you leave.
+- The live panel also sits under the header on F1 → Weekend, and another session's sheet that weekend shows the live one first.
+- Updates every 15 seconds from Formula 1's own timing feed.
+
 ## 2.17 (30 Oct 2026)
 - **League pages.** Every league now has its own page with three parts:
   - **Fixtures:** every game still to come, by day, 30 at a time.
