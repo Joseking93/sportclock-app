@@ -76,7 +76,7 @@ fun ScreenTitle(title: String, sub: String? = null) {
 
 /* ---------- Scores · Tables · F1 ---------- */
 @Composable
-fun ScoresHub(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Event) -> Unit, onTeam: (String) -> Unit = {}) {
+fun ScoresHub(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Event) -> Unit, onTeam: (String) -> Unit = {}, onPage: (String) -> Unit = {}) {
     var seg by rememberSaveable { mutableIntStateOf(0) }
     Column(Modifier.fillMaxSize()) {
         ScreenTitle(listOf("Scores", "Tables", "Racing", "UFC")[seg],
@@ -85,7 +85,8 @@ fun ScoresHub(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Even
         Spacer(Modifier.height(8.dp))
         when (seg) {
             0 -> ScoresList(st, d, now, scores, onOpen, onTeam)
-            1 -> TablesView(st)
+            1 -> TablesView(st, onTeam = { espn -> onTeam(d.events.flatMap { it.teams }.distinct().firstOrNull { sameTeam(it, espn) } ?: espn) },
+                onLeague = { onPage("league:$it") })
             2 -> RacingView()
             else -> UfcView()
         }
@@ -99,7 +100,7 @@ private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOp
     var boards by remember { mutableStateOf<List<Pair<Event, Score>>>(emptyList()) }
     LaunchedEffect(Unit) {
         while (true) {
-            runCatching { cupBoards(Instant.now()) }.onSuccess { boards = it }
+            runCatching { cupBoards(Instant.now()) }.onSuccess { b -> boards = b; b.forEach { ExtraScores.map[it.first.id] = it.second } }
             delay(if (boards.any { it.second.status == "IN_PLAY" || it.second.status == "PAUSED" }) 60_000 else 180_000)
         }
     }
@@ -146,7 +147,7 @@ private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOp
 }
 
 @Composable
-fun TablesView(st: AppState, only: String? = null, onTeam: ((String) -> Unit)? = null) {
+fun TablesView(st: AppState, only: String? = null, onTeam: ((String) -> Unit)? = null, onLeague: ((String) -> Unit)? = null) {
     val comps = remember(st.follows) {
         val followedComps = st.follows.filter { it.startsWith("c:") }.map { it.substring(2) }.filter { it in ESPN_LEAGUE }
         (listOf("ENG", "UCL") + followedComps + ESPN_LEAGUE.keys).distinct()
@@ -164,6 +165,7 @@ fun TablesView(st: AppState, only: String? = null, onTeam: ((String) -> Unit)? =
                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
             }
         }
+        if (only == null && onLeague != null) LeagueLink(code, onLeague)
         val t = table
         when {
             failed -> Text("Couldn't load the table. Check your connection.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp))

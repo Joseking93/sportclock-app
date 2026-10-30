@@ -180,6 +180,8 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
                 page == "update" -> UpdateScreen(onBack = { back(); updateWaiting = Updater.waiting(ctx) })
                 page == "report" -> ReportScreen(onBack = { back() })
                 page == "f1live" || page == "f1news" || page?.startsWith("upgrades:") == true -> F1Page(page!!, onBack = { back() })
+                page?.startsWith("league:") == true -> LeaguePage(page!!.removePrefix("league:"), st, d?.events.orEmpty(), now, scores.matches,
+                    onBack = { back() }, onOpen = { detail = it }, onTeam = { open("team:$it") })
                 page?.startsWith("team:") == true -> TeamScreen(page!!.removePrefix("team:"), d?.events.orEmpty(), now, scores.matches,
                     onBack = { back() }, onOpen = { detail = it })
                 d == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = C.lime) }
@@ -190,7 +192,7 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
                         Toast.makeText(ctx, if (newPin == null) "Unpinned" else "${tokenLabel(newPin)} stays on top", Toast.LENGTH_SHORT).show()
                     },
                     onOpen = { detail = it }, onTeam = { open("team:$it") })
-                tab == Tab.SCORES -> ScoresHub(st, d, now, scores, onOpen = { detail = it }, onTeam = { open("team:$it") })
+                tab == Tab.SCORES -> ScoresHub(st, d, now, scores, onOpen = { detail = it }, onTeam = { open("team:$it") }, onPage = { open(it) })
                 tab == Tab.CALENDAR -> CalendarScreen(st, d.events, now, scores.matches, onOpen = { detail = it })
                 tab == Tab.MINE -> MyTab(myTab, st, d.events, now, scores.matches, onOpen = { detail = it }, onPage = { open(it) },
                     onChoose = { v -> myTab = v; Settings.setMyTab(ctx, v); if (v == "NFL") scope.launch { Repo.load(ctx, maxAgeMin = 600) } })
@@ -208,7 +210,7 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
         }
     }
     detail?.let { e -> ModalBottomSheet(onDismissRequest = { detail = null }, containerColor = C.tile, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        DetailSheet(e, now, scores.matches[e.id], scores.fetchedAt, onTeam = { detail = null; open("team:$it") },
+        DetailSheet(e, now, scores.matches[e.id] ?: ExtraScores.map[e.id], scores.fetchedAt, onTeam = { detail = null; open("team:$it") },
             events = data?.events.orEmpty(), onPage = { detail = null; open(it) })
     } }
 }
@@ -331,9 +333,12 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTe
                 events: List<Event> = emptyList(), onPage: (String) -> Unit = {}) {
     val today = localDate(now)
     Column(Modifier.verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // a league's name opens its page: fixtures, results and the table
+        val league = e.code in ESPN_LEAGUE
+        Row(Modifier.clickable(enabled = league) { onPage("league:${e.code}") }, verticalAlignment = Alignment.CenterVertically) {
             LogoChip(e.code, 34.dp); Spacer(Modifier.width(12.dp))
-            Text(series(e.code)?.name ?: e.comp, color = C.fg2, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Text((series(e.code)?.name ?: e.comp) + if (league) "  ›" else "", color = if (league) C.lime else C.fg2, fontFamily = Inter,
+                fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
         }
         Text(e.line1(), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 22.sp, modifier = Modifier.padding(top = 10.dp))
         if (e.sport != Sport.FOOTBALL) Text(e.line2(), color = C.fg2, fontFamily = Inter, fontSize = 15.sp)

@@ -103,21 +103,10 @@ fun HubHeader(title: String, sub: String?, logo: String?, onChange: () -> Unit) 
 @Composable
 private fun LeagueHub(code: String, st: AppState, events: List<Event>, now: Instant, scores: Map<String, Score>,
                       onOpen: (Event) -> Unit, onTeam: (String) -> Unit, onChange: () -> Unit) {
-    var seg by rememberSaveable(code) { mutableIntStateOf(0) }
-    val games = remember(events, code, now.epochSecond / 600) {
-        events.filter { it.code == code && it.start.isAfter(now.minusSeconds(3 * 86400)) && it.start.isBefore(now.plusSeconds(10 * 86400)) }
-    }
-    // the table names clubs ESPN's way ("AFC Bournemouth"); open the page under our own name when we know it
-    val ours = remember(events, code) { events.filter { it.code == code }.flatMap { it.teams }.distinct() }
+    val soon = remember(events, code, now.epochSecond / 600) { events.count { it.code == code && !it.started(now) && it.start.isBefore(now.plusSeconds(10 * 86400)) } }
     Column(Modifier.fillMaxSize()) {
-        HubHeader(series(code)?.name ?: code, "${games.count { !it.started(now) }} matches in the next 10 days", code, onChange)
-        Segments(listOf("Matches", "Table"), seg) { seg = it }
-        Spacer(Modifier.height(8.dp))
-        if (seg == 0) LazyColumn(Modifier.fillMaxSize()) {
-            if (games.isEmpty()) item { Text("No matches in the last three days or the next ten.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp)) }
-            dayGroups(games, now, scores, onOpen)
-            item { Spacer(Modifier.height(24.dp)) }
-        } else TablesView(st, only = code, onTeam = { espn -> onTeam(ours.firstOrNull { sameTeam(it, espn) } ?: espn) })
+        HubHeader(series(code)?.name ?: code, "$soon matches in the next 10 days", code, onChange)
+        LeagueBody(code, st, events, now, scores, onOpen, onTeam)
     }
 }
 

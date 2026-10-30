@@ -124,4 +124,12 @@ class LiveSourcesTest {
         b.filter { it.first.teams.any { t -> t.contains("Arsenal") || t.contains("Bayern") } }.forEach { (e, s) -> println("  ${e.comp}: ${e.title} ${s.home}-${s.away} ${s.status} ${s.detail}") }
         assertTrue(b.isNotEmpty())
     }
+    @Test fun leagueResultsTwoMonths() = runBlocking {
+        assumeTrue(live)
+        for (c in listOf("ENG", "ESP", "UCL")) {
+            val r = leagueResults(c)
+            println("$c results: ${r.size}, newest ${r.firstOrNull()?.let { "${it.first.title} ${it.second.home}-${it.second.away} ${it.first.start}" }}, oldest ${r.lastOrNull()?.first?.start}")
+            assertTrue(r.isNotEmpty())
+        }
+    }
 }

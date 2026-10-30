@@ -2,6 +2,18 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.17 (30 Oct 2026)
+- **League pages.** Every league now has its own page with three parts:
+  - **Fixtures:** every game still to come, by day, 30 at a time.
+  - **Results:** this month's and last month's scores.
+  - **Table:** the league table.
+- **Two ways to open a league page:**
+  - On Scores → Tables, tap "fixtures and results ›" under the league chips.
+  - On any match sheet, tap the league's name (Premier League ›).
+  - Your tab uses the same page when it is set to a league.
+- **Teams in the Tables tab open their page** when tapped.
+- **Match sheets show the score** for cup games and older results too.
+
 ## 2.16 (28 Oct 2026)
 - **Every cup game in Scores.** Today and Yesterday on the Scores tab now list all the cup games, whoever plays, with live scores: Carabao Cup, FA Cup, Copa del Rey, DFB-Pokal, Coppa Italia, Coupe de France, KNVB Beker, Taça de Portugal, Europa League and Conference League. Before, you only saw cup games of clubs you follow.
 - **Calendar filters work.** Football, Motorsport and Fight on the Calendar now show just that sport. Before, only Following and All responded.
