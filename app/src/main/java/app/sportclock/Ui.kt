@@ -136,7 +136,8 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
     // Football: the favourite player only when he is in one of the two squads; otherwise both clubs' badges.
     val football = (e.sport == Sport.FOOTBALL || e.sport == Sport.NFL) && e.teams.size == 2
     val look = if (football) Looks.ready[e.id] else null
-    if (football) LaunchedEffect(e.id) { Looks.load(e) }
+    // keep asking until the badges arrive: a single failed try used to leave the card blank for as long as it was on screen
+    if (football) LaunchedEffect(e.id) { while (Looks.ready[e.id] == null) { Looks.load(e); kotlinx.coroutines.delay(30_000) } }
     val person = if (!football) h.person else h.person?.takeIf { p -> look != null && personKey(p.name) in look.squad }
     Box(
         Modifier.fillMaxWidth().heightIn(min = 204.dp).clip(shape)

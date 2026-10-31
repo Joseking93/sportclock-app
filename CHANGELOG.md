@@ -2,6 +2,10 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.19 (31 Oct 2026)
+- **Fixed: blank NEXT UP card and widget for football.** The club colours and badges come from ESPN. One failed download (say, right after the phone wakes with no network yet) used to block another try for 10 minutes, and the card never asked again while it was on screen. Now the card keeps trying every 30 seconds and the widget redraws two minutes later, until the badges arrive.
+- A failed badge download is now written to the app's report log, so "Report a problem" shows why.
+
 ## 2.18 (30 Oct 2026)
 - **Live F1 comes first.** While a session is on, its sheet opens on what's happening now instead of a countdown:
   - The flag that's out in big letters, with its symbol: a waving yellow flag, the VSC or SC board, a stop sign for a red flag, a chequered flag at the end.

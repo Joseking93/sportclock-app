@@ -75,7 +75,8 @@ class SportClockWidget : GlanceAppWidget() {
                 ?: art?.let { a -> photo?.let { fadedRes(context, it, 0.6f, 0.5f, false, 600, 600, 0.0f, 0.95f, 0.75f) } ?: sportArtBitmap(a, 600, 600, 0.05f, 0.75f, 0.7f, accent) } }
                 .onFailure { Diag.log("widget art: $it") }.getOrNull()
         }
-        Alerts.scheduleWidget(context, hero?.event?.takeIf { !it.isTbc }?.start)   // redraw when the wording next changes
+        Alerts.scheduleWidget(context, hero?.event?.takeIf { !it.isTbc }?.start,   // redraw when the wording next changes,
+            retrySoon = look == null && e != null && e.sport == Sport.FOOTBALL && e.teams.size == 2)   // or in two minutes when the badges didn't load
         provideContent { Content(hero, next, wideBmp, squareBmp, now, live) }
     }
 

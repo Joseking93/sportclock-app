@@ -176,7 +176,7 @@ object Alerts {
      * Redraw the widget at the next moment its wording changes: every 5 minutes in the last hour before the next event,
      * every 15 minutes in the three hours before that, otherwise every 30 minutes.
      */
-    fun scheduleWidget(ctx: Context, next: Instant?) {
+    fun scheduleWidget(ctx: Context, next: Instant?, retrySoon: Boolean = false) {
         val am = ctx.getSystemService(AlarmManager::class.java)
         val now = Instant.now()
         val mins = next?.let { Duration.between(now, it).toMinutes() } ?: Long.MAX_VALUE
@@ -184,6 +184,7 @@ object Alerts {
         var at = now.plusSeconds(step * 60)
         if (next != null && mins > 180) at = minOf(at, next.minusSeconds(180 * 60).coerceAtLeast(now.plusSeconds(60)))
         if (next != null && next.isAfter(now) && next.isBefore(at)) at = next.plusSeconds(5)   // flip to "on now" right at the start
+        if (retrySoon) at = minOf(at, now.plusSeconds(120))
         setExact(am, at.toEpochMilli(), PendingIntent.getBroadcast(ctx, 7001, Intent(ctx, WidgetTick::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
     }

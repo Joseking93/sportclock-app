@@ -28,7 +28,8 @@ fun personKey(name: String) = Normalizer.normalize(name.lowercase(Locale.ROOT), 
 
 /**
  * Badges, colours and squads from ESPN, fetched by the phone and kept for the session: a scoreboard for 30 minutes,
- * a squad for 12 hours. A failed look is retried after 10 minutes; until then the card simply has no art.
+ * a squad for 12 hours. A failed look may be tried again after a minute (the card and the widget both keep asking),
+ * so one failure, say just after the phone wakes with no network yet, doesn't leave the badges blank for long.
  */
 object Looks {
     val ready = mutableStateMapOf<String, MatchLook>()
@@ -43,13 +44,13 @@ object Looks {
         val lg = ESPN_COMP[e.code] ?: return null
         if (e.sport != Sport.FOOTBALL || e.teams.size != 2) return null
         val t = System.currentTimeMillis()
-        if (t - (failed[e.id] ?: 0L) < 10 * 60_000) return null
+        if (t - (failed[e.id] ?: 0L) < 60_000) return null
         return lock.withLock {
             runCatching {
                 val m = board(e, lg) ?: error("no ESPN match")
                 val h = m.homeSide ?: error("no badge"); val a = m.awaySide ?: error("no badge")
                 MatchLook(h, a, roster(lg, h.id) + roster(lg, a.id)).also { ready[e.id] = it }
-            }.getOrElse { failed[e.id] = t; null }
+            }.getOrElse { Diag.log("badges ${e.id}: $it"); failed[e.id] = t; null }
         }
     }
 
