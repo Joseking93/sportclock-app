@@ -397,6 +397,18 @@ fun SettingsScreen(onBack: () -> Unit, onChanged: () -> Unit, onTextScale: (Floa
             Text("For MotoGP, NASCAR, IndyCar, UFC and boxing cards: race and fight photos, or drawn scenes (octagon, ring, oval, trophy) in your theme's colours.",
                 color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(start = 20.dp, top = 8.dp, end = 20.dp))
         }
+        item { SectionLabel("Competition themes") }
+        item {
+            var on by remember { mutableStateOf(Settings.compThemes(ctx)) }
+            Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(true to "On", false to "Plain").forEach { (key, label) ->
+                    FilterChip(on == key, { on = key; Settings.setCompThemes(ctx, key) }, label = { Text(label, fontFamily = Inter) },
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.lime, selectedLabelColor = C.onLime, labelColor = C.fg))
+                }
+            }
+            Text("Each big competition wears its own colours and backdrop on its page and its match sheets: the Champions League, the Premier League, LaLiga, the Bundesliga, Serie A, Ligue 1, the Europa and Conference Leagues, the cups and F1. Plain keeps your look everywhere.",
+                color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(start = 20.dp, top = 8.dp, end = 20.dp))
+        }
         item { SectionLabel("Text size") }
         item {
             Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

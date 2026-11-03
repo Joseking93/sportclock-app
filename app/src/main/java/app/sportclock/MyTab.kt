@@ -104,9 +104,13 @@ fun HubHeader(title: String, sub: String?, logo: String?, onChange: () -> Unit) 
 private fun LeagueHub(code: String, st: AppState, events: List<Event>, now: Instant, scores: Map<String, Score>,
                       onOpen: (Event) -> Unit, onTeam: (String) -> Unit, onChange: () -> Unit) {
     val soon = remember(events, code, now.epochSecond / 600) { events.count { it.code == code && !it.started(now) && it.start.isBefore(now.plusSeconds(10 * 86400)) } }
-    Column(Modifier.fillMaxSize()) {
-        HubHeader(series(code)?.name ?: code, "$soon matches in the next 10 days", code, onChange)
-        LeagueBody(code, st, events, now, scores, onOpen, onTeam)
+    CompetitionTheme(code)
+    Box(Modifier.fillMaxSize()) {
+        CompBackdrop(code, Modifier.matchParentSize())
+        Column(Modifier.fillMaxSize()) {
+            HubHeader(series(code)?.name ?: code, "$soon matches in the next 10 days", code, onChange)
+            LeagueBody(code, st, events, now, scores, onOpen, onTeam)
+        }
     }
 }
 

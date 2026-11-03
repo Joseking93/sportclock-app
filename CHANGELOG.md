@@ -2,6 +2,18 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.20 (3 Nov 2026)
+- **A theme for every big competition.** Each one wears its own colours and a backdrop the app draws, on its league page, its match sheets and your tab when that's a league:
+  - **Champions League:** navy into violet with a big star-ball outline in cyan-to-magenta light, turning very slowly.
+  - **Premier League:** purple with green, pink and cyan shards. **LaLiga:** coral sunburst. **Bundesliga:** red stripes on charcoal. **Serie A:** navy and teal with a shield outline. **Ligue 1:** navy with flowing lines and a lime one.
+  - **Europa League:** orange rings. **Conference League:** green rings. **FA Cup:** navy and gold laurel. **Carabao Cup:** green laurel.
+  - Copa del Rey, DFB-Pokal, Coppa Italia and Coupe de France wear their country's league look.
+  - **F1:** carbon black and red with speed lines and a chequered corner, on the F1 tab and the Live timing, news and upgrades pages. A live yellow or red flag still takes over.
+- Real logos stay in the small logo chip as before; the backdrops are the app's own drawings.
+- The backdrops stand still when the phone's animations are turned off.
+- **More → Settings → Competition themes:** On, or Plain to keep your own look everywhere.
+- Cup pages show the cup's full name.
+
 ## 2.19 (31 Oct 2026)
 - **Fixed: blank NEXT UP card and widget for football.** The club colours and badges come from ESPN. One failed download (say, right after the phone wakes with no network yet) used to block another try for 10 minutes, and the card never asked again while it was on screen. Now the card keeps trying every 30 seconds and the widget redraws two minutes later, until the badges arrive.
 - A failed badge download is now written to the app's report log, so "Report a problem" shows why.

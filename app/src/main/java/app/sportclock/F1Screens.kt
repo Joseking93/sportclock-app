@@ -516,6 +516,9 @@ fun currentGp(events: List<Event>, now: Instant): Event? = events
 fun F1Hub(events: List<Event>, now: Instant, onOpen: (Event) -> Unit, onPage: (String) -> Unit, onChange: () -> Unit = {}) {
     var seg by rememberSaveable { mutableIntStateOf(0) }
     val race = remember(events, now.epochSecond / 600) { currentGp(events, now) }
+    CompetitionTheme("F1")
+    Box(Modifier.fillMaxSize()) {
+    CompBackdrop("F1", Modifier.matchParentSize())
     Column(Modifier.fillMaxSize()) {
         HubHeader("Formula 1", race?.let { "Next: ${it.title}" } ?: "Season ${now.atZone(ZoneOffset.UTC).year}", "F1", onChange)
         Segments(listOf("Weekend", "Live", "Standings", "Season"), seg) { seg = it }
@@ -531,6 +534,7 @@ fun F1Hub(events: List<Event>, now: Instant, onOpen: (Event) -> Unit, onPage: (S
             2 -> F1View()
             else -> SeasonView(events, now, onOpen)
         }
+    }
     }
 }
 
@@ -589,9 +593,13 @@ private fun SeasonView(events: List<Event>, now: Instant, onOpen: (Event) -> Uni
 
 /** Full-screen pages the weekend sheet opens: F1 Live, the news and the upgrades document. */
 @Composable
-fun F1Page(page: String, onBack: () -> Unit) = Column(Modifier.fillMaxSize().statusBarsPadding()) {
-    TextButton(onClick = onBack, modifier = Modifier.padding(start = 4.dp, top = 4.dp)) { Text("‹ Back", color = C.lime, fontFamily = Inter) }
-    if (page == "f1live") F1LiveView()
-    else if (page == "f1news") F1NewsScreen()
-    else page.removePrefix("upgrades:").split(":", limit = 2).let { parts -> UpgradesDoc(parts.getOrElse(1) { "" }, parts[0].toIntOrNull() ?: 2026) }
+fun F1Page(page: String, onBack: () -> Unit) = Box(Modifier.fillMaxSize()) {
+    CompetitionTheme("F1")
+    CompBackdrop("F1", Modifier.matchParentSize())
+    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+        TextButton(onClick = onBack, modifier = Modifier.padding(start = 4.dp, top = 4.dp)) { Text("‹ Back", color = C.lime, fontFamily = Inter) }
+        if (page == "f1live") F1LiveView()
+        else if (page == "f1news") F1NewsScreen()
+        else page.removePrefix("upgrades:").split(":", limit = 2).let { parts -> UpgradesDoc(parts.getOrElse(1) { "" }, parts[0].toIntOrNull() ?: 2026) }
+    }
 }

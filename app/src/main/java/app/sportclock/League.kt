@@ -95,18 +95,22 @@ fun LeagueBody(code: String, st: AppState, events: List<Event>, now: Instant, sc
 /** The league page opened from Tables or a match sheet: a back button, the league's name and logo, then [LeagueBody]. */
 @Composable
 fun LeaguePage(code: String, st: AppState, events: List<Event>, now: Instant, scores: Map<String, Score>,
-               onBack: () -> Unit, onOpen: (Event) -> Unit, onTeam: (String) -> Unit) = Column(Modifier.fillMaxSize().statusBarsPadding()) {
+               onBack: () -> Unit, onOpen: (Event) -> Unit, onTeam: (String) -> Unit) = Box(Modifier.fillMaxSize()) {
+    CompetitionTheme(code)
+    CompBackdrop(code, Modifier.matchParentSize())
+    Column(Modifier.fillMaxSize().statusBarsPadding()) {
     TextButton(onClick = onBack, modifier = Modifier.padding(start = 4.dp, top = 4.dp)) { Text("‹ Back", color = C.lime, fontFamily = Inter) }
     Row(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         LogoChip(code, 30.dp); Spacer(Modifier.width(12.dp))
         Column {
-            Text(series(code)?.name ?: code, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+            Text(series(code)?.name ?: cup(code)?.name ?: code, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 26.sp)
             val next = events.firstOrNull { it.code == code && !it.started(now) }
             Text(next?.let { "Next: ${it.line1()} · ${dayWord(it.start, now)} ${hm(it.start)}" } ?: "Fixtures, results and the table",
                 color = C.fg2, fontFamily = Inter, fontSize = 13.sp, maxLines = 1)
         }
     }
     LeagueBody(code, st, events, now, scores, onOpen, onTeam)
+    }
 }
 
 /** "Fixtures and results ›" under the Tables chips, for the league on show. */

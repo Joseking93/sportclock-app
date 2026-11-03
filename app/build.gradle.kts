@@ -12,8 +12,8 @@ android {
         applicationId = "app.sportclock"   // same id and key as the web-app APK, so this installs as an update
         minSdk = 26
         targetSdk = 36
-        versionCode = 26
-        versionName = "2.19"
+        versionCode = 27
+        versionName = "2.20"
     }
 
     signingConfigs {
@@ -40,6 +40,8 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
+    // screenshot tests render real screens with Robolectric's native graphics (ThemeShotsTest)
+    testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
 dependencies {
@@ -58,4 +60,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation(bom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

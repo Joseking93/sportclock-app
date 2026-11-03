@@ -46,6 +46,10 @@ object Themes {
     var current by mutableStateOf(NIGHT_DARK)
     /** A live F1 session's flag colours (see F1Now.kt), shown in place of the reader's palette while a flag is out. */
     var flag by mutableStateOf<Palette?>(null)
+    /** Competition looks on screen, newest last (see CompThemes.kt); the newest is shown. */
+    val comps = androidx.compose.runtime.mutableStateListOf<Palette>()
+    /** Competition themes on or off (Settings). */
+    var compOn by mutableStateOf(true)
     /** "photos" or "drawn", for the sports with no person or badges on their card (see SportArt.kt). */
     var cardArt by mutableStateOf("photos")
     fun pick(palette: String, dark: Boolean) = when (palette) { "paddock" -> if (dark) PADDOCK_DARK else PADDOCK_LIGHT; else -> if (dark) NIGHT_DARK else NIGHT_LIGHT }
@@ -85,7 +89,7 @@ val Digits = TextStyle(fontFamily = Barlow, fontWeight = FontWeight.Bold, fontFe
 @Composable
 fun SportClockTheme(palette: String = "night", mode: String = "system", content: @Composable () -> Unit) {
     val dark = when (mode) { "light" -> false; "dark" -> true; else -> isSystemInDarkTheme() }
-    val p = Themes.flag ?: Themes.pick(palette, dark)
+    val p = Themes.flag ?: Themes.comps.lastOrNull() ?: Themes.pick(palette, dark)
     if (Themes.current != p) Themes.current = p
     val base = Typography()
     val t = Typography(

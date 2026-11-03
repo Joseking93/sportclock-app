@@ -35,6 +35,9 @@ object Settings {
     fun cardArt(ctx: Context) = Repo.prefs(ctx).getString("cardArt", "photos")!!
     fun setCardArt(ctx: Context, v: String) { Repo.prefs(ctx).edit().putString("cardArt", v).apply(); Themes.cardArt = v }
     /** The look: "night" or "paddock", and "system", "light" or "dark". */
+    /** A look for each big competition on its pages (CompThemes.kt), or the plain look everywhere. */
+    fun compThemes(ctx: Context) = Repo.prefs(ctx).getBoolean("compThemes", true)
+    fun setCompThemes(ctx: Context, on: Boolean) { Repo.prefs(ctx).edit().putBoolean("compThemes", on).apply(); Themes.compOn = on }
     fun palette(ctx: Context) = Repo.prefs(ctx).getString("palette", "night")!!
     fun mode(ctx: Context) = Repo.prefs(ctx).getString("mode", "system")!!
     fun setTheme(ctx: Context, palette: String, mode: String) = Repo.prefs(ctx).edit().putString("palette", palette).putString("mode", mode).apply()

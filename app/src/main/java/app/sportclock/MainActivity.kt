@@ -92,7 +92,7 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val st = remember { AppState(ctx) }
-    remember { AlertChoices.load(ctx); Spoilers.load(ctx); Themes.cardArt = Settings.cardArt(ctx) }
+    remember { AlertChoices.load(ctx); Spoilers.load(ctx); Themes.cardArt = Settings.cardArt(ctx); Themes.compOn = Settings.compThemes(ctx) }
     var welcome by remember { mutableStateOf(Repo.isNewInstall(ctx)) }
     val data by Repo.data.collectAsState()
     var now by remember { mutableStateOf(Instant.now()) }
@@ -212,7 +212,7 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
         }
     }
     // a live F1 session's flag recolours the palette (F1Now.kt); the sheet fades into it rather than snapping
-    val sheetColor by animateColorAsState(C.tile, tween(600), label = "sheet")
+    val sheetColor by animateColorAsState(if (C.tile.alpha < 1f) C.bg else C.tile, tween(600), label = "sheet")
     detail?.let { e -> ModalBottomSheet(onDismissRequest = { detail = null }, containerColor = sheetColor, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         DetailSheet(e, now, scores.matches[e.id] ?: ExtraScores.map[e.id], scores.fetchedAt, onTeam = { detail = null; open("team:$it") },
             events = data?.events.orEmpty(), onPage = { detail = null; open(it) })
@@ -336,6 +336,10 @@ fun AboutScreen(d: Data?, onBack: () -> Unit) {
 fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTeam: (String) -> Unit = {},
                 events: List<Event> = emptyList(), onPage: (String) -> Unit = {}) {
     val today = localDate(now)
+    // the competition's look: its colours and backdrop behind the whole sheet (the backdrop stays put while the sheet scrolls)
+    CompetitionTheme(e.code)
+    Box {
+    CompBackdrop(e.code, Modifier.matchParentSize())
     Column(Modifier.verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, bottom = 32.dp)) {
         // a league's name opens its page: fixtures, results and the table
         val league = e.code in ESPN_LEAGUE
@@ -387,5 +391,6 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTe
         if (e.code == "F1") F1WeekendView(e, events, now, onPage)
         if (e.sport == Sport.NFL) TeamLinks(e, onTeam)
         DetailActions(e, now)
+    }
     }
 }
