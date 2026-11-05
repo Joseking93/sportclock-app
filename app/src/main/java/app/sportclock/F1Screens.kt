@@ -437,7 +437,8 @@ fun F1WeekendView(e: Event, events: List<Event>, now: Instant, onPage: (String) 
     Column(Modifier.padding(top = 12.dp)) {
         info?.let { g -> Text("Round ${g.round} · ${g.circuit} · ${g.locality}, ${g.country}", color = C.fg2, fontFamily = Inter, fontSize = 13.sp) }
             ?: Skeleton(16.dp, Modifier.fillMaxWidth(0.7f))
-        if (trackFirst) Track()
+        val isNext = remember(e.title, events) { currentGp(events, now)?.title == e.title }
+        if (trackFirst) { if (isNext) WorthKnowing(e); Track() }
 
         Heading("This weekend")
         weekend.forEach { s ->
@@ -458,6 +459,8 @@ fun F1WeekendView(e: Event, events: List<Event>, now: Instant, onPage: (String) 
             Text("Race forecast: ${f.temp.toInt()}°C, ${weatherWord(f.code)}, ${f.rain}% chance of rain, wind ${f.wind.toInt()} km/h", color = C.fg2, fontFamily = Inter,
                 fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
         }
+
+        if (!trackFirst && isNext) WorthKnowing(e)
 
         val anyDone = weekend.any { it.over(now) || it.inProgress(now) }
         val done = results.orEmpty().filter { it.state == "post" && !it.rows.isNullOrEmpty() }
@@ -489,7 +492,7 @@ fun F1WeekendView(e: Event, events: List<Event>, now: Instant, onPage: (String) 
         if (!trackFirst) Track()
 
         // race week extras for the Grand Prix that's on now or next: title fight, stewards, news
-        if (remember(e.title, events) { currentGp(events, now)?.title == e.title }) F1RaceWeek(onPage)
+        if (isNext) F1RaceWeek(onPage)
 
         Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { onPage("f1live") }) { Text("Live timing", color = C.lime, fontFamily = Inter) }

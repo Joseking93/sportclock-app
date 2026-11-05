@@ -28,7 +28,8 @@ class HeroLogicTest {
         val hs = heroes(events, follows, "t:Manchester United", Filter.FOLLOWING, favs, now)
         println("PINNED: " + show(hs))
         assertEquals("t:Manchester United", hs[0].token)
-        assertEquals("17:00", timeText(hs[0].event))
+        // data.json moves on every day, so compare with United's next game in it, not a fixed time
+        assertEquals(events.first { tokenMatches("t:Manchester United", it) && !it.started(now) }.id, hs[0].event.id)
     }
 
     @Test fun motorsportPillShowsF1() {

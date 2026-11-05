@@ -2,6 +2,18 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.21 (5 Nov 2026)
+- **F1 fun facts: "Worth knowing".** Swipeable stat cards on F1 → Weekend and on race sheets for the next Grand Prix:
+  - Milestones ("Hamilton's 400th start"), and who is one win, podium or pole from a round number.
+  - The next circuit: most wins there, wins from furthest back, how often pole wins, the home drought.
+  - The record book: youngest champions, latest career wins, longest waits for a win, most starts without one.
+  - The season so far: biggest climb through the field, who has won what.
+- Facts about your favourite driver come first.
+- In race week, if you follow F1, Home shows one fact a day. Tap it to open the race.
+- New facts arrive by themselves after each Grand Prix. Facts about a circuit only show for that circuit's race.
+- Spoiler-free mode hides the cards until you tap, and leaves the Home line out.
+- Data from F1DB (CC BY 4.0), credited on every card and in About.
+
 ## 2.20 (3 Nov 2026)
 - **A theme for every big competition.** Each one wears its own colours and a backdrop the app draws, on its league page, its match sheets and your tab when that's a league:
   - **Champions League:** navy into violet with a big star-ball outline in cyan-to-magenta light, turning very slowly.

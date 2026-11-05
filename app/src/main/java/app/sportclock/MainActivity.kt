@@ -236,6 +236,7 @@ fun HomeScreen(st: AppState, events: List<Event>, now: Instant, scores: Map<Stri
         item { TopBar() }
         item { FilterPills(filter) { filter = it } }
         item { Spacer(Modifier.height(14.dp)); HeroPager(hs, now, st.pinned, onPin, onOpen) { shown = it.event.id } }
+        item { FactOfTheDay(events, st.follows, now, onOpen) }
         item { LastResults(st, events, now, scores, onTeam) }
         if (list.isEmpty()) item { Text("Nothing else in the next two weeks", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(24.dp)) }
         dayGroups(list, now, scores, onOpen)
@@ -324,6 +325,7 @@ fun AboutScreen(d: Data?, onBack: () -> Unit) {
             "LIVE is only shown for confirmed start times; an approximate one shows ON NOW.",
             "Football scores, lineups, form and tables are fetched by your phone from ESPN; so are F1, IndyCar and NASCAR results and UFC cards. MotoGP results come from MotoGP.com, F1 standings, race times and pit stops from Jolpica (Ergast), news from BBC Sport.",
             "F1 Live reads Formula 1's own live timing feed; track maps come from MultiViewer's circuit data, upgrades from the FIA's Car Presentation Submissions.",
+            "F1 facts are worked out from F1DB (github.com/f1db/f1db), licensed under CC BY 4.0.",
             "Fixtures: ${d?.attribution ?: ""}; F1 calendar via Jolpica; fight cards and other series curated by hand.",
             "Photos are from news coverage and Wikimedia Commons, for personal use in this app only.",
             "Sport card photos, Wikimedia Commons: MotoGP by Liauzh (CC BY-SA 4.0); NASCAR by likeaduck (CC BY 2.0); IndyCar by YellowstoneTrinity (CC0); MMA by Haribhagirath (CC BY 4.0); boxing by GhaziTwaissi (CC BY-SA 4.0).",

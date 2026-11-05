@@ -3,6 +3,10 @@ package app.sportclock
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -37,6 +41,8 @@ class ThemeShotsTest {
         ev("ITA", "FC Internazionale Milano", "Juventus", 133), ev("FRA", "Paris Saint-Germain", "Olympique de Marseille", 133),
         ev("UEL", "Manchester United", "Lazio", 80), ev("FAC", "Manchester United", "Burnley", 1500))
 
+    private val gp = Event("F1|sp", Sport.MOTORSPORT, "F1", "Formula 1", "São Paulo GP", "Race", Instant.parse("2026-11-08T17:00:00Z"), 120, "", "confirmed", emptyList(), null, null, null)
+
     private fun save(name: String) {
         val dir = File("build/theme-shots").apply { mkdirs() }
         // drawn straight from the window: Compose's own capture waits for a hardware redraw that Robolectric never sends
@@ -56,12 +62,27 @@ class ThemeShotsTest {
             SportClockTheme("night", "dark") {
                 Box(Modifier.fillMaxSize()) {
                     val p = page
-                    if (p.startsWith("league:")) LeaguePage(p.removePrefix("league:"), st, events, now, emptyMap(), {}, {}, {})
+                    if (p == "worth") Box(Modifier.fillMaxSize()) {
+                        CompetitionTheme("F1"); CompBackdrop("F1", Modifier.matchParentSize())
+                        // the row as the weekend page has it: inside a scrolling column, with one line on Home above it
+                        androidx.compose.foundation.layout.Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp)) {
+                            FactOfTheDay(listOf(gp), setOf("c:F1"), now) {}
+                            WorthKnowing(gp)
+                            androidx.compose.material3.Text("The track", color = C.lime)
+                        }
+                    }
+                    else if (p.startsWith("fact:")) Box(Modifier.fillMaxSize()) {
+                        CompetitionTheme("F1"); CompBackdrop("F1", Modifier.matchParentSize())
+                        val doc = parseFacts(javaClass.getResource("/f1facts.json")!!.readText())
+                        FactCard(doc.facts[p.removePrefix("fact:").toInt()], doc.credit, Modifier.padding(20.dp))
+                    }
+                    else if (p.startsWith("league:")) LeaguePage(p.removePrefix("league:"), st, events, now, emptyMap(), {}, {}, {})
                     else events.first { it.code == p.removePrefix("sheet:") }.let { e -> DetailSheet(e, now, null, null, events = events) }
                 }
             }
         }
-        for (p in listOf("league:UCL", "sheet:UCL", "league:ENG", "league:ESP", "league:GER", "league:ITA", "league:FRA", "league:UEL", "league:FAC", "sheet:ENG")) {
+        F1Facts.doc = parseFacts(javaClass.getResource("/f1facts.json")!!.readText())
+        for (p in listOf("worth", "fact:0", "fact:1", "fact:3", "fact:4", "fact:5", "league:UCL", "sheet:UCL", "league:ENG", "league:ESP", "league:GER", "league:ITA", "league:FRA", "league:UEL", "league:FAC", "sheet:ENG")) {
             page = p; rule.mainClock.advanceTimeBy(500); rule.waitForIdle(); save(p.replace(':', '-'))
         }
     }

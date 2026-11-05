@@ -1,0 +1,421 @@
+{
+ "release": "v2026.19.0",
+ "generated": "2026-11-05T18:32:22Z",
+ "after": {
+  "year": 2026,
+  "round": 19,
+  "gp": "Mexican GP"
+ },
+ "next": {
+  "year": 2026,
+  "round": 20,
+  "gp": "São Paulo GP",
+  "circuit": "Interlagos",
+  "date": "2026-11-08"
+ },
+ "credit": "F1DB (CC BY 4.0)",
+ "facts": [
+  {
+   "id": "starts-lewis-hamilton-400",
+   "kind": "bars",
+   "tag": "SÃO PAULO GP",
+   "title": "Hamilton's 400th start. Only Alonso got there first",
+   "unit": "starts",
+   "prefix": "",
+   "rows": [
+    {
+     "name": "Fernando Alonso",
+     "sub": "On the grid",
+     "value": 445,
+     "text": "445",
+     "top": false
+    },
+    {
+     "name": "Lewis Hamilton",
+     "sub": "On 399 before São Paulo GP",
+     "value": 400,
+     "text": "400",
+     "top": true
+    },
+    {
+     "name": "Kimi Räikkönen",
+     "sub": "Career total",
+     "value": 350,
+     "text": "350",
+     "top": false
+    }
+   ],
+   "note": "If Hamilton takes the start",
+   "scope": "gp",
+   "drivers": [
+    "Lewis Hamilton"
+   ],
+   "weight": 100
+  },
+  {
+   "id": "youngest-champion",
+   "kind": "bars",
+   "tag": "THE RECORD BOOK",
+   "title": "Antonelli took the title more than three years younger than anyone",
+   "unit": "years old",
+   "prefix": "",
+   "rows": [
+    {
+     "name": "Kimi Antonelli",
+     "sub": "Mexico City 2026",
+     "value": 20.2,
+     "text": "20.2",
+     "top": true
+    },
+    {
+     "name": "Sebastian Vettel",
+     "sub": "Abu Dhabi 2010",
+     "value": 23.4,
+     "text": "23.4",
+     "top": false
+    },
+    {
+     "name": "Lewis Hamilton",
+     "sub": "São Paulo 2008",
+     "value": 23.8,
+     "text": "23.8",
+     "top": false
+    }
+   ],
+   "note": "Age on the day of a first title",
+   "scope": "any",
+   "drivers": [
+    "Kimi Antonelli"
+   ],
+   "weight": 70
+  },
+  {
+   "id": "circuit-wins",
+   "kind": "bars",
+   "tag": "INTERLAGOS",
+   "title": "Verstappen or Hamilton can match Schumacher this weekend",
+   "unit": "wins",
+   "prefix": "",
+   "rows": [
+    {
+     "name": "Michael Schumacher",
+     "sub": "Last won 2002",
+     "value": 4,
+     "text": "4",
+     "top": true
+    },
+    {
+     "name": "Max Verstappen",
+     "sub": "Last won 2024",
+     "value": 3,
+     "text": "3",
+     "top": false
+    },
+    {
+     "name": "Lewis Hamilton",
+     "sub": "Last won 2021",
+     "value": 3,
+     "text": "3",
+     "top": false
+    },
+    {
+     "name": "Sebastian Vettel",
+     "sub": "Last won 2017",
+     "value": 3,
+     "text": "3",
+     "top": false
+    }
+   ],
+   "note": "Wins at this circuit",
+   "scope": "gp",
+   "drivers": [
+    "Michael Schumacher",
+    "Max Verstappen",
+    "Lewis Hamilton",
+    "Sebastian Vettel"
+   ],
+   "weight": 65
+  },
+  {
+   "id": "win-10",
+   "kind": "big",
+   "tag": "MILESTONE",
+   "title": "One more win makes 10 for Antonelli, Piastri or Leclerc",
+   "value": "10",
+   "unit": "career wins",
+   "body": "Antonelli, Piastri and Leclerc are all on 9. 36 drivers have got there.",
+   "note": "Career wins",
+   "scope": "any",
+   "drivers": [
+    "Kimi Antonelli",
+    "Oscar Piastri",
+    "Charles Leclerc"
+   ],
+   "weight": 55
+  },
+  {
+   "id": "circuit-pole",
+   "kind": "bars",
+   "tag": "INTERLAGOS",
+   "title": "Pole is no guarantee here: only 19 of 42 races were won from it",
+   "unit": "on the grid",
+   "prefix": "P",
+   "rows": [
+    {
+     "name": "Max Verstappen",
+     "sub": "Won in 2024",
+     "value": 17,
+     "text": "P17",
+     "top": true
+    },
+    {
+     "name": "Lewis Hamilton",
+     "sub": "Won in 2021",
+     "value": 10,
+     "text": "P10",
+     "top": false
+    },
+    {
+     "name": "Giancarlo Fisichella",
+     "sub": "Won in 2003",
+     "value": 8,
+     "text": "P8",
+     "top": false
+    }
+   ],
+   "note": "Winners from furthest back at Interlagos",
+   "scope": "gp",
+   "drivers": [
+    "Max Verstappen",
+    "Lewis Hamilton",
+    "Giancarlo Fisichella"
+   ],
+   "weight": 50
+  },
+  {
+   "id": "home-drought",
+   "kind": "big",
+   "tag": "INTERLAGOS",
+   "title": "No Brazilian has won here since 2008",
+   "value": "18",
+   "unit": "years",
+   "body": "Felipe Massa was the last, in 2008. Gabriel Bortoleto is the only Brazilian on the grid.",
+   "note": "Home wins at this circuit",
+   "scope": "gp",
+   "drivers": [
+    "Gabriel Bortoleto"
+   ],
+   "weight": 45
+  },
+  {
+   "id": "podium-50",
+   "kind": "big",
+   "tag": "MILESTONE",
+   "title": "One more podium makes 50 for Norris",
+   "value": "50",
+   "unit": "career podiums",
+   "body": "Norris is on 49. 18 drivers have got there.",
+   "note": "Career podiums",
+   "scope": "any",
+   "drivers": [
+    "Lando Norris"
+   ],
+   "weight": 35
+  },
+  {
+   "id": "pole-20",
+   "kind": "big",
+   "tag": "MILESTONE",
+   "title": "One more pole makes 20 for Norris",
+   "value": "20",
+   "unit": "career poles",
+   "body": "Norris is on 19. 17 drivers have got there.",
+   "note": "Career poles",
+   "scope": "any",
+   "drivers": [
+    "Lando Norris"
+   ],
+   "weight": 35
+  },
+  {
+   "id": "late-win",
+   "kind": "bars",
+   "tag": "THE RECORD BOOK",
+   "title": "Hamilton won 98 starts later than anyone",
+   "unit": "starts",
+   "prefix": "",
+   "rows": [
+    {
+     "name": "Lewis Hamilton",
+     "sub": "Barcelona 2026, from P2",
+     "value": 387,
+     "text": "387",
+     "top": true
+    },
+    {
+     "name": "Kimi Räikkönen",
+     "sub": "Austin 2018, from P2",
+     "value": 289,
+     "text": "289",
+     "top": false
+    },
+    {
+     "name": "Rubens Barrichello",
+     "sub": "Monza 2009, from P5",
+     "value": 280,
+     "text": "280",
+     "top": false
+    }
+   ],
+   "note": "Latest win in a career, counted in starts",
+   "scope": "any",
+   "drivers": [
+    "Lewis Hamilton"
+   ],
+   "weight": 30
+  },
+  {
+   "id": "the-wait",
+   "kind": "bars",
+   "tag": "THE WAIT",
+   "title": "Alonso has started 243 races since winning",
+   "unit": "starts",
+   "prefix": "",
+   "rows": [
+    {
+     "name": "Fernando Alonso",
+     "sub": "Last won Barcelona 2013",
+     "value": 243,
+     "text": "243",
+     "top": true
+    },
+    {
+     "name": "Pierre Gasly",
+     "sub": "Last won Monza 2020",
+     "value": 141,
+     "text": "141",
+     "top": false
+    },
+    {
+     "name": "Valtteri Bottas",
+     "sub": "Last won Istanbul 2021",
+     "value": 93,
+     "text": "93",
+     "top": false
+    }
+   ],
+   "note": "Starts since the last win, on the latest grid",
+   "scope": "any",
+   "drivers": [
+    "Fernando Alonso",
+    "Pierre Gasly",
+    "Valtteri Bottas"
+   ],
+   "weight": 30
+  },
+  {
+   "id": "never-won",
+   "kind": "bars",
+   "tag": "NEVER WON",
+   "title": "Hülkenberg holds the record nobody wants",
+   "unit": "starts",
+   "prefix": "",
+   "rows": [
+    {
+     "name": "Nico Hülkenberg",
+     "sub": "On the grid",
+     "value": 268,
+     "text": "268",
+     "top": true
+    },
+    {
+     "name": "Lance Stroll",
+     "sub": "On the grid",
+     "value": 208,
+     "text": "208",
+     "top": false
+    },
+    {
+     "name": "Andrea de Cesaris",
+     "sub": "Career total",
+     "value": 207,
+     "text": "207",
+     "top": false
+    }
+   ],
+   "note": "Most starts without a win",
+   "scope": "any",
+   "drivers": [
+    "Nico Hülkenberg"
+   ],
+   "weight": 25
+  },
+  {
+   "id": "season-climb",
+   "kind": "big",
+   "tag": "THIS SEASON",
+   "title": "From P19 to the win",
+   "value": "18",
+   "unit": "places gained",
+   "body": "Kimi Antonelli at the Italian GP: the biggest climb of 2026. One of 9 wins this season.",
+   "note": "Season so far",
+   "scope": "any",
+   "drivers": [
+    "Kimi Antonelli"
+   ],
+   "weight": 25
+  },
+  {
+   "id": "season-wins",
+   "kind": "bars",
+   "tag": "THIS SEASON",
+   "title": "Antonelli has won 9 of 19 races this season",
+   "unit": "wins",
+   "prefix": "",
+   "rows": [
+    {
+     "name": "Kimi Antonelli",
+     "sub": "",
+     "value": 9,
+     "text": "9",
+     "top": true
+    },
+    {
+     "name": "George Russell",
+     "sub": "",
+     "value": 3,
+     "text": "3",
+     "top": false
+    },
+    {
+     "name": "Max Verstappen",
+     "sub": "",
+     "value": 3,
+     "text": "3",
+     "top": false
+    }
+   ],
+   "note": "2026 so far",
+   "scope": "any",
+   "drivers": [
+    "Kimi Antonelli"
+   ],
+   "weight": 20
+  },
+  {
+   "id": "last-race",
+   "kind": "big",
+   "tag": "LAST TIME OUT",
+   "title": "Verstappen won the Mexican GP from P5",
+   "value": "4",
+   "unit": "places gained",
+   "body": "Round 19 of 2026.",
+   "note": "Last race",
+   "scope": "any",
+   "drivers": [
+    "Max Verstappen"
+   ],
+   "weight": 20
+  }
+ ]
+}
