@@ -50,7 +50,7 @@ private val UEL_T = CompTheme("uel", c(0xFF110A04), c(0xFF1E1206), c(0xFF3A1D02)
 private val UECL_T = CompTheme("uecl", c(0xFF03140A), c(0xFF06200F), c(0xFF0A3A18), c(0xFF2FE36A), c(0xFF03140A), c(0xFFC6ECCF), "rings")
 private val FAC_T = CompTheme("fac", c(0xFF0B1430), c(0xFF12204A), c(0xFF1B2A55), c(0xFFD8B45A), c(0xFF0B1430), c(0xFFD7DCF0), "laurel")
 private val LC_T = CompTheme("lc", c(0xFF04170C), c(0xFF08261A), c(0xFF0D3A22), c(0xFF3DDC84), c(0xFF04170C), c(0xFFC9EBD6), "laurel")
-private val F1_T = CompTheme("f1", c(0xFF0C0C0C), c(0xFF151515), c(0xFF2A0606), c(0xFFFF3B30), c(0xFFFFFFFF), c(0xFFD0D0D0), "speed")
+private val F1_T = CompTheme("f1", c(0xFF0C0C0C), c(0xFF0E0E0E), c(0xFF121212), c(0xFFFF3B30), c(0xFFFFFFFF), c(0xFFD0D0D0), "glow")
 
 /** Each competition's look; a domestic cup wears its country's league look. */
 private val THEMES = mapOf("UCL" to UCL_T, "ENG" to PL_T, "ESP" to LALIGA_T, "CDR" to LALIGA_T, "GER" to BL_T, "DFB" to BL_T,
@@ -171,14 +171,8 @@ private fun DrawScope.drawDecal(kind: String, t: Float, accent: Color) {
                     moveTo(210f, 153f); lineTo(230f, 153f); lineTo(230f, 171f); lineTo(240f, 171f); lineTo(240f, 179f); lineTo(200f, 179f); lineTo(200f, 171f); lineTo(210f, 171f); close()
                 }, gold, alpha = .18f)
             }
-            "speed" -> {
-                for (i in 0 until 14) {
-                    val y = 40f + i * 38; val x = -40f + i * 7; val w = 180f + (i % 4) * 40; val h = if (i % 3 != 0) 2f else 5f
-                    drawPath(Path().apply { moveTo(x + 24, y); lineTo(x + w + 24, y); lineTo(x + w, y + h); lineTo(x, y + h); close() },
-                        if (i % 3 != 0) Color.White else c(0xFFE10600), alpha = if (i % 3 != 0) .06f else .35f)
-                }
-                for (i in 0 until 6) for (j in 0 until 4) if ((i + j) % 2 == 0) drawRect(Color.White, Offset(218f + i * 12, 20f + j * 12), Size(12f, 12f), alpha = .09f)
-            }
+            // nothing to read around: one soft light from the corner, and the page stays black
+            "glow" -> glow(accent, Offset(290f, 0f), 300f, .20f)
         }
     }
 }

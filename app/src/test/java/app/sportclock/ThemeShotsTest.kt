@@ -62,7 +62,8 @@ class ThemeShotsTest {
             SportClockTheme("night", "dark") {
                 Box(Modifier.fillMaxSize()) {
                     val p = page
-                    if (p == "worth") Box(Modifier.fillMaxSize()) {
+                    if (p == "f1hub") F1Hub(listOf(gp), now, {}, {})
+                    else if (p == "worth") Box(Modifier.fillMaxSize()) {
                         CompetitionTheme("F1"); CompBackdrop("F1", Modifier.matchParentSize())
                         // the row as the weekend page has it: inside a scrolling column, with one line on Home above it
                         androidx.compose.foundation.layout.Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp)) {
@@ -82,7 +83,7 @@ class ThemeShotsTest {
             }
         }
         F1Facts.doc = parseFacts(javaClass.getResource("/f1facts.json")!!.readText())
-        for (p in listOf("worth", "fact:0", "fact:1", "fact:3", "fact:4", "fact:5", "league:UCL", "sheet:UCL", "league:ENG", "league:ESP", "league:GER", "league:ITA", "league:FRA", "league:UEL", "league:FAC", "sheet:ENG")) {
+        for (p in listOf("f1hub", "worth", "fact:0", "fact:1", "fact:3", "fact:4", "fact:5", "league:UCL", "sheet:UCL", "league:ENG", "league:ESP", "league:GER", "league:ITA", "league:FRA", "league:UEL", "league:FAC", "sheet:ENG")) {
             page = p; rule.mainClock.advanceTimeBy(500); rule.waitForIdle(); save(p.replace(':', '-'))
         }
     }

@@ -2,6 +2,9 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.22 (6 Nov 2026)
+- **A calmer F1 look.** The red stripes and checks behind the F1 pages are gone. The page is now plain black with one soft red light in the top corner, so nothing runs behind the text.
+
 ## 2.21 (5 Nov 2026)
 - **F1 fun facts: "Worth knowing".** Swipeable stat cards on F1 → Weekend and on race sheets for the next Grand Prix:
   - Milestones ("Hamilton's 400th start"), and who is one win, podium or pole from a round number.
