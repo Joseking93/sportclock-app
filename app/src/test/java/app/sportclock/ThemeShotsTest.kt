@@ -63,6 +63,14 @@ class ThemeShotsTest {
                 Box(Modifier.fillMaxSize()) {
                     val p = page
                     if (p == "f1hub") F1Hub(listOf(gp), now, {}, {})
+                    else if (p == "tyres") Box(Modifier.fillMaxSize()) {
+                        CompetitionTheme("F1"); CompBackdrop("F1", Modifier.matchParentSize())
+                        androidx.compose.foundation.layout.Column(Modifier.padding(16.dp)) {
+                            listOf(58.dp, 24.dp, 18.dp).forEach { sz ->
+                                androidx.compose.foundation.layout.Row { listOf("SOFT", "MEDIUM", "HARD", "INTERMEDIATE", "WET").forEach { Box(Modifier.padding(5.dp)) { TyreBadge(it, sz) } } }
+                            }
+                        }
+                    }
                     else if (p == "worth") Box(Modifier.fillMaxSize()) {
                         CompetitionTheme("F1"); CompBackdrop("F1", Modifier.matchParentSize())
                         // the row as the weekend page has it: inside a scrolling column, with one line on Home above it
@@ -83,7 +91,7 @@ class ThemeShotsTest {
             }
         }
         F1Facts.doc = parseFacts(javaClass.getResource("/f1facts.json")!!.readText())
-        for (p in listOf("f1hub", "worth", "fact:0", "fact:1", "fact:3", "fact:4", "fact:5", "league:UCL", "sheet:UCL", "league:ENG", "league:ESP", "league:GER", "league:ITA", "league:FRA", "league:UEL", "league:FAC", "sheet:ENG")) {
+        for (p in listOf("tyres", "f1hub", "worth", "fact:0", "fact:1", "fact:3", "fact:4", "fact:5", "league:UCL", "sheet:UCL", "league:ENG", "league:ESP", "league:GER", "league:ITA", "league:FRA", "league:UEL", "league:FAC", "sheet:ENG")) {
             page = p; rule.mainClock.advanceTimeBy(500); rule.waitForIdle(); save(p.replace(':', '-'))
         }
     }

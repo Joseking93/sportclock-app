@@ -2,6 +2,11 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.23 (6 Nov 2026)
+- **F1 times are in your time.** Race control writes times in the track's local time ("Session will resume at 12:49"). They now show in your phone's time.
+- **A stopped session shows as a red flag.** F1 can take a session off "started" during a long red flag, and the app then said "Waiting for the start". It now stays red, and tells you when the session resumes.
+- **Proper little tyres.** The running order and tyre strategy now draw a small tyre: black rubber, the compound's coloured band and a white letter, dead centre.
+
 ## 2.22 (6 Nov 2026)
 - **A calmer F1 look.** The red stripes and checks behind the F1 pages are gone. The page is now plain black with one soft red light in the top corner, so nothing runs behind the text.
 

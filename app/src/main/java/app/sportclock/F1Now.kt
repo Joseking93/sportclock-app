@@ -22,10 +22,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CancellationException
@@ -114,7 +117,7 @@ private fun FlagGlyph(kind: String) {
         "chequered" -> Canvas(Modifier.size(54.dp, 36.dp)) {
             val q = size.width / 6
             for (i in 0 until 4) for (j in 0 until 6) if ((i + j) % 2 == 0) drawRect(ink, Offset(j * q, i * q), Size(q, q))
-            drawRect(ink, Offset.Zero, size, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+            drawRect(ink, Offset.Zero, size, style = Stroke(1.dp.toPx()))
         }
     }
 }
@@ -163,7 +166,9 @@ fun F1NowPanel(session: Event, onPage: (String) -> Unit) {
         Text(when {
             s == null && failed -> "Couldn't reach F1's timing feed. Trying again every 15 seconds."
             s == null -> "Formula 1's own timing feed, every 15 seconds."
-            kind == "red" -> "Session suspended${if (s.clockRunning) "" else " · clock stopped"}"
+            kind == "red" -> s.messages.lastOrNull { Regex("(RESUME|RESTART) AT").containsMatchIn(it.message) }
+                ?.takeIf { s.messages.indexOf(it) > s.messages.indexOfLast { m -> m.flag == "RED" } }?.let { calm(it.message) }
+                ?: "Session suspended${if (s.clockRunning) "" else " · clock stopped"}"
             kind == "vsc" -> "Hold your delta · no overtaking"
             kind == "sc" -> "Field bunching up behind the safety car"
             flagged.isNotEmpty() -> "Yellow in " + flagged.entries.joinToString { "sector ${it.key}${if (it.value == "DOUBLE YELLOW") " (double)" else ""}" } +
@@ -178,7 +183,7 @@ fun F1NowPanel(session: Event, onPage: (String) -> Unit) {
                 val lap = s?.takeIf { it.racing && it.lap != null }
                 val left = s?.left(tick)
                 val best = s?.lines?.firstOrNull { it.pos == 1 }?.best
-                Text(when { lap != null -> "Lap"; kind == "chequered" -> "Fastest"; kind == "red" && left != null -> "Clock stopped"; left != null -> "Time left"; else -> "Session" },
+                Text(when { lap != null -> "Lap"; kind == "chequered" -> "Fastest"; kind == "red" && left != null && s?.clockRunning != true -> "Clock stopped"; left != null -> "Time left"; else -> "Session" },
                     color = C.fg2, fontFamily = Inter, fontSize = 12.sp)
                 Text(when {
                     lap != null -> "${lap.lap}${lap.totalLaps?.let { "/$it" } ?: ""}"
@@ -221,6 +226,28 @@ fun F1NowPanel(session: Event, onPage: (String) -> Unit) {
     }
 }
 
+/** A tyre as the TV graphics draw it: black rubber, the compound's coloured band, its letter. The letter is placed by its own outline, so it sits dead centre. */
+@Composable
+fun TyreBadge(compound: String, size: Dp = 24.dp) {
+    val band = tyreColor(compound)
+    val letter = compound.take(1).uppercase()
+    val paint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { typeface = android.graphics.Typeface.DEFAULT_BOLD; color = android.graphics.Color.WHITE } }
+    Canvas(Modifier.size(size)) {
+        val r = this.size.minDimension / 2
+        val hair = .5f.dp.toPx()
+        drawCircle(Color(0xFF17171B), r)
+        drawCircle(Color.White.copy(alpha = .28f), r - hair / 2, style = Stroke(hair))
+        // the sidewall band, broken in two like the markings on a real tyre
+        val br = r * .74f
+        listOf(12f, 192f).forEach { from ->
+            drawArc(band, from, 156f, false, Offset(center.x - br, center.y - br), Size(br * 2, br * 2), style = Stroke(r * .2f))
+        }
+        paint.textSize = r * .98f
+        val b = android.graphics.Rect().also { paint.getTextBounds(letter, 0, letter.length, it) }
+        drawContext.canvas.nativeCanvas.drawText(letter, center.x - b.exactCenterX(), center.y - b.exactCenterY(), paint)
+    }
+}
+
 @Composable
 private fun NowRow(s: F1Snapshot, l: F1Line) {
     val d = s.drivers[l.number]
@@ -231,9 +258,7 @@ private fun NowRow(s: F1Snapshot, l: F1Line) {
         Text(s.tla(l.number), Modifier.weight(1f), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         val tag = when { l.retired -> "OUT"; l.stopped -> "STOPPED"; l.inPit -> "PIT"; l.knockedOut -> "KO"; else -> null }
         tag?.let { Text(it, color = if (it == "PIT") C.lime else RED, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(end = 8.dp)) }
-        if (l.tyre.isNotBlank()) Box(Modifier.size(18.dp).clip(CircleShape).background(tyreColor(l.tyre)), contentAlignment = Alignment.Center) {
-            Text(l.tyre.take(1), color = Color.Black, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 9.sp)
-        }
+        if (l.tyre.isNotBlank()) TyreBadge(l.tyre)
         Text(when { l.pos == 1 && s.racing -> "Leader"; l.pos == 1 -> l.best; s.racing -> l.interval.ifBlank { l.gap }; else -> l.gap.ifBlank { l.best } },
             Modifier.width(84.dp), color = C.fg, fontFamily = Inter, fontSize = 13.sp, maxLines = 1, textAlign = TextAlign.End)
     }

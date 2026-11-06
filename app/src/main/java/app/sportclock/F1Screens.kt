@@ -113,7 +113,7 @@ private fun StatusBanner(s: F1Snapshot) {
         val ink = if (s.live) Color.White else C.fg                     // white on a flag colour, the theme's text on a plain card
         Text("${s.meeting} · ${s.session}", color = ink, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(when {
-            s.live -> "LIVE · ${trackWord(s.track)}${s.lap?.let { l -> " · Lap $l${s.totalLaps?.let { "/$it" } ?: ""}" } ?: s.left(Instant.now())?.let { " · ${clock(it)} left" } ?: ""}${if (s.status == "Aborted") " · session stopped" else ""}"
+            s.live -> "LIVE · ${trackWord(s.track)}${s.lap?.let { l -> " · Lap $l${s.totalLaps?.let { "/$it" } ?: ""}" } ?: s.left(Instant.now())?.let { " · ${clock(it)} left" } ?: ""}${if (s.status == "Aborted" || s.stopped) " · session stopped" else ""}"
             s.over -> "Finished${s.start?.let { " · ${dayWord(it, Instant.now())}" } ?: ""}"
             else -> "Not started yet${s.start?.let { " · ${dayWord(it, Instant.now())} ${hm(it)}" } ?: ""}"
         }, color = ink, fontFamily = Inter, fontSize = 14.sp)
@@ -139,9 +139,7 @@ private fun TimingTower(s: F1Snapshot) = LazyColumn {
             }
             val tag = when { l.retired -> "OUT"; l.stopped -> "STOPPED"; l.inPit -> "PIT"; l.knockedOut -> "KO"; else -> null }
             tag?.let { Text(it, color = if (it == "PIT") C.lime else RED, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(end = 8.dp)) }
-            if (l.tyre.isNotBlank()) Box(Modifier.size(20.dp).clip(CircleShape).background(tyreColor(l.tyre)), contentAlignment = Alignment.Center) {
-                Text(l.tyre.take(1), color = Color.Black, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 10.sp)
-            }
+            if (l.tyre.isNotBlank()) TyreBadge(l.tyre)
             Column(Modifier.width(86.dp), horizontalAlignment = Alignment.End) {
                 Text(when { l.pos == 1 && s.racing -> "Leader"; l.pos == 1 -> l.best; else -> l.gap.ifBlank { l.best } }, color = C.fg, fontFamily = Inter, fontSize = 13.sp, maxLines = 1)
                 Text(if (s.racing) listOfNotNull(l.interval.takeIf { it.isNotBlank() && l.pos != 1 }, "${l.pits} stop${if (l.pits == 1) "" else "s"}").joinToString(" · ")

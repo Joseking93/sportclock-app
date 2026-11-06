@@ -128,7 +128,7 @@ fun StrategyView(s: F1Snapshot) {
             Row(Modifier.padding(horizontal = 20.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 listOf("SOFT", "MEDIUM", "HARD", "INTERMEDIATE", "WET").forEach { t ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(10.dp).clip(CircleShape).background(tyreCol(t))); Spacer(Modifier.width(4.dp))
+                        TyreBadge(t, 18.dp); Spacer(Modifier.width(4.dp))
                         Text(t.take(1) + t.drop(1).lowercase().take(if (t == "INTERMEDIATE") 4 else 9), color = C.fg2, fontFamily = Inter, fontSize = 11.sp)
                     }
                 }

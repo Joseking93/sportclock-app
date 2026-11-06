@@ -55,7 +55,9 @@ data class F1Snapshot(
     /** The session clock: time left when F1 last stamped it, and whether it's counting down (it stops under a red flag). */
     val clockLeft: Duration? = null, val clockAt: Instant? = null, val clockRunning: Boolean = false,
 ) {
-    val live get() = status == "Started" || status == "Aborted"
+    /** Stopped under a red flag: F1 can take the status off Started while the cars wait, so race control has the last word. */
+    val stopped get() = status != "Started" && !over && redFlagOut(messages)
+    val live get() = status == "Started" || status == "Aborted" || stopped
     val over get() = status == "Finished" || status == "Finalised" || status == "Ends"
     val racing get() = type == "Race" || session.contains("Sprint") && !session.contains("Qualifying") && !session.contains("Shootout")
     fun tla(n: String) = drivers[n]?.tla ?: "#$n"
@@ -128,11 +130,11 @@ private fun JSONObject.value(key: String) = optJSONObject(key)?.optString("Value
 
 internal fun parseF1(r: JSONObject): F1Snapshot {
     val si = r.optJSONObject("SessionInfo") ?: JSONObject()
-    val start = runCatching {
-        val off = si.optString("GmtOffset", "00:00:00").let { g -> val neg = g.startsWith("-"); val p = g.trimStart('-', '+').split(":")
+    val off = runCatching {
+        si.optString("GmtOffset", "00:00:00").let { g -> val neg = g.startsWith("-"); val p = g.trimStart('-', '+').split(":")
             ZoneOffset.ofHoursMinutes(p[0].toInt() * if (neg) -1 else 1, p.getOrElse(1) { "0" }.toInt() * if (neg) -1 else 1) }
-        LocalDateTime.parse(si.optString("StartDate")).toInstant(off)
     }.getOrNull()
+    val start = runCatching { LocalDateTime.parse(si.optString("StartDate")).toInstant(off!!) }.getOrNull()
     val drivers = r.optJSONObject("DriverList").entries().associate { (n, d) ->
         n to F1Driver(n, d.optString("Tla", n), d.optString("FullName").ifBlank { d.optString("BroadcastName") }, d.optString("TeamName"), d.optString("TeamColour"))
     }
@@ -152,7 +154,8 @@ internal fun parseF1(r: JSONObject): F1Snapshot {
             l.optBoolean("InPit"), l.optBoolean("Retired"), l.optBoolean("Stopped"), l.value("BestLapTime"), tyres[n].orEmpty(), l.optBoolean("KnockedOut"))
     }.sortedBy { it.pos }
     val msgs = r.optJSONObject("RaceControlMessages")?.anyArray("Messages").orEmpty().map { m ->
-        F1Msg(m.optString("Utc"), m.optString("Category"), m.optString("Flag"), m.optString("Message"),
+        F1Msg(m.optString("Utc"), m.optString("Category"), m.optString("Flag"),
+            trackTimes(m.optString("Message"), m.optString("Utc"), off?.takeIf { si.has("GmtOffset") }),
             m.optString("Sector").toIntOrNull(), m.optString("Lap").toIntOrNull())
     }
     val pits = r.optJSONObject("PitLaneTimeCollection")?.optJSONObject("PitTimes").entries().map { (n, p) ->
@@ -194,12 +197,25 @@ internal fun parseF1(r: JSONObject): F1Snapshot {
     val clockLeft = ck?.optString("Remaining")?.split(":")?.takeIf { it.size == 3 }?.let { p ->
         runCatching { Duration.ofHours(p[0].toLong()).plusMinutes(p[1].toLong()).plusSeconds(p[2].toDouble().toLong()) }.getOrNull() }
     val clockAt = ck?.optString("Utc")?.takeIf { it.isNotBlank() }?.let { u -> runCatching { Instant.parse(if (u.endsWith("Z")) u else u + "Z") }.getOrNull() }
-    return F1Snapshot(si.optJSONObject("Meeting")?.optString("Name").orEmpty(), si.optString("Name"), si.optString("Type"), start,
+    val snap = F1Snapshot(si.optJSONObject("Meeting")?.optString("Name").orEmpty(), si.optString("Name"), si.optString("Type"), start,
         si.optJSONObject("Meeting")?.optJSONObject("Circuit")?.optInt("Key"), start?.atZone(ZoneOffset.UTC)?.year ?: 0,
         r.optJSONObject("SessionStatus")?.optString("Status").orEmpty(), r.optJSONObject("TrackStatus")?.optString("Status").orEmpty(),
         lc?.optInt("CurrentLap"), lc?.optInt("TotalLaps"), drivers, lines, msgs, pits, w, sectors, trap, laps, stints, radio, bestLaps, topSpeeds,
         clockLeft, clockAt, ck?.optBoolean("Extrapolating") == true)
+    return if (snap.stopped) snap.copy(track = "5") else snap
 }
+
+private val CLOCK_TIME = Regex("""(?<![\d:.])([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?(?![\d:.])""")
+
+/** Race control writes clock times in the track's own time ("SESSION WILL RESUME AT 12:49"); these read in the phone's. Lap times stay as they are. */
+internal fun trackTimes(message: String, utc: String, off: ZoneOffset?): String {
+    if (off == null) return message
+    val day = runCatching { LocalDateTime.parse(utc.removeSuffix("Z")).toInstant(ZoneOffset.UTC).atOffset(off).toLocalDate() }.getOrNull() ?: return message
+    return CLOCK_TIME.replace(message) { m -> hm(day.atTime(m.groupValues[1].toInt(), m.groupValues[2].toInt()).toInstant(off)) }
+}
+
+/** A red flag is out until race control opens the pit exit again. */
+fun redFlagOut(msgs: List<F1Msg>) = msgs.lastOrNull { it.category == "Flag" && (it.flag == "RED" || it.flag == "GREEN") }?.flag == "RED"
 
 /** Marshal sectors under a flag right now, from the race control messages in order: "YELLOW IN TRACK SECTOR 7" until "CLEAR IN TRACK SECTOR 7". */
 fun flaggedSectors(msgs: List<F1Msg>): Map<Int, String> {
