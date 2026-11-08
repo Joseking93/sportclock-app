@@ -149,7 +149,8 @@ object Alerts {
                 val code = e.id.hashCode()
                 val title = "${e.line1()} in ${untilText(lead)}"
                 val body = "${e.line2()} · ${hm(e.start)} your time"
-                setExact(am, at.toEpochMilli(), pending(ctx, code, Intent(ctx, AlertReceiver::class.java).putExtra("title", title).putExtra("body", body).putExtra("code", code)))
+                setExact(am, at.toEpochMilli(), pending(ctx, code, Intent(ctx, AlertReceiver::class.java).putExtra("title", title).putExtra("body", body).putExtra("code", code)
+                    .putExtra("open", e.id)))
                 codes += code.toString()
             }
         p.edit().putStringSet("alarmCodes", codes).apply()
@@ -164,12 +165,17 @@ object Alerts {
         else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
     }
 
-    fun notify(ctx: Context, code: Int, title: String, body: String) {
+    /** Tapping a notification opens what it's about: an event's id opens its sheet, "page:f1live" a page. */
+    fun opener(ctx: Context, target: String?): PendingIntent = PendingIntent.getActivity(ctx, target?.hashCode() ?: 0,
+        Intent(ctx, MainActivity::class.java).apply { target?.let { putExtra("open", it) } }
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+
+    fun notify(ctx: Context, code: Int, title: String, body: String, target: String? = null) {
         if (Build.VERSION.SDK_INT >= 33 && ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
         val nm = ctx.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(CHANNEL, "Starting soon", NotificationManager.IMPORTANCE_HIGH))
-        val open = PendingIntent.getActivity(ctx, 0, Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
-            PendingIntent.FLAG_IMMUTABLE)
+        val open = opener(ctx, target)
         val n = android.app.Notification.Builder(ctx, CHANNEL).setSmallIcon(R.drawable.ic_stat_sportclock).setColor(0xFFC8F53C.toInt())
             .setContentTitle(title).setContentText(body).setContentIntent(open).setAutoCancel(true).build()
         nm.notify(code, n)
@@ -196,7 +202,7 @@ object Alerts {
 
 class AlertReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, i: Intent) =
-        Alerts.notify(ctx, i.getIntExtra("code", 0), i.getStringExtra("title").orEmpty(), i.getStringExtra("body").orEmpty())
+        Alerts.notify(ctx, i.getIntExtra("code", 0), i.getStringExtra("title").orEmpty(), i.getStringExtra("body").orEmpty(), i.getStringExtra("open"))
 }
 
 class WidgetTick : BroadcastReceiver() {

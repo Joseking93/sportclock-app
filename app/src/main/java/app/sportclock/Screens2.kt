@@ -80,68 +80,15 @@ fun ScoresHub(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Even
     var seg by rememberSaveable { mutableIntStateOf(0) }
     Column(Modifier.fillMaxSize()) {
         ScreenTitle(listOf("Scores", "Tables", "Racing", "UFC")[seg],
-            listOf("Football, yours first", "League tables", "F1, IndyCar, NASCAR and MotoGP results", "The latest card")[seg])
+            listOf("Football by day · swipe for other days", "League tables", "F1, IndyCar, NASCAR and MotoGP results", "The latest card")[seg])
         Segments(listOf("Scores", "Tables", "Racing", "UFC"), seg) { seg = it }
         Spacer(Modifier.height(8.dp))
         when (seg) {
-            0 -> ScoresList(st, d, now, scores, onOpen, onTeam)
+            0 -> ScoresDays(st, d.events, now, scores, onOpen, onTeam)
             1 -> TablesView(st, onTeam = { espn -> onTeam(d.events.flatMap { it.teams }.distinct().firstOrNull { sameTeam(it, espn) } ?: espn) },
                 onLeague = { onPage("league:$it") })
             2 -> RacingView()
             else -> UfcView()
-        }
-    }
-}
-
-@Composable
-private fun ScoresList(st: AppState, d: Data, now: Instant, scores: Scores, onOpen: (Event) -> Unit, onTeam: (String) -> Unit) {
-    val today = localDate(now)
-    // every cup game around today (Carabao Cup, FA Cup, DFB-Pokal…), not just the followed clubs' ones already in the events
-    var boards by remember { mutableStateOf<List<Pair<Event, Score>>>(emptyList()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            runCatching { cupBoards(Instant.now()) }.onSuccess { b -> boards = b; b.forEach { ExtraScores.map[it.first.id] = it.second } }
-            delay(if (boards.any { it.second.status == "IN_PLAY" || it.second.status == "PAUSED" }) 60_000 else 180_000)
-        }
-    }
-    val known = remember(d.events) { d.events.map { it.id }.toSet() }
-    val cupGames = boards.map { it.first }.filter { it.id !in known }
-    val matches = boards.associate { it.first.id to it.second } + scores.matches
-    val recent = (d.events + cupGames).filter { it.sport == Sport.FOOTBALL && (localDate(it.start) == today || localDate(it.start) == today.minusDays(1) || it.inProgress(now)) }
-        .sortedBy { it.start }
-    val mine = recent.filter { followed(it, st.follows) }
-    val nextMine = d.events.filter { it.sport == Sport.FOOTBALL && followed(it, st.follows) && !it.started(now) }.take(2)
-    LazyColumn(Modifier.fillMaxSize()) {
-        item { SectionLabel("Your teams") }
-        st.follows.filter { it.startsWith("t:") }.takeIf { it.isNotEmpty() }?.let { ts ->
-            item {
-                Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ts.sorted().forEach { t -> AssistChip(onClick = { onTeam(t.substring(2)) }, label = { Text("${short(t.substring(2))} page ›", fontFamily = Inter) },
-                        colors = AssistChipDefaults.assistChipColors(labelColor = C.fg)) }
-                }
-            }
-        }
-        val yours = (mine + nextMine).distinct().sortedBy { it.start }
-        if (yours.isEmpty()) item { Text("No football you follow today", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp)) }
-        yours.forEach { e -> item(key = "m" + e.id) { EventRow(e, now, matches[e.id], onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) } }
-        listOf(today to "Today", today.minusDays(1) to "Yesterday").forEach { (day, label) ->
-            val list = recent.filter { it !in mine && localDate(it.start) == day }
-            if (list.isNotEmpty()) {
-                item(key = "d$day") { SectionLabel(label) }
-                list.groupBy { it.code }.forEach { (code, l) ->
-                    item(key = "c$day$code") {
-                        Row(Modifier.padding(start = 20.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            LogoChip(code, 20.dp); Spacer(Modifier.width(8.dp))
-                            Text(series(code)?.name ?: cup(code)?.name ?: code, color = C.fg2, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                        }
-                    }
-                    l.forEach { e -> item(key = "o" + e.id) { EventRow(e, now, matches[e.id], showDay = false, onClick = { onOpen(e) }); Spacer(Modifier.height(4.dp)) } }
-                }
-            }
-        }
-        item {
-            Text("Scores from ESPN · ${scores.fetchedAt?.let { "checked ${hm(it)}" } ?: "checking…"}", color = C.fg3, fontFamily = Inter, fontSize = 12.sp,
-                modifier = Modifier.padding(20.dp))
         }
     }
 }

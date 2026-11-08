@@ -47,10 +47,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 
+/** What a tapped notification asked to open, waiting for the app to show it. */
+object DeepLink { var target by mutableStateOf<String?>(null) }
+
 class MainActivity : ComponentActivity() {
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        intent.getStringExtra("open")?.let { DeepLink.target = it }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) intent?.getStringExtra("open")?.let { DeepLink.target = it }
         setContent {
             // text size: the user's choice in Settings, or the phone's own when "Phone" is chosen
             var textScale by remember { mutableFloatStateOf(Settings.textScale(this)) }
@@ -131,6 +140,14 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
                 .let { fresh -> if (live) Scores(scores.matches + fresh.matches, fresh.fetchedAt, fresh.error) else fresh }
             delay(if (live) 120_000 else 900_000)
         }
+    }
+    // a tapped notification: its match's sheet (the results), or the page it names
+    LaunchedEffect(DeepLink.target, data) {
+        val t = DeepLink.target ?: return@LaunchedEffect
+        val d = data ?: return@LaunchedEffect
+        if (t.startsWith("page:")) { detail = null; open(t.removePrefix("page:")) }
+        else d.events.firstOrNull { it.id == t }?.let { detail = it } ?: Diag.log("deep link: no event $t")
+        DeepLink.target = null
     }
     fun refreshWidget() = scope.launch { SportClockWidget().updateAll(ctx) }
     fun rearm() { data?.let { Alerts.reschedule(ctx, it.events) }; refreshWidget() }

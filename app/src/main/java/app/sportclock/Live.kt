@@ -104,6 +104,7 @@ object Live {
 
     /** One look at one match; returns ESPN's state (pre, in, post) and posts whatever is new since the last look. */
     private suspend fun check(ctx: Context, e: Event, st: JSONObject): String? {
+        target = e.id
         val key = alertKey(e)
         val s = st.optJSONObject(key) ?: JSONObject().also { st.put(key, it) }
         if (s.optBoolean("ft")) return "post"
@@ -171,6 +172,7 @@ object Live {
 
     /** One look at an F1 session: what changed since the last look becomes an alert. Returns in, post or null (not started). */
     private fun checkF1(ctx: Context, e: Event, st: JSONObject, f: F1Snapshot): String? {
+        target = "page:f1live"
         val key = alertKey(e)
         val s = st.optJSONObject(key) ?: JSONObject().also { st.put(key, it) }
         if (s.optBoolean("ft")) return "post"
@@ -241,8 +243,9 @@ object Live {
         nm.createNotificationChannel(NotificationChannel(SCORE, "Live score", NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) })
     }
 
-    private fun openApp(ctx: Context) = PendingIntent.getActivity(ctx, 0, Intent(ctx, MainActivity::class.java)
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP), PendingIntent.FLAG_IMMUTABLE)
+    /** What the alerts being sent are about: the match being checked, or F1 Live for a session. A tap opens it. */
+    private var target: String? = null
+    private fun openApp(ctx: Context) = Alerts.opener(ctx, target)
 
     private fun notify(ctx: Context, channel: String, id: Int, title: String, body: String, sub: String) {
         if (!allowed(ctx)) return

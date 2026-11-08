@@ -43,6 +43,8 @@ class ThemeShotsTest {
 
     private val gp = Event("F1|sp", Sport.MOTORSPORT, "F1", "Formula 1", "São Paulo GP", "Race", Instant.parse("2026-11-08T17:00:00Z"), 120, "", "confirmed", emptyList(), null, null, null)
 
+    private val realEvents by lazy { parseEvents(File("../../sportclock/data.json").readText()).first }
+
     private fun save(name: String) {
         val dir = File("build/theme-shots").apply { mkdirs() }
         // drawn straight from the window: Compose's own capture waits for a hardware redraw that Robolectric never sends
@@ -62,7 +64,8 @@ class ThemeShotsTest {
             SportClockTheme("night", "dark") {
                 Box(Modifier.fillMaxSize()) {
                     val p = page
-                    if (p == "f1hub") F1Hub(listOf(gp), now, {}, {})
+                    if (p.startsWith("scores")) androidx.compose.runtime.key(p) { ScoresDays(st, realEvents, Instant.now(), Scores(emptyMap(), null, null), {}, {}, if (p == "scores-yesterday") -1 else 0) }
+                    else if (p == "f1hub") F1Hub(listOf(gp), now, {}, {})
                     else if (p == "tyres") Box(Modifier.fillMaxSize()) {
                         CompetitionTheme("F1"); CompBackdrop("F1", Modifier.matchParentSize())
                         androidx.compose.foundation.layout.Column(Modifier.padding(16.dp)) {
@@ -91,8 +94,12 @@ class ThemeShotsTest {
             }
         }
         F1Facts.doc = parseFacts(javaClass.getResource("/f1facts.json")!!.readText())
-        for (p in listOf("tyres", "f1hub", "worth", "fact:0", "fact:1", "fact:3", "fact:4", "fact:5", "league:UCL", "sheet:UCL", "league:ENG", "league:ESP", "league:GER", "league:ITA", "league:FRA", "league:UEL", "league:FAC", "sheet:ENG")) {
-            page = p; rule.mainClock.advanceTimeBy(500); rule.waitForIdle(); save(p.replace(':', '-'))
+        for (p in listOf("scores", "scores-yesterday", "tyres", "f1hub", "worth", "fact:0", "fact:1", "fact:3", "fact:4", "fact:5", "league:UCL", "sheet:UCL", "league:ENG", "league:ESP", "league:GER", "league:ITA", "league:FRA", "league:UEL", "league:FAC", "sheet:ENG")) {
+            page = p; rule.mainClock.advanceTimeBy(500); rule.waitForIdle()
+            // the day pages fetch ESPN's boards for real: wait for them
+            if (p.startsWith("scores")) { val d = java.time.LocalDate.now(zone).plusDays(if (p == "scores-yesterday") -1 else 0)
+                repeat(60) { if (DayBoards.cached(d) == null) Thread.sleep(500) }; rule.mainClock.advanceTimeBy(1000); rule.waitForIdle() }
+            save(p.replace(':', '-'))
         }
     }
 }
