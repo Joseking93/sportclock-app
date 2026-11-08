@@ -111,6 +111,7 @@ val PEOPLE = listOf(
     Person(Kind.NFL_PLAYER, "puka-nacua", "Puka Nacua", "Rams", R.drawable.nfl_puka_nacua, R.drawable.nfl_puka_nacua, 0.69f, 0.48f),
     Person(Kind.NFL_PLAYER, "caleb-williams", "Caleb Williams", "Bears", R.drawable.nfl_caleb_williams, R.drawable.nfl_caleb_williams, 0.51f, 0.38f),
     Person(Kind.NFL_PLAYER, "travis-kelce", "Travis Kelce", "Chiefs", R.drawable.nfl_travis_kelce, R.drawable.nfl_travis_kelce, 0.42f, 0.43f),
+    Person(Kind.NFL_PLAYER, "johnny-walker-jr", "Johnny Walker", "Broncos", R.drawable.nfl_johnny_walker_jr, R.drawable.nfl_johnny_walker_jr, 0.5f, 0.36f),
     Person(Kind.BOXER, "canelo-alvarez", "Canelo Álvarez", "Boxing", R.drawable.box_canelo_alvarez, R.drawable.box_canelo_alvarez, 0.52f, 0.35f, "Canelo"),
     Person(Kind.BOXER, "oleksandr-usyk", "Oleksandr Usyk", "Boxing", R.drawable.box_oleksandr_usyk, R.drawable.box_oleksandr_usyk, 0.5f, 0.33f, "Usyk"),
     Person(Kind.BOXER, "tyson-fury", "Tyson Fury", "Boxing", R.drawable.box_tyson_fury, R.drawable.box_tyson_fury, 0.5f, 0.64f, "Fury"),

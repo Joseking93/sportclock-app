@@ -8,6 +8,7 @@ Newest first. Each version's APK is attached to its GitHub Release.
   - Each game reads like FotMob: the time or state on the left (17:00, 67', HT, FT), then both teams with their badges and goals, the winner in bold. Tap one for the match sheet.
   - Leagues are always in the same order, biggest first: Premier League, LaLiga, Serie A, Bundesliga, Ligue 1, then the Champions League and Europe, Primeira Liga, Eredivisie, the Championship, and the cups.
   - Spoiler-free still hides the goals.
+- **Johnny Walker of the Denver Broncos** joins the NFL players you can pick (the linebacker, #59; the UFC Johnny Walker stays under fighters).
 - **Notifications open what they're about.** Tapping a goal, full-time, lineups or "starting soon" alert opens that match's sheet with the score, not the Home page. F1 alerts open F1 Live.
 
 ## 2.24 (8 Nov 2026)
