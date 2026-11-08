@@ -60,7 +60,7 @@ class SportClockWidget : GlanceAppWidget() {
         // as on the app's card: a football player only when he is in one of the two squads, otherwise both clubs' badges
         val e = live?.first ?: hero?.event
         val look = if (e != null && (e.sport == Sport.FOOTBALL || e.sport == Sport.NFL) && e.teams.size == 2) Looks.load(e) else null
-        val candidate = if (live != null && e?.id != hero?.event?.id) favs[Kind.PLAYER] else hero?.person
+        val candidate = if (live != null && e?.id != hero?.event?.id) favs[if (e?.sport == Sport.NFL) Kind.NFL_PLAYER else Kind.PLAYER] else hero?.person
         val person = candidate?.takeIf { (e?.sport != Sport.FOOTBALL && e?.sport != Sport.NFL) || (look != null && personKey(it.name) in look.squad) }
         // a sport with no photo or badges gets its drawn scene, in the bright accent of the chosen look
         val art = e?.takeIf { person == null && look == null && it.sport != Sport.FOOTBALL && it.sport != Sport.NFL }?.code
@@ -86,7 +86,7 @@ class SportClockWidget : GlanceAppWidget() {
      * Decoded at full size and drawn at about the widget's own pixel size, so it stays sharp; greyscale for fighters.
      */
     private fun faded(ctx: Context, p: Person, w: Int, h: Int, from: Float, to: Float, maxAlpha: Float): Bitmap =
-        fadedRes(ctx, p.photo, p.fx, p.fy, p.kind == Kind.FIGHTER, w, h, from, to, maxAlpha)
+        fadedRes(ctx, p.photo, p.fx, p.fy, p.kind.greyscale, w, h, from, to, maxAlpha)
 
     /** Any bundled photo, cropped around (fx, fy) and faded like [faded]. */
     private fun fadedRes(ctx: Context, res: Int, fx: Float, fy: Float, grey: Boolean, w: Int, h: Int, from: Float, to: Float, maxAlpha: Float): Bitmap {

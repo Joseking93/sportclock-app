@@ -133,7 +133,7 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
     val e = h.event
     val (series, sess, meta) = heroTexts(h, now)
     val shape = RoundedCornerShape(20.dp)
-    // Football: the favourite player only when he is in one of the two squads; otherwise both clubs' badges.
+    // Football and the NFL: the favourite player only when he is in one of the two squads; otherwise both teams' badges.
     val football = (e.sport == Sport.FOOTBALL || e.sport == Sport.NFL) && e.teams.size == 2
     val look = if (football) Looks.ready[e.id] else null
     // keep asking until the badges arrive: a single failed try used to leave the card blank for as long as it was on screen
@@ -151,7 +151,7 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
             Image(
                 painterResource(p.photo), null,
                 contentScale = ContentScale.Crop, alignment = BiasAlignment(p.fx * 2 - 1, p.fy * 2 - 1),
-                colorFilter = if (p.kind == Kind.FIGHTER) greyscale else null,
+                colorFilter = if (p.kind.greyscale) greyscale else null,
                 modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight().fillMaxWidth(0.68f)
                     .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                     .drawWithContent {

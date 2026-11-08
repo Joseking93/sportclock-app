@@ -101,19 +101,27 @@ object Repo {
     }
     /** The favourite for this kind; "none" means you chose to have none (football cards then show both badges). */
     fun fav(ctx: Context, kind: Kind): Person? = person(prefs(ctx).getString("fav_${kind.name}", null) ?: when (kind) {
-        Kind.DRIVER -> "lewis-hamilton"; Kind.FIGHTER -> "alexander-volkanovski"; Kind.PLAYER -> "bruno-fernandes" })
+        Kind.DRIVER -> "lewis-hamilton"; Kind.FIGHTER -> "alexander-volkanovski"; Kind.PLAYER -> "bruno-fernandes"; else -> "none" })
     fun setFav(ctx: Context, p: Person) = prefs(ctx).edit().putString("fav_${p.kind.name}", p.id).apply()
     fun clearFav(ctx: Context, kind: Kind) = prefs(ctx).edit().putString("fav_${kind.name}", "none").apply()
     fun pinned(ctx: Context): String? = prefs(ctx).getString("pinned", null)
     fun setPinned(ctx: Context, token: String?) = prefs(ctx).edit().putString("pinned", token).apply()
 }
 
-/** Whose photo leads a hero card: the favourite driver for F1, fighter for UFC, player for a followed club. */
+/** Whose photo leads a hero card: the favourite driver for F1, fighter for UFC, boxer on their own fight, player for a followed club. */
 fun heroPerson(token: String?, e: Event, favs: Map<Kind, Person?>): Person? = when {
+    e.sport == Sport.NFL -> favs[Kind.NFL_PLAYER]
     token?.startsWith("t:") == true -> favs[Kind.PLAYER]
+    e.code == "BOX" -> favs[Kind.BOXER]?.takeIf { billedOn(it, e) }
     e.code == "F1" -> favs[Kind.DRIVER]
     e.code == "UFC" -> favs[Kind.FIGHTER]
     else -> null
+}
+
+/** Whether [p] is on this fight: "Fury v Joshua" has Fury, "Lauren Price v Kotaskova" has Price. */
+fun billedOn(p: Person, e: Event): Boolean {
+    val key = personKey(p.billed.ifBlank { p.name.substringAfterLast(' ') })
+    return key.isNotBlank() && personKey(e.title).split(Regex("[^a-z0-9]+")).contains(key)
 }
 
 /** The swipeable NEXT UP cards: one per followed thing that has something coming, soonest first, the pinned one always first. */

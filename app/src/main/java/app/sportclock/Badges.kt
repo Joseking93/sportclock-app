@@ -40,7 +40,9 @@ object Looks {
 
     suspend fun load(e: Event): MatchLook? {
         ready[e.id]?.let { return it }
-        if (e.code == "NFL") return Nfl.sides[e.id]?.let { (h, a) -> MatchLook(h, a, emptySet()).also { ready[e.id] = it } }
+        if (e.code == "NFL") return Nfl.sides[e.id]?.let { (h, a) ->
+            lock.withLock { MatchLook(h, a, roster("football/nfl", h.id) + roster("football/nfl", a.id)).also { ready[e.id] = it } }
+        }
         val lg = ESPN_COMP[e.code] ?: return null
         if (e.sport != Sport.FOOTBALL || e.teams.size != 2) return null
         val t = System.currentTimeMillis()
@@ -49,7 +51,7 @@ object Looks {
             runCatching {
                 val m = board(e, lg) ?: error("no ESPN match")
                 val h = m.homeSide ?: error("no badge"); val a = m.awaySide ?: error("no badge")
-                MatchLook(h, a, roster(lg, h.id) + roster(lg, a.id)).also { ready[e.id] = it }
+                MatchLook(h, a, roster("soccer/$lg", h.id) + roster("soccer/$lg", a.id)).also { ready[e.id] = it }
             }.getOrElse { Diag.log("badges ${e.id}: $it"); failed[e.id] = t; null }
         }
     }
@@ -69,20 +71,25 @@ object Looks {
         return matchEspn(e, board)
     }
 
-    /** A club's current squad as person keys; empty when ESPN has none, so the badges still show. */
+    /** A team's current squad as person keys; empty when ESPN has none, so the badges still show. [lg] is ESPN's "soccer/eng.1" or "football/nfl". */
     private suspend fun roster(lg: String, teamId: String): Set<String> {
         val t = System.currentTimeMillis()
         rosters["$lg/$teamId"]?.takeIf { t - it.first < 12 * 3600_000L }?.let { return it.second }
         val names = runCatching {
-            withContext(Dispatchers.IO) {
-                val a = JSONObject(httpGet("https://site.api.espn.com/apis/site/v2/sports/soccer/$lg/teams/$teamId/roster")).optJSONArray("athletes")
-                (0 until (a?.length() ?: 0)).flatMap { i -> a!!.getJSONObject(i).let { listOf(it.optString("displayName"), it.optString("fullName")) } }
-                    .filter { it.isNotBlank() }.map(::personKey).toSet()
-            }
+            withContext(Dispatchers.IO) { rosterNames(JSONObject(httpGet("https://site.api.espn.com/apis/site/v2/sports/$lg/teams/$teamId/roster"))) }
         }.getOrDefault(emptySet())
-        rosters["$lg/$teamId"] = t to names
+        if (names.isNotEmpty()) rosters["$lg/$teamId"] = t to names         // a failed fetch is tried again next time
         return names
     }
+}
+
+/** Football rosters list players flat; NFL rosters group them under offense, defense and special teams. */
+internal fun rosterNames(o: JSONObject): Set<String> {
+    val a = o.optJSONArray("athletes") ?: return emptySet()
+    val people = (0 until a.length()).mapNotNull { a.optJSONObject(it) }.flatMap { g ->
+        g.optJSONArray("items")?.let { items -> (0 until items.length()).mapNotNull { items.optJSONObject(it) } } ?: listOf(g)
+    }
+    return people.flatMap { listOf(it.optString("displayName"), it.optString("fullName")) }.filter { it.isNotBlank() }.map(::personKey).toSet()
 }
 
 /* ---------- colours ---------- */

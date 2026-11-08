@@ -1,9 +1,17 @@
 package app.sportclock
 
 // Generated from _research/native/assets: the bundled photo library (personal use only).
-enum class Kind { DRIVER, FIGHTER, PLAYER }
+enum class Kind { DRIVER, FIGHTER, PLAYER, NFL_PLAYER, BOXER }
 
-data class Person(val kind: Kind, val id: String, val name: String, val team: String, val photo: Int, val avatar: Int, val fx: Float, val fy: Float)
+/** What the favourite is called on the Following screen. */
+fun Kind.role() = when (this) { Kind.DRIVER -> "Driver"; Kind.FIGHTER -> "Fighter"; Kind.PLAYER -> "Player"; Kind.NFL_PLAYER -> "NFL player"; Kind.BOXER -> "Boxer" }
+
+/** Fight sports show their photos in black and white. */
+val Kind.greyscale get() = this == Kind.FIGHTER || this == Kind.BOXER
+
+/** [billed] is the one name a boxer goes by on fight cards ("Canelo", "Usyk"), so their photo shows only on their own fights. */
+data class Person(val kind: Kind, val id: String, val name: String, val team: String, val photo: Int, val avatar: Int, val fx: Float, val fy: Float,
+                  val billed: String = "")
 
 val PEOPLE = listOf(
     Person(Kind.DRIVER, "kimi-antonelli", "Kimi Antonelli", "Mercedes", R.drawable.car_kimi_antonelli, R.drawable.drv_kimi_antonelli, 0.5f, 0.5f),
@@ -72,6 +80,49 @@ val PEOPLE = listOf(
     Person(Kind.PLAYER, "victor-osimhen", "Victor Osimhen", "Football", R.drawable.ply_victor_osimhen, R.drawable.ply_victor_osimhen, 0.5f, 0.25f),
     Person(Kind.PLAYER, "vinicius-junior", "Vinícius Júnior", "Football", R.drawable.ply_vinicius_junior, R.drawable.ply_vinicius_junior, 0.5f, 0.25f),
     Person(Kind.PLAYER, "virgil-van-dijk", "Virgil Van Dijk", "Football", R.drawable.ply_virgil_van_dijk, R.drawable.ply_virgil_van_dijk, 0.5f, 0.25f),
+    Person(Kind.FIGHTER, "johnny-walker", "Johnny Walker", "UFC", R.drawable.ftr_johnny_walker, R.drawable.ftr_johnny_walker, 0.7f, 0.4f),
+    Person(Kind.FIGHTER, "khamzat-chimaev", "Khamzat Chimaev", "UFC", R.drawable.ftr_khamzat_chimaev, R.drawable.ftr_khamzat_chimaev, 0.51f, 0.4f),
+    Person(Kind.FIGHTER, "dricus-du-plessis", "Dricus du Plessis", "UFC", R.drawable.ftr_dricus_du_plessis, R.drawable.ftr_dricus_du_plessis, 0.69f, 0.4f),
+    Person(Kind.FIGHTER, "merab-dvalishvili", "Merab Dvalishvili", "UFC", R.drawable.ftr_merab_dvalishvili, R.drawable.ftr_merab_dvalishvili, 0.43f, 0.4f),
+    Person(Kind.FIGHTER, "charles-oliveira", "Charles Oliveira", "UFC", R.drawable.ftr_charles_oliveira, R.drawable.ftr_charles_oliveira, 0.49f, 0.4f),
+    Person(Kind.FIGHTER, "justin-gaethje", "Justin Gaethje", "UFC", R.drawable.ftr_justin_gaethje, R.drawable.ftr_justin_gaethje, 0.44f, 0.24f),
+    Person(Kind.FIGHTER, "paddy-pimblett", "Paddy Pimblett", "UFC", R.drawable.ftr_paddy_pimblett, R.drawable.ftr_paddy_pimblett, 0.51f, 0.34f),
+    Person(Kind.FIGHTER, "jiri-prochazka", "Jiří Procházka", "UFC", R.drawable.ftr_jiri_prochazka, R.drawable.ftr_jiri_prochazka, 0.6f, 0.25f),
+    Person(Kind.FIGHTER, "magomed-ankalaev", "Magomed Ankalaev", "UFC", R.drawable.ftr_magomed_ankalaev, R.drawable.ftr_magomed_ankalaev, 0.58f, 0.4f),
+    Person(Kind.FIGHTER, "alexandre-pantoja", "Alexandre Pantoja", "UFC", R.drawable.ftr_alexandre_pantoja, R.drawable.ftr_alexandre_pantoja, 0.65f, 0.38f),
+    Person(Kind.FIGHTER, "zhang-weili", "Zhang Weili", "UFC", R.drawable.ftr_zhang_weili, R.drawable.ftr_zhang_weili, 0.48f, 0.32f),
+    Person(Kind.FIGHTER, "kayla-harrison", "Kayla Harrison", "UFC", R.drawable.ftr_kayla_harrison, R.drawable.ftr_kayla_harrison, 0.28f, 0.4f),
+    Person(Kind.FIGHTER, "ciryl-gane", "Ciryl Gane", "UFC", R.drawable.ftr_ciryl_gane, R.drawable.ftr_ciryl_gane, 0.4f, 0.4f),
+    Person(Kind.FIGHTER, "diego-lopes", "Diego Lopes", "UFC", R.drawable.ftr_diego_lopes, R.drawable.ftr_diego_lopes, 0.51f, 0.21f),
+    Person(Kind.FIGHTER, "arman-tsarukyan", "Arman Tsarukyan", "UFC", R.drawable.ftr_arman_tsarukyan, R.drawable.ftr_arman_tsarukyan, 0.6f, 0.4f),
+    Person(Kind.NFL_PLAYER, "patrick-mahomes", "Patrick Mahomes", "Chiefs", R.drawable.nfl_patrick_mahomes, R.drawable.nfl_patrick_mahomes, 0.54f, 0.48f),
+    Person(Kind.NFL_PLAYER, "josh-allen", "Josh Allen", "Bills", R.drawable.nfl_josh_allen, R.drawable.nfl_josh_allen, 0.56f, 0.28f),
+    Person(Kind.NFL_PLAYER, "lamar-jackson", "Lamar Jackson", "Ravens", R.drawable.nfl_lamar_jackson, R.drawable.nfl_lamar_jackson, 0.42f, 0.32f),
+    Person(Kind.NFL_PLAYER, "joe-burrow", "Joe Burrow", "Bengals", R.drawable.nfl_joe_burrow, R.drawable.nfl_joe_burrow, 0.47f, 0.29f),
+    Person(Kind.NFL_PLAYER, "jalen-hurts", "Jalen Hurts", "Eagles", R.drawable.nfl_jalen_hurts, R.drawable.nfl_jalen_hurts, 0.47f, 0.35f),
+    Person(Kind.NFL_PLAYER, "saquon-barkley", "Saquon Barkley", "Eagles", R.drawable.nfl_saquon_barkley, R.drawable.nfl_saquon_barkley, 0.51f, 0.35f),
+    Person(Kind.NFL_PLAYER, "justin-jefferson", "Justin Jefferson", "Vikings", R.drawable.nfl_justin_jefferson, R.drawable.nfl_justin_jefferson, 0.48f, 0.42f),
+    Person(Kind.NFL_PLAYER, "jamarr-chase", "Ja'Marr Chase", "Bengals", R.drawable.nfl_jamarr_chase, R.drawable.nfl_jamarr_chase, 0.41f, 0.3f),
+    Person(Kind.NFL_PLAYER, "ceedee-lamb", "CeeDee Lamb", "Cowboys", R.drawable.nfl_ceedee_lamb, R.drawable.nfl_ceedee_lamb, 0.45f, 0.32f),
+    Person(Kind.NFL_PLAYER, "christian-mccaffrey", "Christian McCaffrey", "49ers", R.drawable.nfl_christian_mccaffrey, R.drawable.nfl_christian_mccaffrey, 0.51f, 0.34f),
+    Person(Kind.NFL_PLAYER, "micah-parsons", "Micah Parsons", "Packers", R.drawable.nfl_micah_parsons, R.drawable.nfl_micah_parsons, 0.56f, 0.3f),
+    Person(Kind.NFL_PLAYER, "jayden-daniels", "Jayden Daniels", "Commanders", R.drawable.nfl_jayden_daniels, R.drawable.nfl_jayden_daniels, 0.47f, 0.28f),
+    Person(Kind.NFL_PLAYER, "derrick-henry", "Derrick Henry", "Ravens", R.drawable.nfl_derrick_henry, R.drawable.nfl_derrick_henry, 0.56f, 0.18f),
+    Person(Kind.NFL_PLAYER, "puka-nacua", "Puka Nacua", "Rams", R.drawable.nfl_puka_nacua, R.drawable.nfl_puka_nacua, 0.69f, 0.48f),
+    Person(Kind.NFL_PLAYER, "caleb-williams", "Caleb Williams", "Bears", R.drawable.nfl_caleb_williams, R.drawable.nfl_caleb_williams, 0.51f, 0.38f),
+    Person(Kind.NFL_PLAYER, "travis-kelce", "Travis Kelce", "Chiefs", R.drawable.nfl_travis_kelce, R.drawable.nfl_travis_kelce, 0.42f, 0.43f),
+    Person(Kind.BOXER, "canelo-alvarez", "Canelo Álvarez", "Boxing", R.drawable.box_canelo_alvarez, R.drawable.box_canelo_alvarez, 0.52f, 0.35f, "Canelo"),
+    Person(Kind.BOXER, "oleksandr-usyk", "Oleksandr Usyk", "Boxing", R.drawable.box_oleksandr_usyk, R.drawable.box_oleksandr_usyk, 0.5f, 0.33f, "Usyk"),
+    Person(Kind.BOXER, "tyson-fury", "Tyson Fury", "Boxing", R.drawable.box_tyson_fury, R.drawable.box_tyson_fury, 0.5f, 0.64f, "Fury"),
+    Person(Kind.BOXER, "anthony-joshua", "Anthony Joshua", "Boxing", R.drawable.box_anthony_joshua, R.drawable.box_anthony_joshua, 0.49f, 0.26f, "Joshua"),
+    Person(Kind.BOXER, "terence-crawford", "Terence Crawford", "Boxing", R.drawable.box_terence_crawford, R.drawable.box_terence_crawford, 0.47f, 0.4f, "Crawford"),
+    Person(Kind.BOXER, "naoya-inoue", "Naoya Inoue", "Boxing", R.drawable.box_naoya_inoue, R.drawable.box_naoya_inoue, 0.46f, 0.5f, "Inoue"),
+    Person(Kind.BOXER, "gervonta-davis", "Gervonta Davis", "Boxing", R.drawable.box_gervonta_davis, R.drawable.box_gervonta_davis, 0.6f, 0.4f, "Davis"),
+    Person(Kind.BOXER, "shakur-stevenson", "Shakur Stevenson", "Boxing", R.drawable.box_shakur_stevenson, R.drawable.box_shakur_stevenson, 0.49f, 0.43f, "Stevenson"),
+    Person(Kind.BOXER, "dmitry-bivol", "Dmitry Bivol", "Boxing", R.drawable.box_dmitry_bivol, R.drawable.box_dmitry_bivol, 0.5f, 0.31f, "Bivol"),
+    Person(Kind.BOXER, "jake-paul", "Jake Paul", "Boxing", R.drawable.box_jake_paul, R.drawable.box_jake_paul, 0.4f, 0.45f, "Paul"),
+    Person(Kind.BOXER, "claressa-shields", "Claressa Shields", "Boxing", R.drawable.box_claressa_shields, R.drawable.box_claressa_shields, 0.56f, 0.49f, "Shields"),
+    Person(Kind.BOXER, "katie-taylor", "Katie Taylor", "Boxing", R.drawable.box_katie_taylor, R.drawable.box_katie_taylor, 0.49f, 0.7f, "Taylor"),
 )
 
 fun person(id: String?): Person? = PEOPLE.firstOrNull { it.id == id }

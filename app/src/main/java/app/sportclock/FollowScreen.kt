@@ -61,9 +61,11 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
             }
         }
         item { SectionLabel("★ Favourites") }
-        item {
-            Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(Kind.DRIVER to "Driver", Kind.FIGHTER to "Fighter", Kind.PLAYER to "Player").forEach { (k, role) ->
+        // three to a row: driver, fighter, player, then the NFL player and the boxer
+        Kind.entries.chunked(3).forEach { row -> item {
+            Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { k ->
+                    val role = k.role()
                     val p = st.favs[k]
                     Column(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).background(C.tile).clickable { picking = k }.padding(vertical = 12.dp, horizontal = 6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally) {
@@ -76,9 +78,10 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
                         Text("Change", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
                     }
                 }
+                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
             }
-        }
-        item { Text("Their photo leads Next up when their sport is on next. A player shows only when his club is playing; otherwise, or with None, the card shows both clubs' badges.", color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
+        } }
+        item { Text("Their photo leads Next up when their sport is on next. A football or NFL player shows only when his team is playing, a boxer only on their own fight; otherwise, or with None, the card shows both teams' badges or the sport's picture.", color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
 
         listOf("Motorsport" to listOf("F1", "MGP", "NAS", "INDY"), "Fight" to listOf("UFC", "BOX")).forEach { (label, codes) ->
             item { SectionLabel(label) }
@@ -123,7 +126,7 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
 
     picking?.let { kind ->
         ModalBottomSheet(onDismissRequest = { picking = null }, containerColor = C.tile) {
-            Text("Choose your ${kind.name.lowercase()}", color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(start = 24.dp, bottom = 12.dp))
+            Text("Choose your " + (if (kind == Kind.NFL_PLAYER) "NFL player" else kind.role().lowercase()), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(start = 24.dp, bottom = 12.dp))
             LazyVerticalGrid(GridCells.Fixed(3), Modifier.heightIn(max = 560.dp), contentPadding = PaddingValues(12.dp)) {
                 item {
                     Column(Modifier.padding(6.dp).clip(RoundedCornerShape(14.dp)).clickable {
@@ -131,7 +134,7 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
                     }.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(Modifier.size(72.dp).clip(CircleShape).background(C.tile2).border(2.dp, if (st.favs[kind] == null) C.lime else Color.Transparent, CircleShape),
                             contentAlignment = Alignment.Center) { Text("—", color = C.fg2, fontFamily = Inter, fontSize = 22.sp) }
-                        Text(if (kind == Kind.PLAYER) "None (badges)" else "None", color = C.fg, fontFamily = Inter, fontSize = 13.sp, textAlign = TextAlign.Center,
+                        Text(if (kind == Kind.PLAYER || kind == Kind.NFL_PLAYER) "None (badges)" else "None", color = C.fg, fontFamily = Inter, fontSize = 13.sp, textAlign = TextAlign.Center,
                             maxLines = 2, modifier = Modifier.padding(top = 6.dp))
                     }
                 }

@@ -2,6 +2,12 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.24 (8 Nov 2026)
+- **Two new favourites: an NFL player and a boxer.** Pick them in Following, next to your driver, fighter and player.
+  - Your NFL player leads the NEXT UP card and the widget when his team is playing, checked against the team's current roster. 16 stars to choose from, Mahomes to Puka Nacua.
+  - Your boxer shows only on their own fights ("Fury v Joshua"), in black and white like the fighters. 12 to choose from, Canelo to Katie Taylor.
+- **15 more UFC fighters**, including Johnny Walker, Khamzat Chimaev, Dricus du Plessis, Merab Dvalishvili, Zhang Weili and Kayla Harrison.
+
 ## 2.23 (6 Nov 2026)
 - **F1 times are in your time.** Race control writes times in the track's local time ("Session will resume at 12:49"). They now show in your phone's time.
 - **A stopped session shows as a red flag.** F1 can take a session off "started" during a long red flag, and the app then said "Waiting for the start". It now stays red, and tells you when the session resumes.
