@@ -154,9 +154,7 @@ private fun DayPage(day: LocalDate, today: LocalDate, st: AppState, events: List
     val list = games.orEmpty()
     val yours = list.filter { followed(it.event, st.follows) }
     val rest = list.filter { it !in yours }
-    // competitions you follow first, then in the order the app knows them
-    val order = ESPN_COMP.keys.toList()
-    val groups = rest.groupBy { it.event.code }.entries.sortedWith(compareBy({ "c:${it.key}" !in st.follows }, { order.indexOf(it.key).let { i -> if (i < 0) 99 else i } }))
+    val groups = rest.groupBy { it.event.code }.entries.sortedBy { compRank(it.key) }
     fun score(g: DayGame) = g.score ?: scores.matches[g.event.id]
 
     LazyColumn(Modifier.fillMaxSize()) {
@@ -198,6 +196,14 @@ private fun DayPage(day: LocalDate, today: LocalDate, st: AppState, events: List
         }
     }
 }
+
+/**
+ * The order competitions are listed in on a day page, by strength and pull, always the same: the big five leagues
+ * (Premier League first), then Europe, the next leagues, the Championship, and the domestic cups last.
+ */
+val COMP_ORDER = listOf("ENG", "ESP", "ITA", "GER", "FRA", "UCL", "UEL", "UECL", "POR", "NED", "EFL",
+    "FAC", "LC", "CDR", "CIT", "DFB", "CDF", "TDP", "KNV")
+fun compRank(code: String) = COMP_ORDER.indexOf(code).let { if (it < 0) COMP_ORDER.size else it }
 
 private val DAY_LONG = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.UK)
 

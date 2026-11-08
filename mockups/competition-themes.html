@@ -1,0 +1,120 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Competition themes</title>
+<style>
+body{margin:0;background:#0b0c0a;color:#eee;font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;padding:16px}
+h1{font-size:20px;margin:6px 0 4px;text-align:center}
+h2{font-size:16px;margin:28px 0 4px;text-align:center}
+p.k{font-size:13px;color:#aaa;text-align:center;margin:0 auto 14px;max-width:640px;line-height:1.5}
+.row{display:flex;flex-wrap:wrap;gap:20px;justify-content:center}
+.cap{text-align:center;font-size:12px;color:#999;margin-bottom:6px}
+.ph{width:290px;border-radius:42px;padding:9px;background:#000;border:1px solid #2a2a2a}
+.scr{position:relative;border-radius:34px;overflow:hidden;height:600px}
+.bgd{position:absolute;inset:0}
+.ct{position:relative;padding:12px 18px 18px;height:100%;box-sizing:border-box;display:flex;flex-direction:column}
+.isl{width:86px;height:23px;border-radius:13px;background:#000;margin:0 auto 12px}
+.back{font-size:13px;opacity:.85;margin-bottom:10px}
+.title{display:flex;align-items:center;gap:10px}
+.chip{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:.5px}
+.tt{font-size:22px;font-weight:800;letter-spacing:-.3px;line-height:1.1}
+.st{font-size:12px;opacity:.75;margin-top:2px}
+.seg{display:flex;gap:4px;margin-top:14px;padding:3px;border-radius:12px}
+.seg div{flex:1;text-align:center;font-size:12px;font-weight:600;padding:7px 0;border-radius:9px}
+.day{font-size:13px;font-weight:700;margin:14px 0 6px}
+.m{display:flex;align-items:center;border-radius:12px;padding:9px 12px;margin-bottom:6px;font-size:13px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.m .t{width:46px;font-weight:800;font-variant-numeric:tabular-nums;font-size:15px}
+.m .v{flex:1;line-height:1.35}
+.m .b{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:1px}
+.tb{display:flex;align-items:center;font-size:12px;padding:7px 10px;border-radius:9px;margin-bottom:3px}
+.tb span:first-child{width:22px;font-weight:700}.tb span:nth-child(2){flex:1}.tb span:last-child{width:28px;text-align:right;font-weight:700}
+.hero{border-radius:20px;padding:14px;margin-top:6px;position:relative;overflow:hidden}
+.big{font-size:56px;font-weight:900;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums}
+.news{border-radius:14px;overflow:hidden;margin-bottom:8px}
+.news .img{height:84px;position:relative;overflow:hidden}
+.news .tx{padding:9px 12px;font-size:13px;line-height:1.35}
+.idea{max-width:640px;margin:8px auto;font-size:13.5px;line-height:1.55;color:#ccc}
+.idea b{color:#fff}
+</style></head><body>
+<h1>SportClock · a theme for every competition</h1>
+<p class="k">Each competition gets its own colours and a drawn backdrop: a faint pattern in the brand's spirit behind its page, its matches, its table and its news. Badges and league logos stay as they are today (the small logo chip); the backdrops are drawn by the app, so they stay sharp and light.</p>
+
+<h2>Champions League: the full set</h2>
+<p class="k">Deep navy into violet, a giant faint star-ball turning slowly behind the page, cyan-to-magenta light on the edges, silver text accents.</p>
+<div class="row" id="ucl"></div>
+
+<h2>The other competitions: league page</h2>
+<div class="row" id="all"></div>
+
+<h2>More ideas</h2>
+<div id="ideas"></div>
+
+<script>
+const T={
+ucl:{name:'Champions League',chip:'UCL',sub:'League phase · Matchday 4',bg:'linear-gradient(160deg,#060a35 0%,#0b1660 45%,#2a1478 100%)',ink:'#fff',ink2:'#c8cff5',acc:'#7fd8ff',chipBg:'#fff',chipInk:'#0b1660',tile:'rgba(255,255,255,.08)',seg:'rgba(255,255,255,.08)',segOn:'rgba(255,255,255,.95)',segOnInk:'#0b1660',deco:'starball'},
+pl:{name:'Premier League',chip:'PL',sub:'Matchweek 10',bg:'linear-gradient(165deg,#37003c 0%,#2a0030 60%,#1a001f 100%)',ink:'#fff',ink2:'#e6c7ea',acc:'#00ff85',chipBg:'#fff',chipInk:'#37003c',tile:'rgba(255,255,255,.08)',seg:'rgba(255,255,255,.08)',segOn:'#00ff85',segOnInk:'#37003c',deco:'shards'},
+laliga:{name:'LaLiga',chip:'LL',sub:'Jornada 11',bg:'linear-gradient(160deg,#1b1b1b 0%,#2a1210 70%,#3a1410 100%)',ink:'#fff',ink2:'#f3c9c2',acc:'#ff4b44',chipBg:'#ff4b44',chipInk:'#fff',tile:'rgba(255,255,255,.07)',seg:'rgba(255,255,255,.07)',segOn:'#ff4b44',segOnInk:'#fff',deco:'sun'},
+bl:{name:'Bundesliga',chip:'BL',sub:'Spieltag 9',bg:'linear-gradient(160deg,#141414 0%,#1d1d1d 60%,#2a0d0f 100%)',ink:'#fff',ink2:'#d9d9d9',acc:'#d20515',chipBg:'#d20515',chipInk:'#fff',tile:'rgba(255,255,255,.07)',seg:'rgba(255,255,255,.07)',segOn:'#d20515',segOnInk:'#fff',deco:'stripes'},
+sa:{name:'Serie A',chip:'SA',sub:'Giornata 10',bg:'linear-gradient(160deg,#04163a 0%,#062a5a 60%,#05405c 100%)',ink:'#fff',ink2:'#c2d6ee',acc:'#3be2c8',chipBg:'#fff',chipInk:'#04163a',tile:'rgba(255,255,255,.08)',seg:'rgba(255,255,255,.08)',segOn:'#3be2c8',segOnInk:'#04163a',deco:'shield'},
+l1:{name:'Ligue 1',chip:'L1',sub:'Journée 11',bg:'linear-gradient(160deg,#0a0f22 0%,#121b3c 70%,#16224a 100%)',ink:'#fff',ink2:'#cdd5f0',acc:'#dcff4f',chipBg:'#dcff4f',chipInk:'#0a0f22',tile:'rgba(255,255,255,.07)',seg:'rgba(255,255,255,.07)',segOn:'#dcff4f',segOnInk:'#0a0f22',deco:'waves'},
+uel:{name:'Europa League',chip:'UEL',sub:'League phase · Matchday 4',bg:'linear-gradient(160deg,#110a04 0%,#1e1206 60%,#3a1d02 100%)',ink:'#fff',ink2:'#f5d6b5',acc:'#ff7a00',chipBg:'#ff7a00',chipInk:'#110a04',tile:'rgba(255,255,255,.07)',seg:'rgba(255,255,255,.07)',segOn:'#ff7a00',segOnInk:'#110a04',deco:'rings'},
+fac:{name:'FA Cup',chip:'FAC',sub:'Third round · January',bg:'linear-gradient(160deg,#0b1430 0%,#12204a 70%,#1b2a55 100%)',ink:'#fff',ink2:'#d7dcf0',acc:'#d8b45a',chipBg:'#d8b45a',chipInk:'#0b1430',tile:'rgba(255,255,255,.07)',seg:'rgba(255,255,255,.07)',segOn:'#d8b45a',segOnInk:'#0b1430',deco:'laurel'},
+f1:{name:'Formula 1',chip:'F1',sub:'Mexico City GP · Round 19',bg:'linear-gradient(160deg,#0c0c0c 0%,#151515 60%,#2a0606 100%)',ink:'#fff',ink2:'#d0d0d0',acc:'#e10600',chipBg:'#fff',chipInk:'#e10600',tile:'rgba(255,255,255,.07)',seg:'rgba(255,255,255,.07)',segOn:'#e10600',segOnInk:'#fff',deco:'speed'}
+};
+function star(cx,cy,r,rot){let p='';for(let i=0;i<10;i++){const a=rot+i*Math.PI/5-Math.PI/2,rr=i%2?r*.42:r;p+=(i?'L':'M')+(cx+rr*Math.cos(a)).toFixed(1)+' '+(cy+rr*Math.sin(a)).toFixed(1)}return p+'Z'}
+function deco(k,acc){
+ const w=290,h=600;let s=`<svg class="bgd" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice">`;
+ if(k==='starball'){
+  s+=`<defs><linearGradient id="gu" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4fd8ff"/><stop offset=".6" stop-color="#6a5cff"/><stop offset="1" stop-color="#ff3fd8"/></linearGradient></defs>`;
+  s+=`<g opacity=".55" fill="none" stroke="url(#gu)" stroke-width="1.4"><circle cx="210" cy="190" r="170"/>`;
+  [[210,70,58,.2],[110,170,52,.6],[310,170,52,-.3],[150,300,55,.9],[275,305,55,.4],[210,190,40,0]].forEach(([x,y,r,o])=>s+=`<path d="${star(x,y,r,o)}"/>`);
+  s+=`</g><circle cx="250" cy="560" r="160" fill="#ff3fd8" opacity=".10"/><circle cx="0" cy="120" r="140" fill="#4fd8ff" opacity=".08"/>`;
+ }
+ if(k==='shards'){
+  const c=['#00ff85','#e90052','#04f5ff','#963cff'];
+  for(let i=0;i<9;i++){const x=150+((i*53)%160),y=20+i*40;s+=`<polygon points="${x},${y} ${x+70},${y+30} ${x+20},${y+90}" fill="${c[i%4]}" opacity="${.10+.04*(i%3)}"/>`}
+  s+=`<path d="M200 0 L290 0 L290 140 Z" fill="#00ff85" opacity=".18"/><path d="M290 470 L290 600 L170 600 Z" fill="#e90052" opacity=".22"/>`;
+ }
+ if(k==='sun'){for(let i=0;i<18;i++){const a=i*Math.PI/18-.1;s+=`<line x1="250" y1="60" x2="${250+600*Math.cos(a+Math.PI/2)}" y2="${60+600*Math.sin(a+Math.PI/2)}" stroke="#ff4b44" stroke-width="${i%2?14:4}" opacity=".07"/>`}s+=`<circle cx="250" cy="60" r="70" fill="#ff4b44" opacity=".22"/><circle cx="250" cy="60" r="110" fill="none" stroke="#ffb3a0" opacity=".25"/>`}
+ if(k==='stripes'){for(let i=-8;i<16;i++)s+=`<rect x="${i*36}" y="-100" width="12" height="900" transform="rotate(28 145 300)" fill="${i%5===0?'#d20515':'#ffffff'}" opacity="${i%5===0?.28:.04}"/>`}
+ if(k==='shield'){s+=`<path d="M150 40 L270 80 L262 230 Q250 330 150 380 Q50 330 38 230 L30 80 Z" fill="none" stroke="#3be2c8" stroke-width="1.5" opacity=".35" transform="translate(70,-10)"/><path d="M150 70 L245 102 L238 225 Q228 305 150 345 Q72 305 62 225 L55 102 Z" fill="#3be2c8" opacity=".06" transform="translate(70,-10)"/>`;for(let i=0;i<6;i++)s+=`<line x1="0" y1="${420+i*22}" x2="290" y2="${380+i*22}" stroke="#d6b25e" opacity=".12"/>`}
+ if(k==='waves'){for(let i=0;i<9;i++)s+=`<path d="M-10 ${60+i*24} C 80 ${10+i*24}, 160 ${110+i*24}, 300 ${40+i*24}" fill="none" stroke="${i===4?'#dcff4f':'#ffffff'}" stroke-width="${i===4?2:1}" opacity="${i===4?.5:.08}"/>`}
+ if(k==='rings'){for(let i=1;i<8;i++)s+=`<circle cx="240" cy="120" r="${i*32}" fill="none" stroke="#ff7a00" stroke-width="${i===3?3:1}" opacity="${i===3?.45:.12}"/>`}
+ if(k==='laurel'){for(let i=0;i<9;i++){const a=-1.2+i*.28;s+=`<ellipse cx="${220+110*Math.cos(a)}" cy="${150+110*Math.sin(a)}" rx="16" ry="6" transform="rotate(${a*57+90} ${220+110*Math.cos(a)} ${150+110*Math.sin(a)})" fill="#d8b45a" opacity=".22"/><ellipse cx="${220-110*Math.cos(a)}" cy="${150+110*Math.sin(a)}" rx="16" ry="6" transform="rotate(${-a*57-90} ${220-110*Math.cos(a)} ${150+110*Math.sin(a)})" fill="#d8b45a" opacity=".22"/>`}s+=`<path d="M200 95 h40 v20 q0 30 -20 38 q-20 -8 -20 -38 Z M210 153 h20 v18 h10 v8 h-40 v-8 h10 Z" fill="#d8b45a" opacity=".18"/>`}
+ if(k==='speed'){for(let i=0;i<14;i++)s+=`<rect x="${-40+i*7}" y="${40+i*38}" width="${180+(i%4)*40}" height="${i%3?2:5}" fill="${i%3?'#ffffff':'#e10600'}" opacity="${i%3?.06:.35}" transform="skewX(-24)"/>`;for(let i=0;i<6;i++)for(let j=0;j<4;j++)if((i+j)%2==0)s+=`<rect x="${218+i*12}" y="${20+j*12}" width="12" height="12" fill="#fff" opacity=".09"/>`}
+ return s+'</svg>';
+}
+const FX={ucl:[['Tue 4 Nov','20:45','Real Madrid','Liverpool'],['','20:45','Inter','Arsenal'],['Wed 5 Nov','23:00','Bayern','PSG']],
+pl:[['Sat 8 Nov','15:00','Arsenal','Man City'],['','17:30','Man Utd','Spurs']],laliga:[['Sun 9 Nov','22:00','Barcelona','Atlético']],
+bl:[['Sat 8 Nov','17:30','Bayern','Dortmund']],sa:[['Sun 9 Nov','22:45','Inter','Juventus']],l1:[['Sun 9 Nov','22:45','PSG','Marseille']],
+uel:[['Thu 6 Nov','23:00','Man Utd','Lazio']],fac:[['Jan 2027','TBC','Third round','draw 1 Dec']],f1:[['Sun 1 Nov','23:00','Race','71 laps']]};
+function head(t,back){return `<div class="isl"></div><div class="back" style="color:${t.acc}">‹ Back</div>
+<div class="title"><div class="chip" style="background:${t.chipBg};color:${t.chipInk}">${t.chip}</div><div><div class="tt">${t.name}</div><div class="st" style="color:${t.ink2}">${t.sub}</div></div></div>`}
+function seg(t,on){return `<div class="seg" style="background:${t.seg}">${['Fixtures','Results','Table'].map((x,i)=>`<div style="${i===on?`background:${t.segOn};color:${t.segOnInk}`:`color:${t.ink2}`}">${x}</div>`).join('')}</div>`}
+function fixtures(t,k){return FX[k].map(([d,tm,a,b])=>(d?`<div class="day">${d}</div>`:'')+`<div class="m" style="background:${t.tile}"><span class="t">${tm}</span><span class="v"><b>${a}</b><br><span style="color:${t.ink2}">${b.includes(' ')&&k==='fac'||k==='f1'?b:'v '+b}</span></span></div>`).join('')}
+function phone(k,inner,cap){const t=T[k];return `<div><div class="cap">${cap}</div><div class="ph"><div class="scr" style="background:${t.bg};color:${t.ink}">${deco(t.deco,t.acc)}<div class="ct">${inner}</div></div></div></div>`}
+const u=T.ucl;
+const tbl=[['1','Inter','12'],['2','Arsenal','12'],['3','Real Madrid','9'],['4','Bayern','9'],['5','Liverpool','9'],['6','PSG','7'],['7','Atlético','7'],['8','Man City','6'],['9','Barcelona','6']];
+document.getElementById('ucl').innerHTML=
+ phone('ucl',head(u)+seg(u,0)+fixtures(u,'ucl'),'League page · Fixtures')+
+ phone('ucl',head(u)+seg(u,2)+`<div style="margin-top:12px">${tbl.map((r,i)=>`<div class="tb" style="background:${i<8?'rgba(127,216,255,.10)':u.tile}"><span>${r[0]}</span><span>${r[1]}</span><span>${r[2]}</span></div>`).join('')}</div><div style="font-size:11px;color:${u.ink2};margin-top:8px"><span class="b" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7fd8ff;margin-right:6px"></span>Top 8 go straight to the last 16</div>`,'League page · Table')+
+ phone('ucl',`<div class="isl"></div><div style="display:flex;align-items:center;gap:10px"><div class="chip" style="background:#fff;color:#0b1660">UCL</div><div style="font-size:13px;color:${u.acc};font-weight:600">Champions League ›</div></div>
+  <div style="font-size:22px;font-weight:800;margin-top:14px">Real Madrid v Liverpool</div><div class="big" style="margin-top:8px;background:linear-gradient(90deg,#ffffff,#9fdcff 60%,#d79bff);-webkit-background-clip:text;background-clip:text;color:transparent">20:45</div>
+  <div style="font-size:14px">Tue 4 Nov · your time</div><div style="font-size:13px;color:${u.ink2};margin-top:4px">Santiago Bernabéu · League phase, matchday 4</div>
+  <div class="m" style="background:${u.tile};margin-top:16px"><span class="v">Alert 30 min before kick-off</span><span style="color:${u.acc}">●</span></div>
+  <div class="day" style="color:${u.acc}">Form</div><div style="display:flex;gap:5px">${'WWDWL'.split('').map(c=>`<div style="width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:${c==='W'?'#2fd48a':c==='D'?'#8a8fb5':'#ff5c7a'};color:#06102e">${c}</div>`).join('')}</div>
+  <div class="day" style="color:${u.acc}">Head to head</div><div class="m" style="background:${u.tile}"><span class="v">Last 5: Real Madrid 3 · Liverpool 1 · 1 draw</span></div>`,'Match sheet')+
+ phone('ucl',`<div class="isl"></div><div class="tt">News</div><div class="st" style="color:${u.ink2}">Champions League</div><div style="height:12px"></div>`+
+  ['Ancelotti: “We know what this night means”','Arsenal top the table after a perfect start','Bayern sweat on Musiala before PSG'].map((h,i)=>`<div class="news" style="background:${u.tile}"><div class="img" style="background:${['linear-gradient(120deg,#1a2a8a,#5b2bb5)','linear-gradient(120deg,#0e1a6a,#2a6ad8)','linear-gradient(120deg,#311070,#c43bd8)'][i]}"><svg viewBox="0 0 200 84" width="100%" height="84"><path d="${star(160,40,34,.3)}" fill="none" stroke="#fff" opacity=".35"/></svg></div><div class="tx">${h}<div style="font-size:11px;color:${u.ink2};margin-top:3px">BBC Sport · ${i+1}h ago</div></div></div>`).join(''),'News');
+
+document.getElementById('all').innerHTML=['pl','laliga','bl','sa','l1','uel','fac','f1'].map(k=>{const t=T[k];return phone(k,head(t)+seg(t,0)+fixtures(t,k)+
+ `<div class="hero" style="background:${t.tile};margin-top:auto"><div style="font-size:11px;letter-spacing:2px;font-weight:700;color:${t.acc}">NEXT UP</div><div style="font-size:16px;font-weight:800;margin-top:4px">${FX[k][0][2]}${k==='fac'||k==='f1'?'':' v '+FX[k][0][3]}</div><div class="big" style="font-size:40px;color:${t.acc}">${FX[k][0][1]}</div></div>`,t.name)}).join('');
+
+document.getElementById('ideas').innerHTML=[
+['Where the theme shows','A competition’s page, its matches’ sheets, its table and its news all wear it. Home’s NEXT UP card takes the theme of the game it shows, so a Champions League night looks different from a Saturday in the league. The widget too.'],
+['Moving backdrops','The star-ball turns slowly, the Premier League shards drift, F1 speed lines slide as you scroll. Subtle, and off when the phone’s reduce-motion setting is on.'],
+['Matchday mode','On the day of a game you follow, its competition theme gets brighter, with the kick-off time in the theme’s gradient. After full time it calms back down.'],
+['Club touch on top','On a match sheet the competition theme is the base and each club’s colour runs down its side, like the half-and-half NEXT UP card.'],
+['Finals and big nights','Cup finals and the Champions League final get a gold version of their theme with a trophy outline. Derbies get both clubs’ colours split down the middle.'],
+['Your tab follows the theme','If your tab is a league (the Premier League, say), the whole tab wears its theme all the time, nav bar accent included.'],
+['A setting to turn it off','More → Settings → “Competition themes”: on, or plain. Plain keeps today’s Night or Paddock look everywhere.']
+].map(([a,b])=>`<div class="idea"><b>${a}.</b> ${b}</div>`).join('');
+</script></body></html>

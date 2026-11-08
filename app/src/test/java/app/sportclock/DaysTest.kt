@@ -43,4 +43,10 @@ class DaysTest {
         assertEquals(24 * 3600_000L, DayBoards.maxAgeMs(today.minusDays(3), today, false))
         assertEquals(60_000L, DayBoards.maxAgeMs(today, today, true))
     }
+
+    @Test fun premierLeagueAlwaysFirst() {
+        val codes = listOf("KNV", "GER", "UCL", "EFL", "ITA", "XYZ", "ENG", "ESP", "FAC", "FRA")
+        assertEquals(listOf("ENG", "ESP", "ITA", "GER", "FRA", "UCL", "EFL", "FAC", "KNV", "XYZ"), codes.sortedBy(::compRank))
+        assertEquals(ESPN_COMP.keys, COMP_ORDER.toSet())     // every competition we score has a place
+    }
 }

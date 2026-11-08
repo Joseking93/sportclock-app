@@ -1,0 +1,58 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>F1 live flags</title>
+<style>
+body{margin:0;background:#0e0f0d;color:#eee;font-family:-apple-system,system-ui,Segoe UI,Roboto,sans-serif;padding:16px}
+h1{font-size:18px;font-weight:600;text-align:center;margin:4px 0 14px}
+.grid{display:flex;flex-wrap:wrap;gap:22px;justify-content:center}
+.cap{text-align:center;font-size:13px;color:#aaa;margin-bottom:8px}
+.ph{width:300px;border-radius:44px;padding:10px;background:#000;border:1px solid #333}
+.scr{border-radius:36px;overflow:hidden;padding:14px 20px 20px}
+.isl{width:90px;height:24px;border-radius:14px;background:#000;margin:0 auto 12px;display:flex;justify-content:flex-end;align-items:center;padding-right:9px;box-sizing:border-box}
+.isl i{width:8px;height:8px;border-radius:50%}
+.hdr{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;animation:p 1.4s infinite}@keyframes p{50%{opacity:.25}}
+.big{font-size:32px;font-weight:700;line-height:1.05;letter-spacing:-.5px;margin-top:4px}
+.sub{font-size:13px;margin-top:6px;opacity:.85}
+.tiles{display:flex;gap:10px;margin-top:14px}.tile{flex:1;border-radius:14px;padding:9px 12px}
+.tl{font-size:11px;opacity:.7}.tv{font-size:21px;font-weight:600;font-variant-numeric:tabular-nums}
+.lab{font-size:12px;font-weight:700;margin:14px 0 2px}
+.row{display:flex;align-items:center;height:30px;border-radius:8px;margin-top:4px;padding-right:10px;font-size:13px}
+.bar{width:4px;height:100%;border-radius:8px 0 0 8px}.pos{width:26px;padding-left:8px;font-weight:600}.tla{flex:1;font-weight:600}
+.ty{width:16px;height:16px;border-radius:50%;font-size:9px;font-weight:700;color:#111;display:flex;align-items:center;justify-content:center}
+.gap{width:62px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums}
+.rc{font-size:12px;line-height:1.5;opacity:.85}
+.g{margin:14px 0 6px;height:54px;display:flex;align-items:center}
+.board{border:3px solid currentColor;border-radius:12px;padding:3px 13px;font-size:25px;font-weight:700;letter-spacing:3px}
+</style></head><body>
+<h1>SportClock · F1 live sheet, by flag</h1>
+<div class="grid" id="g"></div>
+<script>
+const S=[
+['Green flag','#141613','#EDEFE6','#C8F05A','#1F221D','Green flag','Track clear · 20 cars running','none',['Time left','24:39'],0,['22:41  Track clear','22:38  Car 55 (SAI) time deleted, track limits T1']],
+['Yellow flag','#F5C518','#1A1600','#1A1600','rgba(0,0,0,.09)','Yellow flag','Sector 7 · Turn 12 · Car 23 (ALB) stopped','flag',['Time left','24:12'],1,['22:43  Yellow in track sector 7','22:43  Car 23 (ALB) stopped at turn 12']],
+['Virtual safety car','#F5C518','#1A1600','#1A1600','rgba(0,0,0,.09)','Virtual safety car','Hold your delta · no overtaking','VSC',['Lap','34/71'],0,['Lap 34  Virtual safety car deployed','Lap 34  Car 23 (ALB) stopped at turn 12']],
+['Safety car','#F2A516','#1F1200','#1F1200','rgba(0,0,0,.09)','Safety car','Field bunching up · pit lane open','SC',['Lap','36/71'],0,['Lap 36  Safety car in this lap','Lap 35  Lapped cars may overtake']],
+['Red flag','#C62828','#FFFFFF','#FFFFFF','rgba(255,255,255,.14)','Red flag','Session suspended · clock stopped','red',['Clock stopped','18:02'],0,['22:51  Red flag','22:51  Session will resume at 23:05']],
+['Chequered flag','#1C1C1C','#FFFFFF','#FFFFFF','rgba(255,255,255,.1)','Chequered flag','Practice 2 is over · Leclerc fastest','cheq',['Fastest','1:17.384'],0,['23:00  Chequered flag']]];
+const D=[['1','LEC','#E8002D','S','1:17.384'],['2','NOR','#FF8000','S','+0.103'],['3','ANT','#27F4D2','S','+0.217'],['4','HAD','#3671C6','M','+0.410'],['5','RUS','#27F4D2','S','+0.522']];
+const TY={S:'#E53935',M:'#FDD835'};
+function glyph(g,ink){
+ if(g==='none')return'';
+ if(g==='flag')return`<svg width="54" height="54" viewBox="0 0 54 54"><rect x="10" y="6" width="3" height="44" rx="1.5" fill="${ink}"/><path d="M13 8 Q26 2 34 8 T46 9 V30 Q38 24 30 29 T13 30 Z" fill="${ink}"/></svg>`;
+ if(g==='VSC'||g==='SC')return`<div class="board">${g}</div>`;
+ if(g==='red')return`<div style="width:50px;height:50px;border-radius:50%;border:3px solid ${ink};display:flex;align-items:center;justify-content:center"><div style="width:16px;height:16px;border-radius:3px;background:${ink}"></div></div>`;
+ let c='';for(let i=0;i<4;i++)for(let j=0;j<6;j++)if((i+j)%2==0)c+=`<rect x="${j*9}" y="${i*9}" width="9" height="9" fill="${ink}"/>`;return`<svg width="54" height="36" viewBox="0 0 54 36" style="outline:1px solid ${ink}">${c}</svg>`}
+document.getElementById('g').innerHTML=S.map(([cap,bg,ink,acc,chip,big,sub,g,m,sec,rc])=>{
+ const green=g==='none',lab=green?acc:ink;
+ return`<div><div class="cap">${cap}</div><div class="ph"><div class="scr" style="background:${bg};color:${ink}">
+ <div class="isl"><i style="background:${green?'#C8F05A':bg==='#1C1C1C'?'#fff':bg}"></i></div>
+ <div class="hdr"><div class="dot" style="background:${g==='cheq'?'transparent':acc}"></div><span>${g==='cheq'?'FINISHED':'LIVE'} · Practice 2</span><span style="margin-left:auto;opacity:.75;font-weight:400">Mexico City GP</span></div>
+ ${green?'':`<div class="g">${glyph(g,ink)}</div>`}
+ <div class="big" style="${green?'margin-top:16px':''}">${big}</div><div class="sub">${sub}</div>
+ <div class="tiles"><div class="tile" style="background:${chip}"><div class="tl">${m[0]}</div><div class="tv">${m[1]}</div></div>
+ <div class="tile" style="background:${chip}"><div class="tl">Track</div><svg viewBox="0 0 120 50" width="100%" height="32"><path d="M10 38 L40 38 Q52 38 56 28 L62 14 Q66 6 76 8 L104 14 Q112 16 110 24 L104 34 Q100 42 88 42 L60 42 Q50 42 44 40 Z" fill="none" stroke="${green?'#C8F05A':ink}" stroke-opacity="${green?1:.5}" stroke-width="4" stroke-linejoin="round"/>${sec?`<path d="M62 14 Q66 6 76 8 L96 12" fill="none" stroke="${ink}" stroke-width="7" stroke-linecap="round"/>`:''}</svg></div></div>
+ <div class="lab" style="color:${lab}">Running order</div>
+ ${D.map(r=>`<div class="row" style="background:${chip}"><div class="bar" style="background:${r[2]}"></div><span class="pos">${r[0]}</span><span class="tla">${r[1]}</span><div class="ty" style="background:${TY[r[3]]}">${r[3]}</div><span class="gap">${r[4]}</span></div>`).join('')}
+ <div class="lab" style="color:${lab}">Race control</div>${rc.map(x=>`<div class="rc">${x}</div>`).join('')}
+ </div></div></div>`}).join('');
+</script></body></html>
