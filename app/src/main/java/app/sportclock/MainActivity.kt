@@ -367,6 +367,11 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTe
             Text((series(e.code)?.name ?: e.comp) + if (league) "  ›" else "", color = if (league) C.lime else C.fg2, fontFamily = Inter,
                 fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
         }
+        if (e.sport == Sport.FOOTBALL && e.teams.size == 2) {
+            MatchPage(e, now, score, fetchedAt, onTeam, onPage) { AlertRow(e, now) }
+            DetailActions(e, now)
+            return@Column
+        }
         Text(e.line1(), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 22.sp, modifier = Modifier.padding(top = 10.dp))
         if (e.sport != Sport.FOOTBALL) Text(e.line2(), color = C.fg2, fontFamily = Inter, fontSize = 15.sp)
         val showScore = score?.home != null && score.away != null && !Spoilers.hidden(e)
@@ -384,19 +389,7 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTe
         }, color = C.fg, fontFamily = Inter, fontSize = 15.sp)
         if (e.isApprox) Text("Approximate: broadcasters may move this.", color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
         if (e.sport != Sport.FOOTBALL && e.venue.isNotEmpty()) Text(e.venue, color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
-        if (!e.isTbc && e.start.isAfter(now)) {
-            val ctx = LocalContext.current
-            val on = AlertChoices.on && AlertChoices.wants(e)
-            Row(Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.tile2).padding(start = 14.dp).heightIn(min = 48.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Text(when {
-                    !AlertChoices.on -> "Alerts are off. Turn them on in More → Settings."
-                    on -> "Alert ${Settings.leadMins(ctx)} min before ${if (e.sport == Sport.FOOTBALL) "kick-off" else "the start"}"
-                    else -> "No alert for this one · tap the bell"
-                }, Modifier.weight(1f), color = if (on) C.fg else C.fg2, fontFamily = Inter, fontSize = 14.sp)
-                if (AlertChoices.on) AlertBell(e, 24.dp)
-            }
-        }
+        AlertRow(e, now)
         if (e.sport == Sport.FOOTBALL) {
             if (score?.home != null && Spoilers.hidden(e)) TextButton(onClick = { Spoilers.revealed += e.id }, contentPadding = PaddingValues(0.dp)) {
                 Text("Score hidden · tap to show", color = C.lime, fontFamily = Inter)
@@ -411,5 +404,23 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTe
         if (e.sport == Sport.NFL) TeamLinks(e, onTeam)
         DetailActions(e, now)
     }
+    }
+}
+
+/** The alert line under an upcoming event: when it alerts, or why not, with its bell. */
+@Composable
+fun AlertRow(e: Event, now: Instant) {
+    if (!e.isTbc && e.start.isAfter(now)) {
+        val ctx = LocalContext.current
+        val on = AlertChoices.on && AlertChoices.wants(e)
+        Row(Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.tile2).padding(start = 14.dp).heightIn(min = 48.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(when {
+                !AlertChoices.on -> "Alerts are off. Turn them on in More → Settings."
+                on -> "Alert ${Settings.leadMins(ctx)} min before ${if (e.sport == Sport.FOOTBALL) "kick-off" else "the start"}"
+                else -> "No alert for this one · tap the bell"
+            }, Modifier.weight(1f), color = if (on) C.fg else C.fg2, fontFamily = Inter, fontSize = 14.sp)
+            if (AlertChoices.on) AlertBell(e, 24.dp)
+        }
     }
 }

@@ -32,6 +32,7 @@ import java.time.format.DateTimeFormatter
 private val DAY_MON = DateTimeFormatter.ofPattern("d MMM")
 private val DAY_MON_YEAR = DateTimeFormatter.ofPattern("d MMM yyyy")
 internal fun dayMon(i: Instant) = DAY_MON.format(i.atZone(zone))
+internal fun dayMonYear(i: Instant) = DAY_MON_YEAR.format(i.atZone(zone))
 
 /** Loads [load] once per [key]; null while loading, and [failed] when it threw (a cancelled load is not a failure). */
 @Composable

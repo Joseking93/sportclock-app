@@ -29,7 +29,11 @@ suspend fun espnSummary(league: String, id: String): JSONObject = json("https://
 
 suspend fun matchExtras(e: Event): MatchExtras? {
     val m = Looks.espnMatch(e) ?: return null
-    val o = espnSummary(m.league, m.id)
+    return extrasOf(espnSummary(m.league, m.id), m.home, m.away)
+}
+
+/** Form and head-to-head from a match summary, for the two clubs as ESPN names them. */
+internal fun extrasOf(o: JSONObject, home: String, away: String): MatchExtras {
     fun form(teamName: String) = o.optJSONArray("lastFiveGames").objects()
         .firstOrNull { it.optJSONObject("team")?.optString("displayName") == teamName }
         ?.optJSONArray("events").objects().map {
@@ -43,7 +47,7 @@ suspend fun matchExtras(e: Event): MatchExtras? {
         Meeting(instant(ev.optString("date")), h.optJSONObject("team")?.optString("displayName").orEmpty(), a.optJSONObject("team")?.optString("displayName").orEmpty(),
             h.optString("score"), a.optString("score"))
     }.orEmpty().sortedByDescending { it.date }
-    return MatchExtras(m.home, m.away, form(m.home), form(m.away), meetings, ss?.optString("summary").orEmpty())
+    return MatchExtras(home, away, form(home), form(away), meetings, ss?.optString("summary").orEmpty())
 }
 
 /* ======================= team pages ======================= */

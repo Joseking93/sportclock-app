@@ -2,6 +2,16 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.26 (11 Nov 2026)
+- **A proper match page, laid out like FotMob's.** Tap any football match: the crests and the score at the top, the scorers under each side, then tabs. Swipe sideways or tap a tab.
+  - **Facts:** a timeline of goals, cards, missed penalties and subs, home on the left and away on the right, newest on top, with half time and full time marked. Then the stadium, the crowd and the kick-off in your time.
+  - **Lineup:** both elevens on one pitch, each in its formation (4-2-3-1, 5-3-2…), shirts in club colours. Cards, goals and the minute a player went off are marked on the shirt; the bench underneath shows who came on and when.
+  - **Stats:** possession as a bar in the two clubs' colours, then shots, shots on target, corners, passes and pass accuracy, fouls, offsides, cards and saves. The better side of each row is filled in.
+  - **Commentary:** ESPN's minute-by-minute text, newest first, goals highlighted.
+  - **Table:** the league table with both clubs highlighted.
+  - **H2H:** the last five meetings with the wins and draws counted, and each side's form going in.
+  - Before kick-off it shows the form, the venue and your alert, and the lineups as soon as they're out. While the match is on it refreshes every minute. Spoiler-free still hides the score, timeline, stats, commentary and table until you tap Show score.
+
 ## 2.25 (8 Nov 2026)
 - **Scores, day by day.** The Scores tab is now one page per day: swipe left and right, or tap a day in the strip, from two weeks back to two weeks ahead.
   - Every game in our competitions that day, with the score: your teams first, then each league and cup in its own block.
