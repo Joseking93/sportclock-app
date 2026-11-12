@@ -26,7 +26,7 @@ import java.util.Locale
  * Polling stays light: scores only while a match is on, lineups from an hour before kick-off.
  */
 
-private const val UA = "SportClock/2.26 (personal Android app)"
+private const val UA = "SportClock/2.27 (personal Android app)"
 
 /** Like [httpGet] but with a given User-Agent, for sites that serve browsers only (the FIA). */
 internal fun httpGetAs(url: String, ua: String): String {
@@ -56,7 +56,7 @@ val ESPN_LEAGUE = mapOf("ENG" to "eng.1", "EFL" to "eng.2", "ESP" to "esp.1", "I
 
 data class EspnMatch(val id: String, val league: String, val start: Instant, val home: String, val away: String,
                      val homeScore: Int?, val awayScore: Int?, val state: String, val detail: String,
-                     val homeSide: TeamSide? = null, val awaySide: TeamSide? = null)
+                     val homeSide: TeamSide? = null, val awaySide: TeamSide? = null, val group: String = "")
 /** A club as ESPN draws it: badge URL and its two colours ("da020e"), for the NEXT UP card. */
 data class TeamSide(val id: String, val name: String, val logo: String, val color: String, val alt: String)
 private fun side(c: JSONObject) = c.getJSONObject("team").let { t ->
@@ -83,7 +83,7 @@ suspend fun espnScoreboard(league: String, date: String): List<EspnMatch> = with
             EspnMatch(e.getString("id"), league, Instant.parse(e.getString("date").let { if (it.length == 17) it.dropLast(1) + ":00Z" else it }),
                 h.getJSONObject("team").optString("displayName"), a.getJSONObject("team").optString("displayName"),
                 if (state == "pre") null else h.optString("score").toIntOrNull(), if (state == "pre") null else a.optString("score").toIntOrNull(),
-                state, st.optString("shortDetail"), side(h), side(a))
+                state, st.optString("shortDetail"), side(h), side(a), comp.optJSONObject("group")?.optString("name").orEmpty())
         }.getOrNull()
     }
 }

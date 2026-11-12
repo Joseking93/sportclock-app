@@ -34,7 +34,19 @@ val CUPS = listOf(
     Cup("UEL", "uefa.europa", "Europa League", Color(0xFFFF8C1A)),
     Cup("UECL", "uefa.europa.conf", "Conference League", Color(0xFF3DDC97)),
 )
-fun cup(code: String) = CUPS.firstOrNull { it.code == code }
+/**
+ * International football: national teams' competitions, scored from ESPN like the cups. The Nations League's four
+ * tiers come in one feed, each game tagged with its group ("Group A3"). Qualifiers sit empty between their windows.
+ */
+val INTL = listOf(
+    Cup("UNL", "uefa.nations", "UEFA Nations League", Color(0xFF6FA8FF)),
+    Cup("WCQ", "fifa.worldq.uefa", "World Cup qualifying · Europe", Color(0xFFE8C547)),
+    Cup("EUQ", "uefa.euroq", "Euro qualifying", Color(0xFF4FA3FF)),
+    Cup("ACQ", "caf.nations_qual", "Africa Cup of Nations qualifying", Color(0xFF3FD06A)),
+    Cup("CNL", "concacaf.nations.league", "Concacaf Nations League", Color(0xFFFF8C5A)),
+    Cup("FRI", "fifa.friendly", "International friendlies", Color(0xFFB9BCB1)),
+)
+fun cup(code: String) = CUPS.firstOrNull { it.code == code } ?: INTL.firstOrNull { it.code == code }
 
 /** The cups a club from each of our leagues can play in, besides the Champions League (already in the data file). */
 private val DOMESTIC = mapOf("ENG" to listOf("LC", "FAC"), "EFL" to listOf("LC", "FAC"), "ESP" to listOf("CDR"), "GER" to listOf("DFB"),
@@ -43,7 +55,7 @@ private val EUROPE = listOf("UEL", "UECL")
 fun cupsFor(leagueCode: String) = DOMESTIC[leagueCode].orEmpty() + EUROPE
 
 /** Every competition the phone can score from ESPN: the leagues and the cups. */
-val ESPN_COMP: Map<String, String> = ESPN_LEAGUE + CUPS.associate { it.code to it.slug }
+val ESPN_COMP: Map<String, String> = ESPN_LEAGUE + CUPS.associate { it.code to it.slug } + INTL.associate { it.code to it.slug }
 
 /**
  * Every cup game on ESPN's scoreboards from yesterday to tomorrow, whoever plays, for the Scores tab: each as an event

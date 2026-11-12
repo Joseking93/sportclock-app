@@ -42,7 +42,8 @@ import java.util.Locale
  */
 
 /** A game on a day page, with each side's name and badge as ESPN has them. */
-data class DayGame(val event: Event, val score: Score?, val home: String = "", val away: String = "", val homeLogo: String = "", val awayLogo: String = "")
+data class DayGame(val event: Event, val score: Score?, val home: String = "", val away: String = "", val homeLogo: String = "", val awayLogo: String = "",
+                   val group: String = "")
 
 private val LIVE = setOf("IN_PLAY", "PAUSED")
 
@@ -60,13 +61,13 @@ internal fun dayGames(day: LocalDate, events: List<Event>, boards: Map<String, L
         val m = boards[e.code]?.let { matchEspn(e, it) }?.takeIf { it.id !in used }
         m?.let { used += it.id }
         DayGame(e, m?.let(::espnScore), m?.home ?: short(e.teams.getOrElse(0) { e.title }), m?.away ?: short(e.teams.getOrElse(1) { "" }),
-            m?.homeSide?.logo.orEmpty(), m?.awaySide?.logo.orEmpty())
+            m?.homeSide?.logo.orEmpty(), m?.awaySide?.logo.orEmpty(), m?.group.orEmpty())
     }
     val others = boards.flatMap { (code, ms) ->
         ms.filter { it.id !in used && localDate(it.start) == day }.map { m ->
             DayGame(Event((if (cup(code) != null) "CUP|" else "ESPN|") + m.id, Sport.FOOTBALL, code, series(code)?.name ?: cup(code)?.name ?: code,
                 "${m.home} v ${m.away}", "Kick-off", m.start, 120, "", "confirmed", listOf(m.home, m.away), null, null, null), espnScore(m),
-                m.home, m.away, m.homeSide?.logo.orEmpty(), m.awaySide?.logo.orEmpty())
+                m.home, m.away, m.homeSide?.logo.orEmpty(), m.awaySide?.logo.orEmpty(), m.group)
         }
     }
     return (ours + others).distinctBy { it.event.id }.sortedBy { it.event.start }
@@ -184,8 +185,14 @@ private fun DayPage(day: LocalDate, today: LocalDate, st: AppState, events: List
             }
             item(key = "g$code") {
                 Column(Modifier.padding(horizontal = 16.dp).clip(RoundedCornerShape(14.dp)).background(C.tile)) {
-                    l.forEachIndexed { i, g ->
-                        if (i > 0) Box(Modifier.padding(start = 64.dp).fillMaxWidth().height(1.dp).background(C.line))
+                    // groups in order (Nations League A before B), each with its label, as FotMob splits them
+                    val ordered = l.sortedWith(compareBy({ it.group }, { it.event.start }))
+                    ordered.forEachIndexed { i, g ->
+                        val label = groupLabel(code, g.group)
+                        if (label.isNotEmpty() && (i == 0 || ordered[i - 1].group != g.group))
+                            Text(label, Modifier.padding(start = 12.dp, top = 10.dp, bottom = 2.dp).clip(RoundedCornerShape(10.dp)).background(C.tile2)
+                                .padding(horizontal = 10.dp, vertical = 3.dp), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                        else if (i > 0) Box(Modifier.padding(start = 64.dp).fillMaxWidth().height(1.dp).background(C.line))
                         MatchRow(g, score(g), now, inGroup = true) { onOpen(g.event) }
                     }
                 }
@@ -199,10 +206,18 @@ private fun DayPage(day: LocalDate, today: LocalDate, st: AppState, events: List
 
 /**
  * The order competitions are listed in on a day page, by strength and pull, always the same: the big five leagues
- * (Premier League first), then Europe, the next leagues, the Championship, and the domestic cups last.
+ * (Premier League first), the Champions League, Europe's national teams, the other European cups, the next leagues,
+ * the Championship, the other internationals, and the domestic cups last.
  */
-val COMP_ORDER = listOf("ENG", "ESP", "ITA", "GER", "FRA", "UCL", "UEL", "UECL", "POR", "NED", "EFL",
-    "FAC", "LC", "CDR", "CIT", "DFB", "CDF", "TDP", "KNV")
+val COMP_ORDER = listOf("ENG", "ESP", "ITA", "GER", "FRA", "UCL", "UNL", "WCQ", "EUQ", "UEL", "UECL", "POR", "NED", "EFL",
+    "ACQ", "CNL", "FRI", "FAC", "LC", "CDR", "CIT", "DFB", "CDF", "TDP", "KNV")
+
+/** "Group A3" in the Nations League reads "League A · Group 3"; other groups as ESPN names them; none for a league. */
+internal fun groupLabel(code: String, group: String): String {
+    if (group.isBlank()) return ""
+    if (code == "UNL") Regex("Group ([A-D])(\\d)").matchEntire(group.trim())?.let { return "League ${it.groupValues[1]} · Group ${it.groupValues[2]}" }
+    return group.trim()
+}
 fun compRank(code: String) = COMP_ORDER.indexOf(code).let { if (it < 0) COMP_ORDER.size else it }
 
 private val DAY_LONG = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.UK)

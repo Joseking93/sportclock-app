@@ -49,4 +49,13 @@ class DaysTest {
         assertEquals(listOf("ENG", "ESP", "ITA", "GER", "FRA", "UCL", "EFL", "FAC", "KNV", "XYZ"), codes.sortedBy(::compRank))
         assertEquals(ESPN_COMP.keys, COMP_ORDER.toSet())     // every competition we score has a place
     }
+
+    @Test fun internationalsAndTheirGroups() {
+        assertEquals("UEFA Nations League", cup("UNL")!!.name)
+        assertEquals("caf.nations_qual", ESPN_COMP["ACQ"])
+        assertTrue(compRank("UNL") > compRank("UCL") && compRank("UNL") < compRank("UEL"))
+        assertEquals("League A · Group 3", groupLabel("UNL", "Group A3"))
+        assertEquals("Group B", groupLabel("ACQ", "Group B"))
+        assertEquals("", groupLabel("ENG", ""))
+    }
 }

@@ -2,6 +2,12 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.27 (12 Nov 2026)
+- **International football in Scores.** The day pages now include the national teams: the UEFA Nations League, Africa Cup of Nations qualifying, the Concacaf Nations League and international friendlies, plus World Cup and Euro qualifying whenever those windows are on.
+  - The Nations League is split like FotMob: League A first, each group under its own label ("League A · Group 3"), then B, C and D.
+  - Internationals sit right after the Champions League, so on a Premier League weekend the leagues still come first.
+  - Tap any of them for the full match page: lineups, stats, commentary and the group table.
+
 ## 2.26 (11 Nov 2026)
 - **A proper match page, laid out like FotMob's.** Tap any football match: the crests and the score at the top, the scorers under each side, then tabs. Swipe sideways or tap a tab.
   - **Facts:** a timeline of goals, cards, missed penalties and subs, home on the left and away on the right, newest on top, with half time and full time marked. Then the stadium, the crowd and the kick-off in your time.
