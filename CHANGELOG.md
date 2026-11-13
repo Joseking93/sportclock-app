@@ -2,6 +2,11 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.28 (13 Nov 2026)
+- **Predicted lineups and injuries for Premier League matches.** Until the real teams are out (about an hour before kick-off), the match page's Lineup tab shows both clubs' predicted elevens on the pitch, then who's injured, doubtful or suspended, with the chance they play and who's likely to replace them. From Touchline Wire.
+- **F1 team radio.** Once an F1 session is over, its page lists the team radio clips, newest first, with the driver and team colour and the minute it was sent. Tap one to hear it. From OpenF1. Spoiler-free hides them until you reveal the session.
+- **Boxing records and results.** A fight's page now shows both boxers' records going in, the title at stake, the number of rounds, the venue and where to watch, and once it's done, who won and how ("Orobio won by TKO in round 3"). From Boxerbook. Spoiler-free hides the result until you tap.
+
 ## 2.27 (12 Nov 2026)
 - **International football in Scores.** The day pages now include the national teams: the UEFA Nations League, Africa Cup of Nations qualifying, the Concacaf Nations League and international friendlies, plus World Cup and Euro qualifying whenever those windows are on.
   - The Nations League is split like FotMob: League A first, each group under its own label ("League A · Group 3"), then B, C and D.

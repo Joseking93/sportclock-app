@@ -298,12 +298,29 @@ private fun TimelineRow(ev: MpEvent) {
 private fun LineupTab(e: Event, now: Instant, d: MatchData, hc: Color, ac: Color, hidden: Boolean) {
     val h = d.homeSide; val a = d.awaySide
     if (h == null || a == null) {
+        // before ESPN has the real teams, a Premier League match shows Touchline Wire's predicted elevens and who's missing
+        if (e.code == "ENG" && !e.started(now)) { PredictedLineups(d, hc, ac); return }
         Text(if (e.started(now)) "ESPN hasn't published the lineups for this match." else "Lineups usually appear about an hour before kick-off.",
             color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(vertical = 8.dp))
         return
     }
+    Pitch(d.home, h, d.away, a, hc, ac, hidden)
+    Spacer(Modifier.height(10.dp))
+    Tile {
+        TileTitle("Bench")
+        Row {
+            listOf(h to hc, a to ac).forEach { (s, c) ->
+                Column(Modifier.weight(1f)) { s.bench.forEach { p -> BenchRow(p, c, hidden) } }
+            }
+        }
+    }
+}
+
+/** Both elevens on one pitch: the away side attacking down from the top, the home side up from the bottom. */
+@Composable
+private fun Pitch(home: MpTeam, h: MpSide, away: MpTeam, a: MpSide, hc: Color, ac: Color, hidden: Boolean) {
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(PITCH)) {
-        PitchHead(d.away, a.formation)
+        PitchHead(away, a.formation)
         Box(Modifier.fillMaxWidth().height(624.dp)) {
             Canvas(Modifier.matchParentSize()) {
                 val band = size.height / 12
@@ -330,17 +347,61 @@ private fun LineupTab(e: Event, now: Instant, d: MatchData, hc: Color, ac: Color
                 }
             }
         }
-        PitchHead(d.home, h.formation)
+        PitchHead(home, h.formation)
+    }
+}
+
+@Composable
+private fun PredictedLineups(d: MatchData, hc: Color, ac: Color) {
+    var got by remember(d.home.name, d.away.name) { mutableStateOf<Triple<PredictedXI?, PredictedXI?, List<Absence>>?>(null) }
+    var looked by remember(d.home.name, d.away.name) { mutableStateOf(false) }
+    LaunchedEffect(d.home.name, d.away.name) { got = runCatching { Touchline.forMatch(d.home.name, d.away.name) }.getOrNull(); looked = true }
+    val g = got
+    if (!looked) { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = C.lime) }; return }
+    if (g == null) {
+        Text("Lineups usually appear about an hour before kick-off.", color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(vertical = 8.dp))
+        return
+    }
+    val (ph, pa, out) = g
+    Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("Predicted lineups", Modifier.clip(RoundedCornerShape(10.dp)).background(C.lime).padding(horizontal = 10.dp, vertical = 3.dp),
+            color = C.onLime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        Text("  The real teams replace these about an hour before kick-off.", color = C.fg3, fontFamily = Inter, fontSize = 11.5.sp)
+    }
+    if (ph != null && pa != null) Pitch(d.home, ph.side(), d.away, pa.side(), hc, ac, false)
+    else listOfNotNull(ph?.let { "${short(d.home.name)}: ${it.formation}" }, pa?.let { "${short(d.away.name)}: ${it.formation}" }).forEach {
+        Text(it, color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
     }
     Spacer(Modifier.height(10.dp))
     Tile {
-        TileTitle("Bench")
-        Row {
-            listOf(h to hc, a to ac).forEach { (s, c) ->
-                Column(Modifier.weight(1f)) { s.bench.forEach { p -> BenchRow(p, c, hidden) } }
+        TileTitle("Injuries and suspensions")
+        listOf(d.home to hc, d.away to ac).forEach { (t, c) ->
+            val list = out.filter { twSame(it.team, t.name) }
+            Row(Modifier.padding(top = 6.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(8.dp).clip(CircleShape).background(c)); Spacer(Modifier.width(8.dp))
+                Text(short(t.name), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
+            if (list.isEmpty()) Text("Nobody missing", color = C.fg3, fontFamily = Inter, fontSize = 12.5.sp, modifier = Modifier.padding(start = 16.dp, bottom = 4.dp))
+            list.forEach { x ->
+                Row(Modifier.fillMaxWidth().padding(start = 16.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        Text(x.name, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp)
+                        val note = listOfNotNull(x.news.takeIf { it.isNotBlank() }, x.deputy.takeIf { it.isNotBlank() }?.let { "Likely replaced by $it" })
+                        if (note.isNotEmpty()) Text(note.joinToString(" · "), color = C.fg3, fontFamily = Inter, fontSize = 12.sp, lineHeight = 16.sp)
+                    }
+                    val (label, col) = when (x.status) {
+                        "suspended" -> "Suspended" to Color(0xFFE5383B)
+                        "doubtful" -> "${x.chance ?: 50}% fit" to Color(0xFFF5CB2B)
+                        else -> "Out" to Color(0xFFFF6B6B)
+                    }
+                    Text(label, Modifier.padding(start = 8.dp).clip(RoundedCornerShape(8.dp)).background(col.copy(alpha = .18f)).padding(horizontal = 8.dp, vertical = 2.dp),
+                        color = col, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 11.5.sp)
+                }
             }
         }
     }
+    Text("Predicted lineups and injuries from Touchline Wire (touchlinewire.com)", color = C.fg3, fontFamily = Inter, fontSize = 11.sp,
+        modifier = Modifier.padding(top = 2.dp))
 }
 
 @Composable
@@ -358,7 +419,7 @@ private fun PitchRow(row: List<MpPlayer>, color: Color, hidden: Boolean) = Row(M
             // the shirt in the middle, its marks at the corners around it: card top left, goal top right, minute off bottom right
             Box(Modifier.size(64.dp, 38.dp)) {
                 Box(Modifier.align(Alignment.Center).size(30.dp).clip(CircleShape).background(color).border(2.dp, Color.White.copy(alpha = .85f), CircleShape),
-                    contentAlignment = Alignment.Center) { Text(p.number, style = Digits, color = onColor(color), fontSize = 14.sp) }
+                    contentAlignment = Alignment.Center) { Text(p.number, style = Digits, color = onColor(color), fontSize = if (p.number.length > 2) 11.sp else 14.sp) }
                 if (!hidden) {
                     if (p.red || p.yellow) Box(Modifier.align(Alignment.TopStart).padding(start = 9.dp)) { CardMark(p.red, 9.dp) }
                     if (p.goals > 0) Box(Modifier.align(Alignment.TopEnd).padding(end = 8.dp)) { Ball(14.dp) }

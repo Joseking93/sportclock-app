@@ -54,6 +54,9 @@ class MatchShotsTest {
         val next = runBlocking { espnScoreboard("eng.1", "20261121") }.first()
         val upcoming = football("next", next.home, next.away, next.start)
         val pre = Score("TIMED", null, null, null, "", next.id, "eng.1")
+        val race = Event("F1|sp", Sport.MOTORSPORT, "F1", "Formula 1", "São Paulo GP", "Race", Instant.parse("2026-11-08T17:00:00Z"), 120, "", "confirmed", emptyList(), null, null, null)
+        val fight = Event("BOX|oc", Sport.COMBAT, "BOX", "Boxing", "Orobio v Cedeno", "Main event", Instant.parse("2026-11-13T02:30:00Z"), 180, "", "confirmed", emptyList(), null, null, null)
+        val nextFight = Event("BOX|kh", Sport.COMBAT, "BOX", "Boxing", "Kabayel v Hysa", "Main event", Instant.parse("2026-11-28T21:00:00Z"), 180, "", "confirmed", emptyList(), null, null, null)
         var page by mutableStateOf("Facts")
         rule.setContent {
             SportClockTheme("night", "dark") {
@@ -63,13 +66,16 @@ class MatchShotsTest {
                         CompetitionTheme("ENG"); CompBackdrop("ENG", Modifier.matchParentSize())
                         Column(Modifier.verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 32.dp)) {
                             if (p == "pre") MatchPage(upcoming, Instant.now(), pre, null, {}, {}) { AlertRow(upcoming, Instant.now()) }
+                            else if (p == "pre-lineup") MatchPage(upcoming, Instant.now(), pre, null, {}, {}, startTab = "Lineup") {}
+                            else if (p == "radio") F1RadioView(race, Instant.now())
+                            else if (p == "boxing") { BoutView(fight, Instant.now()); BoutView(nextFight, Instant.now()) }
                             else MatchPage(played, Instant.now(), ft, null, {}, {}, startTab = p) {}
                         }
                     }
                 }
             }
         }
-        for (p in listOf("Facts", "Lineup", "Stats", "Commentary", "Table", "H2H", "pre")) {
+        for (p in listOf("pre-lineup", "radio", "boxing")) {
             page = p
             // the page loads ESPN's summary for real: give it time
             repeat(16) { rule.mainClock.advanceTimeBy(500); rule.waitForIdle(); Thread.sleep(400) }

@@ -401,6 +401,8 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTe
                 modifier = Modifier.padding(top = 12.dp))
         }
         if (e.code == "F1") F1WeekendView(e, events, now, onPage)
+        if (e.code == "F1") F1RadioView(e, now)
+        if (e.code == "BOX") BoutView(e, now)
         if (e.sport == Sport.NFL) TeamLinks(e, onTeam)
         DetailActions(e, now)
     }
