@@ -48,11 +48,14 @@ object Repo {
             val nfl = runCatching { Nfl.events(ctx) }.getOrDefault(emptyList())
             if (nfl.isNotEmpty()) _data.value = d.copy(events = (d.events.filter { it.code != "NFL" } + nfl).sortedBy { it.start })
         }
-        // cup ties of the clubs you follow (Carabao Cup, FA Cup, Copa del Rey, DFB-Pokal, Europa League…)
+        // cup ties of the clubs you follow (Carabao Cup, FA Cup, Copa del Rey, DFB-Pokal, Europa League…), and the games of
+        // the countries you follow (qualifiers, tournaments, friendlies)
         _data.value?.let { d ->
             val base = d.events.filter { !it.id.startsWith("CUP|") }
             val cups = runCatching { Cups.events(ctx, base) }.getOrDefault(emptyList())
-            if (cups.isNotEmpty() || base.size != d.events.size) _data.value = d.copy(events = (base + cups).sortedBy { it.start })
+            val nations = runCatching { Nations.events(ctx) }.getOrDefault(emptyList())
+            val extra = (cups + nations).distinctBy { it.id }
+            if (extra.isNotEmpty() || base.size != d.events.size) _data.value = d.copy(events = (base + extra).sortedBy { it.start })
         }
         _data.value
     }

@@ -40,7 +40,7 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
     var query by remember { mutableStateOf("") }
     fun set(token: String, on: Boolean) { Repo.setFollow(ctx, token, on); st.follows = Repo.follows(ctx); onChanged() }
     fun nextFor(token: String) = events.firstOrNull { tokenMatches(token, it) && !it.over(now) }
-    val allTeams = remember(events) { (events.flatMap { it.teams } + NFL_TEAMS.keys).distinct().sorted() }
+    val allTeams = remember(events) { (events.flatMap { it.teams } + NFL_TEAMS.keys + NATIONS.keys).distinct().sorted() }
 
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding()) {
         item {
@@ -57,6 +57,7 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
                 .padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Star, null, tint = C.lime); Spacer(Modifier.width(12.dp))
                 Text("Everything switched on here gets its own NEXT UP card on Home, soonest first, and fills your Following list and the widget. " +
+                    "Teams can be clubs or countries (Kenya, England, Brazil). " +
                     "Switch a series or team off to take its card away.", color = C.fg, fontFamily = Inter, fontSize = 13.sp)
             }
         }
@@ -97,16 +98,18 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
         item { ToggleRow(seriesColor("NFL"), "NFL", "Every game; or add single teams below (e.g. Chiefs)", "c:NFL" in st.follows) { set("c:NFL", it) } }
         item { SectionLabel("Teams") }
         st.follows.filter { it.startsWith("t:") }.sorted().forEach { token ->
-            item { ToggleRow(if (token.substring(2) in NFL_TEAMS) seriesColor("NFL") else seriesColor("ENG"), token.substring(2), nextFor(token)?.let { "Next: ${it.line1()} · ${dayWord(it.start, now)} ${hm(it.start)}" } ?: "No dates yet", true) { set(token, it) } }
+            item { ToggleRow(if (token.substring(2) in NFL_TEAMS) seriesColor("NFL") else if (isNation(token.substring(2))) seriesColor("ACQ") else seriesColor("ENG"), token.substring(2), nextFor(token)?.let { "Next: ${it.line1()} · ${dayWord(it.start, now)} ${hm(it.start)}" } ?: "No dates yet", true) { set(token, it) } }
         }
         item {
-            OutlinedTextField(query, { query = it }, placeholder = { Text("Add a team", fontFamily = Inter) }, singleLine = true,
+            OutlinedTextField(query, { query = it }, placeholder = { Text("Add a team or country", fontFamily = Inter) }, singleLine = true,
                 leadingIcon = { Icon(Icons.Filled.Search, null) }, shape = RoundedCornerShape(28.dp),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth())
         }
         if (query.length >= 2) {
-            allTeams.filter { it.contains(query, ignoreCase = true) && "t:$it" !in st.follows }.take(8).forEach { team ->
-                item { ToggleRow(C.fg3, team, "Tap to follow", false) { set("t:$team", it); query = "" } }
+            // names that start with what you typed come first, so "ken" finds Kenya before Kenyan clubs' rivals
+            allTeams.filter { it.contains(query, ignoreCase = true) && "t:$it" !in st.follows }
+                .sortedBy { if (it.startsWith(query, ignoreCase = true)) 0 else 1 }.take(8).forEach { team ->
+                item { ToggleRow(C.fg3, team, if (isNation(team)) "National team · tap to follow" else "Tap to follow", false) { set("t:$team", it); query = "" } }
             }
         }
 

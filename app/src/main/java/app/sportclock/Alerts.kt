@@ -90,6 +90,11 @@ object AlertChoices {
     var picked by mutableStateOf(emptySet<String>())
     var muted by mutableStateOf(emptySet<String>())
     var flipped by mutableStateOf(emptySet<String>())
+    /**
+     * Matches you belled that aren't among our own events (a game seen only on the Scores boards, like a country you
+     * don't follow): kept whole, so their alarm can be set and their pick isn't pruned as "over". Dropped once over.
+     */
+    var extras by mutableStateOf(emptyList<Event>())
 
     fun load(ctx: Context) {
         val p = Repo.prefs(ctx)
@@ -97,9 +102,10 @@ object AlertChoices {
         picked = p.getStringSet("alertPicked", emptySet())!!.toSet()
         muted = p.getStringSet("alertMuted", emptySet())!!.toSet()
         flipped = p.getStringSet("alertFlipped", emptySet())!!.toSet()
+        extras = runCatching { eventsFromJson(p.getString("alertExtra", "[]")!!) }.getOrDefault(emptyList())
     }
     private fun save(ctx: Context) = Repo.prefs(ctx).edit().putStringSet("alertPicked", picked).putStringSet("alertMuted", muted)
-        .putStringSet("alertFlipped", flipped).apply()
+        .putStringSet("alertFlipped", flipped).putString("alertExtra", eventsToJson(extras)).apply()
 
     fun wants(e: Event) = wantsAlert(e, follows, flipped, picked, muted)
 
@@ -108,6 +114,8 @@ object AlertChoices {
         val k = alertKey(e)
         if (wants(e)) { picked = picked - k; if (wants(e)) muted = muted + k }
         else { muted = muted - k; if (!wants(e)) picked = picked + k }
+        val ours = Repo.data.value?.events.orEmpty().any { it.id == e.id }
+        extras = extras.filter { it.id != e.id } + listOfNotNull(e.takeIf { !ours && k in picked })
         save(ctx); return wants(e)
     }
 
@@ -119,7 +127,8 @@ object AlertChoices {
     /** Forget picks for events that are over, so the lists don't grow for ever. */
     fun prune(ctx: Context, events: List<Event>, now: Instant) {
         if (events.size < 20) return                     // a failed or partial load must not wipe the picks
-        val live = events.filter { !it.over(now) }.map { alertKey(it) }.toSet()
+        extras = extras.filter { !it.over(now) && events.none { e -> e.id == it.id } }
+        val live = (events + extras).filter { !it.over(now) }.map { alertKey(it) }.toSet()
         picked = picked intersect live; muted = muted intersect live
         save(ctx)
     }
@@ -142,7 +151,7 @@ object Alerts {
         val now = Instant.now(); val lead = Settings.leadMins(ctx).toLong()
         AlertChoices.load(ctx); AlertChoices.prune(ctx, events, now)
         val codes = HashSet<String>()
-        events.asSequence().filter { AlertChoices.wants(it) }
+        (events + AlertChoices.extras).sortedBy { it.start }.asSequence().filter { AlertChoices.wants(it) }
             .map { it to it.start.minusSeconds(lead * 60) }
             .filter { (e, at) -> at.isAfter(now) && Duration.between(now, e.start).toDays() < 8 }
             .take(MAX).forEach { (e, at) ->
@@ -222,5 +231,23 @@ class BootReceiver : BroadcastReceiver() {
                 SportClockWidget().updateAll(ctx)
             } finally { done.finish() }
         }
+    }
+}
+
+/** The few fields an alert needs, so a belled match from the Scores boards survives a restart. */
+internal fun eventsToJson(es: List<Event>): String = org.json.JSONArray(es.map { e ->
+    org.json.JSONObject().put("id", e.id).put("sport", e.sport.name).put("code", e.code).put("comp", e.comp).put("title", e.title).put("session", e.session)
+        .put("start", e.start.toString()).put("mins", e.mins).put("venue", e.venue).put("status", e.status).put("teams", org.json.JSONArray(e.teams))
+}).toString()
+
+internal fun eventsFromJson(s: String): List<Event> = org.json.JSONArray(s).let { a ->
+    (0 until a.length()).mapNotNull { i ->
+        runCatching {
+            val o = a.getJSONObject(i)
+            val ts = o.optJSONArray("teams")
+            Event(o.getString("id"), Sport.valueOf(o.getString("sport")), o.optString("code"), o.optString("comp"), o.optString("title"), o.optString("session"),
+                Instant.parse(o.getString("start")), o.optLong("mins", 120), o.optString("venue"), o.optString("status", "confirmed"),
+                if (ts == null) emptyList() else (0 until ts.length()).map { ts.getString(it) }, null, null, null)
+        }.getOrNull()
     }
 }

@@ -127,6 +127,10 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
         AlertChoices.follows = st.follows
         // following something in the NFL fetches its schedule now rather than at the next refresh
         if (Nfl.enabled(ctx) && Repo.data.value?.events?.none { it.code == "NFL" } == true) Repo.load(ctx, maxAgeMin = 600)
+        // and following a country fetches its games now, then arms their alerts
+        val evs = Repo.data.value?.events.orEmpty()
+        if (Repo.data.value != null && Nations.teams(ctx).any { n -> evs.none { n in it.teams } })
+            Repo.load(ctx, maxAgeMin = 600)?.let { Alerts.reschedule(ctx, it.events) }
     }
     LaunchedEffect(tab, page) { Diag.log("screen ${page ?: tab.name.lowercase()}") }
     LaunchedEffect(detail) { detail?.let { Diag.log("open ${it.id} ${it.title}") } }
@@ -146,7 +150,7 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
         val t = DeepLink.target ?: return@LaunchedEffect
         val d = data ?: return@LaunchedEffect
         if (t.startsWith("page:")) { detail = null; open(t.removePrefix("page:")) }
-        else d.events.firstOrNull { it.id == t }?.let { detail = it } ?: Diag.log("deep link: no event $t")
+        else (d.events.firstOrNull { it.id == t } ?: AlertChoices.extras.firstOrNull { it.id == t })?.let { detail = it } ?: Diag.log("deep link: no event $t")
         DeepLink.target = null
     }
     fun refreshWidget() = scope.launch { SportClockWidget().updateAll(ctx) }

@@ -93,7 +93,9 @@ object DayBoards {
         // a day on the phone's clock can span two of ESPN's (US Eastern) dates
         val dates = listOf(day.atStartOfDay(zone).toInstant(), day.plusDays(1).atStartOfDay(zone).toInstant().minusSeconds(1)).map(::espnDate).distinct()
         val boards = coroutineScope {
-            ESPN_COMP.entries.flatMap { (code, slug) -> dates.map { d -> async { code to runCatching { espnScoreboard(slug, d) }.getOrNull() } } }.awaitAll()
+            // the daily boards, plus the competition of any game of ours that day that isn't on them (a country's qualifier)
+            val comps = BOARD_COMP + events.filter { localDate(it.start) == day }.mapNotNull { e -> ESPN_COMP[e.code]?.let { e.code to it } }
+            comps.entries.flatMap { (code, slug) -> dates.map { d -> async { code to runCatching { espnScoreboard(slug, d) }.getOrNull() } } }.awaitAll()
         }
         if (boards.all { it.second == null }) error("no scoreboards")
         val games = dayGames(day, events, boards.groupBy({ it.first }, { it.second.orEmpty() }).mapValues { (_, l) -> l.flatten().distinctBy { it.id } })
@@ -209,8 +211,8 @@ private fun DayPage(day: LocalDate, today: LocalDate, st: AppState, events: List
  * (Premier League first), the Champions League, Europe's national teams, the other European cups, the next leagues,
  * the Championship, the other internationals, and the domestic cups last.
  */
-val COMP_ORDER = listOf("ENG", "ESP", "ITA", "GER", "FRA", "UCL", "UNL", "WCQ", "EUQ", "UEL", "UECL", "POR", "NED", "EFL",
-    "ACQ", "CNL", "FRI", "FAC", "LC", "CDR", "CIT", "DFB", "CDF", "TDP", "KNV")
+val COMP_ORDER = listOf("ENG", "ESP", "ITA", "GER", "FRA", "WC", "UCL", "EURO", "COPA", "AFCON", "UNL", "WCQ", "EUQ", "UEL", "UECL", "POR", "NED", "EFL",
+    "ACQ", "WCA", "WSA", "WAS", "WNA", "WOC", "CNL", "ASC", "GLD", "CHAN", "FRI", "INT", "FAC", "LC", "CDR", "CIT", "DFB", "CDF", "TDP", "KNV")
 
 /** "Group A3" in the Nations League reads "League A · Group 3"; other groups as ESPN names them; none for a league. */
 internal fun groupLabel(code: String, group: String): String {

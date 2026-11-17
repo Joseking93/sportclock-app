@@ -47,7 +47,7 @@ class DaysTest {
     @Test fun premierLeagueAlwaysFirst() {
         val codes = listOf("KNV", "GER", "UCL", "EFL", "ITA", "XYZ", "ENG", "ESP", "FAC", "FRA")
         assertEquals(listOf("ENG", "ESP", "ITA", "GER", "FRA", "UCL", "EFL", "FAC", "KNV", "XYZ"), codes.sortedBy(::compRank))
-        assertEquals(ESPN_COMP.keys, COMP_ORDER.toSet())     // every competition we score has a place
+        assertEquals(ESPN_COMP.keys + "INT", COMP_ORDER.toSet())     // every competition we score has a place, and so do other internationals
     }
 
     @Test fun internationalsAndTheirGroups() {

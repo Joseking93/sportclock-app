@@ -72,6 +72,7 @@ data class TeamInfo(val id: String, val league: String, val name: String, val lo
 /** The ESPN league a followed team plays its league games in: its domestic league if we list one, else the Champions League. */
 fun leagueFor(team: String, events: List<Event>): String? {
     if (team in NFL_TEAMS) return "football/nfl"
+    if (isNation(team)) return "soccer/all"
     val codes = events.filter { team in it.teams }.map { it.code }.distinct()
     return (codes.firstOrNull { it != "UCL" && it in ESPN_LEAGUE } ?: codes.firstOrNull { it in ESPN_LEAGUE })?.let { "soccer/" + ESPN_LEAGUE[it] }
 }
@@ -89,6 +90,7 @@ internal fun clubScore(candidate: String, ours: String): Double {
 
 /** A club's ESPN id. Kept on the phone after the first look, so the big team list is fetched once per club, not per visit. */
 suspend fun espnTeamId(league: String, name: String, ctx: android.content.Context? = null): String? {
+    if (league == "soccer/all") NATIONS[name]?.let { return it }
     teamIds["$league/$name"]?.let { return it }
     ctx?.let { c -> Repo.prefs(c).getString("espnId2:$league/$name", null)?.let { teamIds["$league/$name"] = it; return it } }
     val teams = json("https://site.api.espn.com/apis/site/v2/sports/$league/teams")

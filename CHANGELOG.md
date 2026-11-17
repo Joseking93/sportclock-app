@@ -2,6 +2,10 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.29 (17 Nov 2026)
+- **Follow your country.** Kenya, England, Brazil or any of 217 national teams: type the name in Following's search ("National team · tap to follow"). Their qualifiers, tournaments and friendlies then get a NEXT UP card, fill your Following list and the widget, and alert you like a club's games do. The Scores tab also lists the World Cup, Africa Cup of Nations, Euro and Copa América, plus any other qualifier a country you follow plays in.
+- **The bell sticks on any match.** An alert set on a match you don't follow (one you opened from Scores) was cleared again straight away, so the row kept saying "No alert" and nothing went off. It now stays on and alerts.
+
 ## 2.28 (13 Nov 2026)
 - **Predicted lineups and injuries for Premier League matches.** Until the real teams are out (about an hour before kick-off), the match page's Lineup tab shows both clubs' predicted elevens on the pitch, then who's injured, doubtful or suspended, with the chance they play and who's likely to replace them. From Touchline Wire.
 - **F1 team radio.** Once an F1 session is over, its page lists the team radio clips, newest first, with the driver and team colour and the minute it was sent. Tap one to hear it. From OpenF1. Spoiler-free hides them until you reveal the session.

@@ -45,8 +45,30 @@ val INTL = listOf(
     Cup("ACQ", "caf.nations_qual", "Africa Cup of Nations qualifying", Color(0xFF3FD06A)),
     Cup("CNL", "concacaf.nations.league", "Concacaf Nations League", Color(0xFFFF8C5A)),
     Cup("FRI", "fifa.friendly", "International friendlies", Color(0xFFB9BCB1)),
+    Cup("WC", "fifa.world", "World Cup", Color(0xFFE8C547)),
+    Cup("AFCON", "caf.nations", "Africa Cup of Nations", Color(0xFF3FD06A)),
+    Cup("EURO", "uefa.euro", "Euro", Color(0xFF4FA3FF)),
+    Cup("COPA", "conmebol.america", "Copa América", Color(0xFF6FA8FF)),
 )
-fun cup(code: String) = CUPS.firstOrNull { it.code == code } ?: INTL.firstOrNull { it.code == code }
+/**
+ * National-team competitions that are only fetched for a game of a country you follow: the other confederations'
+ * World Cup qualifiers and the smaller tournaments. They are scored like the rest, but the Scores tab doesn't ask
+ * ESPN for every one of them every day.
+ */
+val INTL_MORE = listOf(
+    Cup("WCA", "fifa.worldq.caf", "World Cup qualifying · Africa", Color(0xFFE8C547)),
+    Cup("WSA", "fifa.worldq.conmebol", "World Cup qualifying · South America", Color(0xFFE8C547)),
+    Cup("WAS", "fifa.worldq.afc", "World Cup qualifying · Asia", Color(0xFFE8C547)),
+    Cup("WNA", "fifa.worldq.concacaf", "World Cup qualifying · Concacaf", Color(0xFFE8C547)),
+    Cup("WOC", "fifa.worldq.ofc", "World Cup qualifying · Oceania", Color(0xFFE8C547)),
+    Cup("CHAN", "caf.championship", "African Nations Championship", Color(0xFF3FD06A)),
+    Cup("ASC", "afc.asian.cup", "Asian Cup", Color(0xFFFF8C5A)),
+    Cup("GLD", "concacaf.gold", "Gold Cup", Color(0xFFE8C547)),
+)
+/** Any other national-team game (a regional cup ESPN lists); it shows, but has no scoreboard of ours. */
+private val OTHER_INTL = Cup("INT", "", "International football", Color(0xFFB9BCB1))
+fun cup(code: String) = CUPS.firstOrNull { it.code == code } ?: INTL.firstOrNull { it.code == code } ?: INTL_MORE.firstOrNull { it.code == code }
+    ?: OTHER_INTL.takeIf { code == it.code }
 
 /** The cups a club from each of our leagues can play in, besides the Champions League (already in the data file). */
 private val DOMESTIC = mapOf("ENG" to listOf("LC", "FAC"), "EFL" to listOf("LC", "FAC"), "ESP" to listOf("CDR"), "GER" to listOf("DFB"),
@@ -55,7 +77,9 @@ private val EUROPE = listOf("UEL", "UECL")
 fun cupsFor(leagueCode: String) = DOMESTIC[leagueCode].orEmpty() + EUROPE
 
 /** Every competition the phone can score from ESPN: the leagues and the cups. */
-val ESPN_COMP: Map<String, String> = ESPN_LEAGUE + CUPS.associate { it.code to it.slug } + INTL.associate { it.code to it.slug }
+val ESPN_COMP: Map<String, String> = ESPN_LEAGUE + CUPS.associate { it.code to it.slug } + INTL.associate { it.code to it.slug } + INTL_MORE.associate { it.code to it.slug }
+/** The competitions the Scores tab asks ESPN about every day; [INTL_MORE] only joins for a day with a followed country's game. */
+val BOARD_COMP: Map<String, String> = ESPN_COMP - INTL_MORE.map { it.code }.toSet()
 
 /**
  * Every cup game on ESPN's scoreboards from yesterday to tomorrow, whoever plays, for the Scores tab: each as an event
@@ -164,7 +188,7 @@ object Cups {
     /** The clubs whose cup ties we fetch: the ones you follow and the one on your tab. */
     fun teams(ctx: Context): List<String> =
         (Repo.follows(ctx).filter { it.startsWith("t:") }.map { it.substring(2) } + listOfNotNull(Settings.myTab(ctx).takeIf { it.startsWith("t:") }?.substring(2)))
-            .filter { it !in NFL_TEAMS }.distinct().sorted()
+            .filter { it !in NFL_TEAMS && !isNation(it) }.distinct().sorted()
 
     private fun file(ctx: Context) = File(ctx.filesDir, "cups.json")
 
