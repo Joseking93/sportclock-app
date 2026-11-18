@@ -2,6 +2,9 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.31 (18 Nov 2026)
+- **F1 cards open the new F1 page.** Tapping an F1 card on Home (NEXT UP or the list) now opens the F1 page on its Home tab, not the old single-session sheet. Close takes you back. The race card has the next session's alert bell, so the alert is still one tap away.
+
 ## 2.30 (18 Nov 2026)
 - **A new F1 home page.** The F1 tab opens on Home, laid out like the F1 app redesign:
   - the race card, with a countdown to the next session that turns into session pills (FP1, FP2, Q, R) while one is live;

@@ -29,6 +29,7 @@ class F1HomeShotsTest {
     @Test fun f1Home() {
         assumeTrue(System.getenv("SC_SHOTS") == "1")
         Coil.setImageLoader(ImageLoader.Builder(rule.activity).allowHardware(false).crossfade(false).build())
+        AlertChoices.load(rule.activity); AlertChoices.on = true
         val events = parseEvents(httpGet("$SITE/data.json")).first
         val now = Instant.now()
         rule.setContent {

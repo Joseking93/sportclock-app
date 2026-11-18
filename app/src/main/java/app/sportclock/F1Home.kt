@@ -499,8 +499,12 @@ private fun RaceCard(race: Event, events: List<Event>, gp: GpInfo?, now0: Instan
                     DarkButton("Timing ›") { onSeg(2) }
                 }
             } else if (next != null) {
-                Text("${sessName(next.session).uppercase(Locale.ROOT)} · ${dayWord(next.start, now).uppercase(Locale.ROOT)} ${hm(next.start)} YOUR TIME",
-                    color = F1_RED, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("${sessName(next.session).uppercase(Locale.ROOT)} · ${dayWord(next.start, now).uppercase(Locale.ROOT)} ${hm(next.start)} YOUR TIME",
+                        Modifier.weight(1f), color = F1_RED, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    // the session's alert, as on its own sheet: on with F1 followed, the bell turns it off or on
+                    if (AlertChoices.on) AlertBell(next, 20.dp)
+                }
                 Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     val left = Duration.between(now, next.start).coerceAtLeast(Duration.ZERO)
                     Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

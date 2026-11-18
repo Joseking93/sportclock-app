@@ -514,14 +514,14 @@ fun currentGp(events: List<Event>, now: Instant): Event? = events
     .minByOrNull { it.start }
 
 @Composable
-fun F1Hub(events: List<Event>, now: Instant, onOpen: (Event) -> Unit, onPage: (String) -> Unit, onChange: () -> Unit = {}) {
+fun F1Hub(events: List<Event>, now: Instant, onOpen: (Event) -> Unit, onPage: (String) -> Unit, onChange: () -> Unit = {}, action: String = "Change") {
     var seg by rememberSaveable { mutableIntStateOf(0) }
     val race = remember(events, now.epochSecond / 600) { currentGp(events, now) }
     CompetitionTheme("F1")
     Box(Modifier.fillMaxSize()) {
     CompBackdrop("F1", Modifier.matchParentSize())
     Column(Modifier.fillMaxSize()) {
-        HubHeader("Formula 1", race?.let { "Next: ${it.title}" } ?: "Season ${now.atZone(ZoneOffset.UTC).year}", "F1", onChange)
+        HubHeader("Formula 1", race?.let { "Next: ${it.title}" } ?: "Season ${now.atZone(ZoneOffset.UTC).year}", "F1", onChange, action)
         Segments(listOf("Home", "Weekend", "Live", "Standings", "Season"), seg) { seg = it }
         Spacer(Modifier.height(8.dp))
         when (seg) {

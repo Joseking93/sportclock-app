@@ -202,6 +202,8 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
                 }
                 page == "update" -> UpdateScreen(onBack = { back(); updateWaiting = Updater.waiting(ctx) })
                 page == "report" -> ReportScreen(onBack = { back() })
+                // an F1 card on Home opens the F1 page itself (its Home tab), not a single session's sheet
+                page == "f1home" -> F1Hub(d?.events.orEmpty(), now, onOpen = { detail = it }, onPage = { open(it) }, onChange = { back() }, action = "Close")
                 page == "f1live" || page == "f1news" || page?.startsWith("upgrades:") == true -> F1Page(page!!, onBack = { back() })
                 page?.startsWith("league:") == true -> LeaguePage(page!!.removePrefix("league:"), st, d?.events.orEmpty(), now, scores.matches,
                     onBack = { back() }, onOpen = { detail = it }, onTeam = { open("team:$it") })
@@ -214,7 +216,7 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
                         Repo.setPinned(ctx, newPin); st.pinned = newPin; refreshWidget()
                         Toast.makeText(ctx, if (newPin == null) "Unpinned" else "${tokenLabel(newPin)} stays on top", Toast.LENGTH_SHORT).show()
                     },
-                    onOpen = { detail = it }, onTeam = { open("team:$it") })
+                    onOpen = { if (it.code == "F1") open("f1home") else detail = it }, onTeam = { open("team:$it") })
                 tab == Tab.SCORES -> ScoresHub(st, d, now, scores, onOpen = { detail = it }, onTeam = { open("team:$it") }, onPage = { open(it) })
                 tab == Tab.CALENDAR -> CalendarScreen(st, d.events, now, scores.matches, onOpen = { detail = it })
                 tab == Tab.MINE -> MyTab(myTab, st, d.events, now, scores.matches, onOpen = { detail = it }, onPage = { open(it) },

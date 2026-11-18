@@ -88,14 +88,14 @@ fun MyTab(choice: String, st: AppState, events: List<Event>, now: Instant, score
 
 /** Title, a line under it and the Change button that every version of your tab shares. */
 @Composable
-fun HubHeader(title: String, sub: String?, logo: String?, onChange: () -> Unit) =
+fun HubHeader(title: String, sub: String?, logo: String?, onChange: () -> Unit, action: String = "Change") =
     Row(Modifier.statusBarsPadding().fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 8.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         if (logo != null) { LogoChip(logo, 30.dp); Spacer(Modifier.width(12.dp)) }
         Column(Modifier.weight(1f)) {
             Text(title, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 26.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             sub?.let { Text(it, color = C.fg2, fontFamily = Inter, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
-        OutlinedButton(onClick = onChange, contentPadding = PaddingValues(horizontal = 14.dp)) { Text("Change", color = C.lime, fontFamily = Inter) }
+        OutlinedButton(onClick = onChange, contentPadding = PaddingValues(horizontal = 14.dp)) { Text(action, color = C.lime, fontFamily = Inter) }
     }
 
 /* ---------- a whole league ---------- */
