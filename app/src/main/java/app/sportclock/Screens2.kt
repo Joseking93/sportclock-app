@@ -60,7 +60,8 @@ fun Segments(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
         options.forEachIndexed { i, o ->
             Box(Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(19.dp)).background(if (i == selected) C.lime else Color.Transparent)
                 .clickable { onSelect(i) }, contentAlignment = Alignment.Center) {
-                Text(o, color = if (i == selected) C.onLime else C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(o, color = if (i == selected) C.onLime else C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold,
+                    fontSize = if (options.size > 4) 12.5.sp else 14.sp, maxLines = 1)
             }
         }
     }

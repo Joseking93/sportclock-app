@@ -2,6 +2,17 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.30 (18 Nov 2026)
+- **A new F1 home page.** The F1 tab opens on Home, laid out like the F1 app redesign:
+  - the race card, with a countdown to the next session that turns into session pills (FP1, FP2, Q, R) while one is live;
+  - quick links to the news, the videos, your driver and his team;
+  - a carousel of the day's stories and This week in F1;
+  - F1 Moments (F1's YouTube Shorts) and the top news;
+  - your driver's card (position, points, last race);
+  - Watch: the last race's race and qualifying highlights;
+  - the standings with your driver marked, and every race's highlights this season.
+  Videos come from Formula 1's YouTube channel and open in YouTube. Spoiler-free hides the highlights until you tap. There's no store.
+
 ## 2.29 (17 Nov 2026)
 - **Follow your country.** Kenya, England, Brazil or any of 217 national teams: type the name in Following's search ("National team · tap to follow"). Their qualifiers, tournaments and friendlies then get a NEXT UP card, fill your Following list and the widget, and alert you like a club's games do. The Scores tab also lists the World Cup, Africa Cup of Nations, Euro and Copa América, plus any other qualifier a country you follow plays in.
 - **The bell sticks on any match.** An alert set on a match you don't follow (one you opened from Scores) was cleared again straight away, so the row kept saying "No alert" and nothing went off. It now stays on and alerts.

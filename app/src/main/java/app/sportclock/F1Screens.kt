@@ -522,17 +522,18 @@ fun F1Hub(events: List<Event>, now: Instant, onOpen: (Event) -> Unit, onPage: (S
     CompBackdrop("F1", Modifier.matchParentSize())
     Column(Modifier.fillMaxSize()) {
         HubHeader("Formula 1", race?.let { "Next: ${it.title}" } ?: "Season ${now.atZone(ZoneOffset.UTC).year}", "F1", onChange)
-        Segments(listOf("Weekend", "Live", "Standings", "Season"), seg) { seg = it }
+        Segments(listOf("Home", "Weekend", "Live", "Standings", "Season"), seg) { seg = it }
         Spacer(Modifier.height(8.dp))
         when (seg) {
-            0 -> if (race == null) Text("No Grand Prix coming up.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp))
+            0 -> F1Home(events, now, onOpen, onPage) { seg = it }
+            1 -> if (race == null) Text("No Grand Prix coming up.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp))
                  else Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
                      WeekendHeader(race, events, now, onOpen)
                      f1LiveSession(f1Weekend(race, events), now)?.let { F1NowPanel(it, onPage) }
                      F1WeekendView(race, events, now, onPage, trackFirst = true)
                  }
-            1 -> F1LiveView()
-            2 -> F1View()
+            2 -> F1LiveView()
+            3 -> F1View()
             else -> SeasonView(events, now, onOpen)
         }
     }
