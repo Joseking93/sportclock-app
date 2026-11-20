@@ -522,7 +522,7 @@ fun F1Hub(events: List<Event>, now: Instant, onOpen: (Event) -> Unit, onPage: (S
     CompBackdrop("F1", Modifier.matchParentSize())
     Column(Modifier.fillMaxSize()) {
         HubHeader("Formula 1", race?.let { "Next: ${it.title}" } ?: "Season ${now.atZone(ZoneOffset.UTC).year}", "F1", onChange, action)
-        Segments(listOf("Home", "Weekend", "Live", "Standings", "Season"), seg) { seg = it }
+        Segments(listOf("Home", "Weekend", "Live", "Results", "Season"), seg) { seg = it }
         Spacer(Modifier.height(8.dp))
         when (seg) {
             0 -> F1Home(events, now, onOpen, onPage) { seg = it }
@@ -533,7 +533,7 @@ fun F1Hub(events: List<Event>, now: Instant, onOpen: (Event) -> Unit, onPage: (S
                      F1WeekendView(race, events, now, onPage, trackFirst = true)
                  }
             2 -> F1LiveView()
-            3 -> F1View()
+            3 -> F1ResultsView(now)
             else -> SeasonView(events, now, onOpen)
         }
     }

@@ -155,7 +155,7 @@ fun sessionCode(session: String) = when (sessName(session).lowercase(Locale.ROOT
     "qualifying" -> "Q"; "race" -> "R"; else -> sessName(session).take(3).uppercase(Locale.ROOT)
 }
 
-private val F1_RED = Color(0xFFE10600)
+internal val F1_RED = Color(0xFFE10600)
 
 /* ======================= the page ======================= */
 
@@ -416,7 +416,7 @@ private fun QuickChip(label: String, glyph: String, onClick: () -> Unit) {
 
 /** Spoiler-free hides results and highlights here until revealed once, for the whole page. */
 @Composable
-private fun Spoiler(key: String, content: @Composable () -> Unit) {
+internal fun Spoiler(key: String, content: @Composable () -> Unit) {
     if (Spoilers.on && key !in Spoilers.revealed) {
         Text("Highlights and results hidden · tap to show", Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.tile)
             .clickable { Spoilers.revealed += key }.padding(16.dp), color = C.lime, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)

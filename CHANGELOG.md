@@ -2,6 +2,14 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.32 (20 Nov 2026)
+- **A new F1 Results page**, part 2 of the F1 app redesign. It's the F1 tab's Results, with a year switch and four tabs:
+  - **Races:** pick a Grand Prix and Race, Qualifying or Sprint. The podium shows the top three with their faces, then the full classification with gaps, retirements and points.
+  - **Drivers:** the standings with each driver's last five finishes as coloured chips (gold, silver, bronze, points, NC). Tap one for that race's line and a link to its full result. Filter by your driver or by a team, and a team shows its two drivers head to head: races, points, wins, podiums, best finish, retirements.
+  - **Teams:** the constructors with their drivers and their points in each of the last five Grands Prix.
+  - **Awards:** the season's leaders in wins, poles, fastest laps, podiums, points finishes and places gained.
+  Results from Jolpica, driver headshots from OpenF1. Spoiler-free hides the page until you tap.
+
 ## 2.31 (18 Nov 2026)
 - **F1 cards open the new F1 page.** Tapping an F1 card on Home (NEXT UP or the list) now opens the F1 page on its Home tab, not the old single-session sheet. Close takes you back. The race card has the next session's alert bell, so the alert is still one tap away.
 
