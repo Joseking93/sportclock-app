@@ -24,6 +24,20 @@ class HeroLogicTest {
         assertEquals("19:00", timeText(hs[0].event))
     }
 
+    @Test fun followedLeaguesGetNoCardUnlessPicked() {
+        val withLeague = follows + "c:ESP" + "c:ENG"
+        // following La Liga and the Premier League fills the list, but NEXT UP stays F1, UFC and United
+        assertEquals(listOf("c:UFC", "c:F1", "t:Manchester United"), heroes(events, withLeague, null, Filter.FOLLOWING, favs, now).map { it.token })
+        assertTrue(followed(events.first { it.code == "ESP" }, withLeague))
+        // put La Liga back on, take United off
+        val picks = setOf("+c:ESP", "-t:Manchester United")
+        val hs = heroes(events, withLeague, null, Filter.FOLLOWING, favs, now, picks).map { it.token }
+        assertTrue("c:ESP" in hs); assertTrue("t:Manchester United" !in hs); assertTrue("c:ENG" !in hs)
+        // a pinned card stays even when its kind is off
+        assertEquals("c:ENG", heroes(events, withLeague, "c:ENG", Filter.FOLLOWING, favs, now).first().token)
+        assertTrue(onNextUpByDefault("c:F1") && onNextUpByDefault("t:Kenya") && !onNextUpByDefault("c:ESP"))
+    }
+
     @Test fun pinnedCardComesFirst() {
         val hs = heroes(events, follows, "t:Manchester United", Filter.FOLLOWING, favs, now)
         println("PINNED: " + show(hs))

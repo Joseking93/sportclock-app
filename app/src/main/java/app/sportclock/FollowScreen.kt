@@ -56,11 +56,26 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
             Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.lime.copy(alpha = .12f))
                 .padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Star, null, tint = C.lime); Spacer(Modifier.width(12.dp))
-                Text("Everything switched on here gets its own NEXT UP card on Home, soonest first, and fills your Following list and the widget. " +
+                Text("Everything you follow fills your Following list and the widget. " +
                     "Teams can be clubs or countries (Kenya, England, Brazil). " +
-                    "Switch a series or team off to take its card away.", color = C.fg, fontFamily = Inter, fontSize = 13.sp)
+                    "NEXT UP on Home shows only what's switched on just below: your teams and the series by default, not every game of a league you follow.",
+                    color = C.fg, fontFamily = Inter, fontSize = 13.sp)
             }
         }
+        item { SectionLabel("On NEXT UP") }
+        // one switch per thing you follow; a league's card is off until you put it on (onNextUpByDefault)
+        st.follows.sortedWith(compareBy({ if (it == "c:F1") 0 else if (it.startsWith("c:") && tokenSport(it) != Sport.FOOTBALL) 1 else if (it.startsWith("t:")) 2 else 3 }, { tokenLabel(it) }))
+            .forEach { token -> item {
+                val on = onNextUp(token, st.nextUp)
+                val name = token.substring(2)
+                val dot = if (token.startsWith("c:")) seriesColor(name) else if (name in NFL_TEAMS) seriesColor("NFL") else if (isNation(name)) seriesColor("ACQ") else seriesColor("ENG")
+                val sub = if (token.startsWith("c:") && tokenSport(token) == Sport.FOOTBALL)
+                    (if (on) "Its next game gets a card" else "In your list, no card of its own")
+                    else nextFor(token)?.let { "Next: ${it.line1()} · ${dayWord(it.start, now)} ${hm(it.start)}" } ?: "No dates yet"
+                ToggleRow(dot, if (token.startsWith("c:")) series(name)?.name ?: name else name, sub, on) {
+                    Repo.setNextUp(ctx, token, it); st.nextUp = Repo.nextUpPicks(ctx); onChanged()
+                }
+            } }
         item { SectionLabel("★ Favourites") }
         // three to a row: driver, fighter, player, then the NFL player and the boxer
         Kind.entries.chunked(3).forEach { row -> item {

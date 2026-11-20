@@ -2,6 +2,11 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.33 (20 Nov 2026)
+
+- **You choose what's on NEXT UP.** Following a league no longer gives it a card of its own: follow La Liga for its table and scores, and Athletic v Espanyol stays in your list, not on top of Home. Cards come from F1, the other series and your teams (clubs and countries).
+- **More › Following › On NEXT UP** has a switch for everything you follow. Turn a league back on, or take a team's card away. A pinned card always stays.
+
 ## 2.32 (20 Nov 2026)
 - **A new F1 Results page**, part 2 of the F1 app redesign. It's the F1 tab's Results, with a year switch and four tabs:
   - **Races:** pick a Grand Prix and Race, Qualifying or Sprint. The podium shows the top three with their faces, then the full classification with gaps, retirements and points.

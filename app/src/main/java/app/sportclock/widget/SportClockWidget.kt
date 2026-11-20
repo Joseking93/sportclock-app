@@ -51,7 +51,7 @@ class SportClockWidget : GlanceAppWidget() {
         val follows = Repo.follows(context)
         val favs = Kind.entries.associateWith { Repo.fav(context, it) }
         val all = data?.events.orEmpty()
-        val hero = heroes(all, follows, Repo.pinned(context), Filter.FOLLOWING, favs, now).firstOrNull()
+        val hero = heroes(all, follows, Repo.pinned(context), Filter.FOLLOWING, favs, now, Repo.nextUpPicks(context)).firstOrNull()
         val next = all.filter { followed(it, follows) && !it.started(now) && !it.over(now) && it.id != hero?.event?.id }.take(2)
         // while a watched match is on (and spoiler-free is off), the widget shows its live score instead of the next fixture
         AlertChoices.load(context)

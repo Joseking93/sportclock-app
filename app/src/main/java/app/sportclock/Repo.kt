@@ -109,6 +109,25 @@ object Repo {
     fun clearFav(ctx: Context, kind: Kind) = prefs(ctx).edit().putString("fav_${kind.name}", "none").apply()
     fun pinned(ctx: Context): String? = prefs(ctx).getString("pinned", null)
     fun setPinned(ctx: Context, token: String?) = prefs(ctx).edit().putString("pinned", token).apply()
+
+    /** Your NEXT UP choices that differ from [onNextUpByDefault]: "+c:ESP" puts La Liga's card back, "-t:Arsenal" takes Arsenal's away. */
+    fun nextUpPicks(ctx: Context): Set<String> = prefs(ctx).getStringSet("nextUp", null) ?: emptySet()
+    fun setNextUp(ctx: Context, token: String, on: Boolean) {
+        val s = nextUpPicks(ctx).filter { it.substring(1) != token }.toMutableSet()
+        if (on != onNextUpByDefault(token)) s += (if (on) "+" else "-") + token
+        prefs(ctx).edit().putStringSet("nextUp", s).apply()
+    }
+}
+
+/**
+ * A followed football league fills your Following list but gets no NEXT UP card of its own: following La Liga for its
+ * table and scores shouldn't put Athletic v Espanyol on top. Your clubs, countries, F1 and the other series do get cards.
+ */
+fun onNextUpByDefault(token: String) = !(token.startsWith("c:") && tokenSport(token) == Sport.FOOTBALL)
+fun onNextUp(token: String, picks: Set<String>) = when {
+    "+$token" in picks -> true
+    "-$token" in picks -> false
+    else -> onNextUpByDefault(token)
 }
 
 /** Whose photo leads a hero card: the favourite driver for F1, fighter for UFC, boxer on their own fight, player for a followed club. */
@@ -127,10 +146,14 @@ fun billedOn(p: Person, e: Event): Boolean {
     return key.isNotBlank() && personKey(e.title).split(Regex("[^a-z0-9]+")).contains(key)
 }
 
-/** The swipeable NEXT UP cards: one per followed thing that has something coming, soonest first, the pinned one always first. */
-fun heroes(events: List<Event>, follows: Set<String>, pinned: String?, filter: Filter, favs: Map<Kind, Person?>, now: Instant): List<Hero> {
+/**
+ * The swipeable NEXT UP cards: one per followed thing that has something coming and is on NEXT UP ([picks], see
+ * [onNextUp]), soonest first, the pinned one always first (pinning a card keeps it even if its kind is off).
+ */
+fun heroes(events: List<Event>, follows: Set<String>, pinned: String?, filter: Filter, favs: Map<Kind, Person?>, now: Instant,
+           picks: Set<String> = emptySet()): List<Hero> {
     val sport = filter.sport()
-    val tokens = follows.filter { sport == null || tokenSport(it) == sport }
+    val tokens = follows.filter { (sport == null || tokenSport(it) == sport) && (it == pinned || onNextUp(it, picks)) }
     val cards = tokens.mapNotNull { t ->
         events.firstOrNull { tokenMatches(t, it) && !it.started(now) && !it.over(now) }?.let { Hero(t, it, heroPerson(t, it, favs)) }
     }.sortedBy { it.event.start }

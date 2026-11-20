@@ -25,7 +25,7 @@ import java.time.Instant
 /** The Following page with Kenya followed and "south" typed in the search, from ESPN's real schedule. Run with SC_SHOTS=1. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w393dp-h2300dp-xhdpi")
+@Config(sdk = [34], qualifiers = "w393dp-h2900dp-xhdpi")
 class FollowShotsTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
     private fun text(name: String) = javaClass.classLoader!!.getResource(name)!!.readText()
@@ -40,7 +40,7 @@ class FollowShotsTest {
         }))
         val now = Instant.parse("2026-11-17T14:00:00Z")
         val events = Nations.toEvents(doc, now)
-        Repo.setFollows(ctx, setOf("c:F1", "c:UFC", "t:Manchester United", "t:Kenya"))
+        Repo.setFollows(ctx, setOf("c:F1", "c:UFC", "c:ESP", "t:Manchester United", "t:Kenya"))
         val st = AppState(ctx)
         rule.setContent {
             SportClockTheme("night", "dark") {

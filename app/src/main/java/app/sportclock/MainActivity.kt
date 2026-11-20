@@ -92,6 +92,7 @@ enum class Tab(val label: String, val icon: ImageVector) { HOME("Home", Icons.Fi
 class AppState(ctx: android.content.Context) {
     var follows by mutableStateOf(Repo.follows(ctx))
     var pinned by mutableStateOf(Repo.pinned(ctx))
+    var nextUp by mutableStateOf(Repo.nextUpPicks(ctx))
     var favs by mutableStateOf(Kind.entries.associateWith { Repo.fav(ctx, it) })
 }
 
@@ -252,7 +253,7 @@ fun TopBar() {
 @Composable
 fun HomeScreen(st: AppState, events: List<Event>, now: Instant, scores: Map<String, Score>, onPin: (Hero) -> Unit, onOpen: (Event) -> Unit, onTeam: (String) -> Unit = {}) {
     var filter by remember { mutableStateOf(Filter.FOLLOWING) }
-    val hs = remember(events, st.follows, st.pinned, filter, st.favs, now) { heroes(events, st.follows, st.pinned, filter, st.favs, now) }
+    val hs = remember(events, st.follows, st.pinned, filter, st.favs, now, st.nextUp) { heroes(events, st.follows, st.pinned, filter, st.favs, now, st.nextUp) }
     var shown by remember { mutableStateOf<String?>(null) }
     val list = remember(events, st.follows, filter, now, shown) { listEvents(events, st.follows, filter, now, shown) }
     LazyColumn(Modifier.fillMaxSize()) {
