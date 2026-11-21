@@ -248,6 +248,7 @@ private fun FactsTab(e: Event, now: Instant, d: MatchData, hc: Color, ac: Color)
     if (!d.started) {
         if (d.homeSide == null) Text("Lineups usually appear about an hour before kick-off.", color = C.fg2, fontFamily = Inter, fontSize = 13.sp,
             modifier = Modifier.padding(bottom = 10.dp))
+        WinChance(e, hc, ac)
         if (d.homeForm.isNotEmpty() || d.awayForm.isNotEmpty()) Tile { TileTitle("Form"); FormRows(d) }
     }
     val shown = d.events.filter { it.kind != "90" || d.state == "in" }
@@ -269,6 +270,30 @@ private fun FactsTab(e: Event, now: Instant, d: MatchData, hc: Color, ac: Color)
         "${dayWord(e.start, now)} · ${hm(e.start)}, your time",
     )
     Tile { info.forEach { Text(it, color = C.fg2, fontFamily = Inter, fontSize = 13.sp, modifier = Modifier.padding(vertical = 3.dp)) } }
+}
+
+/** Before kick-off: who the bookmakers think wins, as home / draw / away percentages on one bar (ESPN's odds, margin taken out). */
+@Composable
+private fun WinChance(e: Event, hc: Color, ac: Color) {
+    var ch by remember(e.id) { mutableStateOf<Triple<Int, Int, Int>?>(null) }
+    LaunchedEffect(e.id) { ch = runCatching { Looks.espnMatch(e)?.odds?.let { impliedChances(it.first, it.second, it.third) } }.getOrNull() }
+    val c = ch ?: return
+    if (e.teams.size != 2) return
+    Tile {
+        TileTitle("Win chance")
+        Row(Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(6.dp))) {
+            listOf(c.first to hc, c.second to C.fg3, c.third to ac).filter { it.first > 0 }.forEach { (v, col) ->
+                Box(Modifier.weight(v.toFloat()).fillMaxHeight().background(col))
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Text("${short(e.teams[0])} ${c.first}%", Modifier.weight(1f), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            Text("Draw ${c.second}%", color = C.fg2, fontFamily = Inter, fontSize = 13.sp)
+            Text("${c.third}% ${short(e.teams[1])}", Modifier.weight(1f), color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.End)
+        }
+        Text("From the bookmakers' prices on ESPN, their margin taken out", color = C.fg3, fontFamily = Inter, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+    }
 }
 
 @Composable

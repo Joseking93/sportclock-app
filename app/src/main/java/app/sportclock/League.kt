@@ -48,20 +48,24 @@ suspend fun leagueResults(code: String, now: Instant = Instant.now()): List<Pair
 @Composable
 fun LeagueBody(code: String, st: AppState, events: List<Event>, now: Instant, scores: Map<String, Score>,
                onOpen: (Event) -> Unit, onTeam: (String) -> Unit) {
+    // a league we have ESPN data for opens on its Overview (where to watch, this round, table, scorers, highlights, news)
+    val segs = if (code in ESPN_LEAGUE) listOf("Overview", "Fixtures", "Results", "Table") else listOf("Fixtures", "Results", "Table")
     var seg by rememberSaveable(code) { mutableIntStateOf(0) }
+    val name = segs.getOrElse(seg) { segs[0] }
     var more by rememberSaveable(code) { mutableStateOf(false) }
     val fixtures = remember(events, code, now.epochSecond / 600) { events.filter { it.code == code && !it.over(now) }.sortedBy { it.start } }
     var results by remember(code) { mutableStateOf<List<Pair<Event, Score>>?>(null) }
     LaunchedEffect(code, seg) {
-        if (seg == 1 && results == null) results = runCatching { leagueResults(code) }.getOrDefault(emptyList()).also { r -> r.forEach { ExtraScores.map[it.first.id] = it.second } }
+        if (name == "Results" && results == null) results = runCatching { leagueResults(code) }.getOrDefault(emptyList()).also { r -> r.forEach { ExtraScores.map[it.first.id] = it.second } }
     }
     // the table names clubs ESPN's way ("AFC Bournemouth"); open the page under our own name when we know it
     val ours = remember(events, code) { events.filter { it.code == code }.flatMap { it.teams }.distinct() }
     Column(Modifier.fillMaxSize()) {
-        Segments(listOf("Fixtures", "Results", "Table"), seg) { seg = it }
+        Segments(segs, seg) { seg = it }
         Spacer(Modifier.height(8.dp))
-        when (seg) {
-            0 -> LazyColumn(Modifier.fillMaxSize()) {
+        when (name) {
+            "Overview" -> LeagueOverview(code, st, events, now, scores, onOpen, onTeam) { seg = segs.indexOf(it).coerceAtLeast(0) }
+            "Fixtures" -> LazyColumn(Modifier.fillMaxSize()) {
                 if (fixtures.isEmpty()) item { Text("No fixtures listed yet.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp)) }
                 // a whole season is hundreds of games: the next 30 first
                 dayGroups(if (more) fixtures else fixtures.take(30), now, scores, onOpen)
@@ -70,7 +74,7 @@ fun LeagueBody(code: String, st: AppState, events: List<Event>, now: Instant, sc
                 }
                 item { Text("Fixtures from the league's own schedule, in your time.", color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(20.dp)) }
             }
-            1 -> LazyColumn(Modifier.fillMaxSize()) {
+            "Results" -> LazyColumn(Modifier.fillMaxSize()) {
                 val r = results
                 when {
                     r == null -> items(6) { Skeleton(60.dp, Modifier.padding(horizontal = 16.dp, vertical = 3.dp)) }

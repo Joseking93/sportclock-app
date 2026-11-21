@@ -242,6 +242,14 @@ private fun method(text: String) = when {
     else -> text.trim()
 }
 
+/** The current UFC card's main-card start and how many fights are on it: ESPN gives every fight its segment's start. */
+suspend fun ufcMainCard(): Pair<Instant, Int>? {
+    val ev = json("https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard").optJSONArray("events").objects().firstOrNull() ?: return null
+    val dates = ev.optJSONArray("competitions").objects().mapNotNull { instant(it.optString("date")) }
+    val main = dates.maxOrNull() ?: return null
+    return main to dates.count { it == main }
+}
+
 /** The current or latest UFC event, main event first, with results once fought. */
 suspend fun ufcCard(): FightCard? {
     val ev = json("https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard").optJSONArray("events").objects().firstOrNull() ?: return null

@@ -103,6 +103,7 @@ object AlertChoices {
         muted = p.getStringSet("alertMuted", emptySet())!!.toSet()
         flipped = p.getStringSet("alertFlipped", emptySet())!!.toSet()
         extras = runCatching { eventsFromJson(p.getString("alertExtra", "[]")!!) }.getOrDefault(emptyList())
+        LiveKinds.load(ctx)
     }
     private fun save(ctx: Context) = Repo.prefs(ctx).edit().putStringSet("alertPicked", picked).putStringSet("alertMuted", muted)
         .putStringSet("alertFlipped", flipped).putString("alertExtra", eventsToJson(extras)).apply()

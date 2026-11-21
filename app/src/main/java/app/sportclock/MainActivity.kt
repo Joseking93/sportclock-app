@@ -253,15 +253,21 @@ fun TopBar() {
 @Composable
 fun HomeScreen(st: AppState, events: List<Event>, now: Instant, scores: Map<String, Score>, onPin: (Hero) -> Unit, onOpen: (Event) -> Unit, onTeam: (String) -> Unit = {}) {
     var filter by remember { mutableStateOf(Filter.FOLLOWING) }
-    val hs = remember(events, st.follows, st.pinned, filter, st.favs, now, st.nextUp) { heroes(events, st.follows, st.pinned, filter, st.favs, now, st.nextUp) }
+    val hs = remember(events, st.follows, st.pinned, filter, st.favs, now, st.nextUp) { heroes(events, st.follows, st.pinned, filter, st.favs, now, st.nextUp, follow = true) }
     var shown by remember { mutableStateOf<String?>(null) }
     val list = remember(events, st.follows, filter, now, shown) { listEvents(events, st.follows, filter, now, shown) }
-    LazyColumn(Modifier.fillMaxSize()) {
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    // the items above the day groups, counted so a tap on the week strip can scroll to its day
+    val before = 7 + if (list.isEmpty()) 1 else 0
+    LazyColumn(Modifier.fillMaxSize(), state = listState) {
         item { TopBar() }
         item { FilterPills(filter) { filter = it } }
-        item { Spacer(Modifier.height(14.dp)); HeroPager(hs, now, st.pinned, onPin, onOpen) { shown = it.event.id } }
+        item { Spacer(Modifier.height(14.dp)); HeroPager(hs, now, st.pinned, onPin, onOpen, scores) { shown = it.event.id } }
+        item { if (filter == Filter.FOLLOWING || filter == Filter.FOOTBALL) YourTeams(st, events, now, scores, onTeam) }
         item { FactOfTheDay(events, st.follows, now, onOpen) }
-        item { LastResults(st, events, now, scores, onTeam) }
+        item { LastResults(st, events, now, scores, onTeam, skip = hs.map { it.event.id }.toSet()) }
+        item { WeekStrip(list, now) { d -> dayGroupIndex(list, d)?.let { i -> scope.launch { listState.animateScrollToItem(before + i) } } } }
         if (list.isEmpty()) item { Text("Nothing else in the next two weeks", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(24.dp)) }
         dayGroups(list, now, scores, onOpen)
         item { Spacer(Modifier.height(24.dp)) }
@@ -376,6 +382,7 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTe
         }
         if (e.sport == Sport.FOOTBALL && e.teams.size == 2) {
             MatchPage(e, now, score, fetchedAt, onTeam, onPage) { AlertRow(e, now) }
+            KenyaTvLine(e.code, Modifier.padding(top = 14.dp))
             DetailActions(e, now)
             return@Column
         }
@@ -394,7 +401,9 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTe
             e.isTbc -> e.window?.let { "Time not published yet · expected between ${hm(it.first)} and ${hm(it.second)}" } ?: "Time not published yet"
             else -> "$dayLine · ${hm(e.start)}, your time"
         }, color = C.fg, fontFamily = Inter, fontSize = 15.sp)
-        if (e.isApprox) Text("Approximate: broadcasters may move this.", color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+        if (isWalkout(e)) Text("Estimated: the main card's start plus about $BOUT_MINS minutes for each fight before the main event. Quick finishes bring it forward, so the alert comes early enough.",
+            color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+        else if (e.isApprox) Text("Approximate: broadcasters may move this.", color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
         if (e.sport != Sport.FOOTBALL && e.venue.isNotEmpty()) Text(e.venue, color = C.fg2, fontFamily = Inter, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
         AlertRow(e, now)
         if (e.sport == Sport.FOOTBALL) {
@@ -411,6 +420,7 @@ fun DetailSheet(e: Event, now: Instant, score: Score?, fetchedAt: Instant?, onTe
         if (e.code == "F1") F1RadioView(e, now)
         if (e.code == "BOX") BoutView(e, now)
         if (e.sport == Sport.NFL) TeamLinks(e, onTeam)
+        if (e.code != "BOX") KenyaTvLine(e.code, Modifier.padding(top = 14.dp))
         DetailActions(e, now)
     }
     }

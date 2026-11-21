@@ -129,9 +129,26 @@ private fun heroTexts(h: Hero, now: Instant): Triple<String, String, String> {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: () -> Unit) {
+fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: () -> Unit, score: Score? = null) {
     val e = h.event
-    val (series, sess, meta) = heroTexts(h, now)
+    val (series, sess, meta0) = heroTexts(h, now)
+    // the card follows the match: countdown, then lineups out, then the live score and minute, then full time
+    val state = heroState(e, now, score)
+    val shown = score?.takeIf { it.home != null && it.away != null && !Spoilers.hidden(e) }
+    val lineup = if (state == HeroState.NEXT) rememberLineups(e, now) else null
+    val comp = series(e.code)?.name ?: e.comp
+    val meta = when {
+        state == HeroState.LIVE && e.teams.size == 2 -> listOfNotNull(if (shown == null && score?.home != null) "Score hidden" else score?.detail?.ifBlank { null } ?: "Live", comp).joinToString(" · ")
+        state == HeroState.LIVE -> "On now · started ${hm(e.start)}"
+        state == HeroState.DONE -> "Full time · ${dayWord(e.start, now)}"         // the badge already says which league
+        lineup != null -> lineupLine(lineup, e, h.token, h.person)
+        else -> meta0
+    }
+    val big = when (state) {
+        HeroState.NEXT -> timeText(e)
+        HeroState.LIVE -> shown?.let { "${it.home}–${it.away}" } ?: "LIVE"
+        HeroState.DONE -> shown?.let { "${it.home}–${it.away}" } ?: "FT"
+    }
     val shape = RoundedCornerShape(20.dp)
     // Football and the NFL: the favourite player only when he is in one of the two squads; otherwise both teams' badges.
     val football = (e.sport == Sport.FOOTBALL || e.sport == Sport.NFL) && e.teams.size == 2
@@ -167,7 +184,9 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
         Column(Modifier.padding(start = 20.dp, top = 16.dp, end = 16.dp, bottom = 14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (pinned) { Icon(Icons.Filled.PushPin, null, Modifier.size(13.dp), tint = C.lime); Spacer(Modifier.width(4.dp)) }
-                Text(if (pinned) "PINNED" else "NEXT UP", color = C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 2.4.sp)
+                if (state == HeroState.LIVE) { Dot(C.live, 8.dp); Spacer(Modifier.width(6.dp)) }
+                Text(when { state == HeroState.LIVE -> "LIVE"; state == HeroState.DONE -> "FULL TIME"; lineup != null -> "LINEUPS OUT"; pinned -> "PINNED"; else -> "NEXT UP" },
+                    color = if (state == HeroState.LIVE) C.live else C.lime, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 2.4.sp)
             }
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -175,8 +194,8 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
                 Text(series, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.ExtraBold, fontSize = 25.sp, letterSpacing = (-0.5).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(sess, color = C.fg, fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(meta, color = C.fg2, fontFamily = Inter, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 230.dp))
-            Text(timeText(e), style = Digits, color = C.lime, fontWeight = FontWeight.ExtraBold, fontSize = 80.sp, lineHeight = 80.sp,
+            Text(meta, color = if (lineup != null) C.fg else C.fg2, fontFamily = Inter, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 230.dp))
+            Text(big, style = Digits, color = C.lime, fontWeight = FontWeight.ExtraBold, fontSize = 80.sp, lineHeight = 80.sp,
                 modifier = Modifier.offset(x = (-3).dp))
         }
 
@@ -195,7 +214,11 @@ fun HeroCard(h: Hero, now: Instant, pinned: Boolean, onPin: () -> Unit, onOpen: 
                 Icon(if (pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin, if (pinned) "Unpin" else "Pin to top", Modifier.size(17.dp), tint = if (pinned) C.lime else C.fg2)
             }
         }
-        if (!e.isTbc) Ring(e.start, Modifier.align(Alignment.BottomEnd).padding(16.dp))
+        when (state) {
+            HeroState.NEXT -> if (!e.isTbc) Ring(e.start, Modifier.align(Alignment.BottomEnd).padding(16.dp))
+            HeroState.LIVE -> LiveDisc(e, score, now, Modifier.align(Alignment.BottomEnd).padding(16.dp))
+            HeroState.DONE -> HighlightsPill(e, Modifier.align(Alignment.BottomEnd).padding(16.dp))
+        }
     }
 }
 
@@ -229,7 +252,8 @@ fun countdown(secs: Long): String {
 }
 
 @Composable
-fun HeroPager(heroes: List<Hero>, now: Instant, pinned: String?, onPin: (Hero) -> Unit, onOpen: (Event) -> Unit, onPage: (Hero) -> Unit) {
+fun HeroPager(heroes: List<Hero>, now: Instant, pinned: String?, onPin: (Hero) -> Unit, onOpen: (Event) -> Unit, scores: Map<String, Score> = emptyMap(),
+              onPage: (Hero) -> Unit) {
     if (heroes.isEmpty()) {
         Box(Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(120.dp).clip(RoundedCornerShape(20.dp)).background(C.tile), contentAlignment = Alignment.Center) {
             Text("Nothing coming up for what you follow", color = C.fg2, fontFamily = Inter, fontSize = 15.sp)
@@ -241,7 +265,7 @@ fun HeroPager(heroes: List<Hero>, now: Instant, pinned: String?, onPin: (Hero) -
     LaunchedEffect(state.currentPage, heroes) { heroes.getOrNull(state.currentPage)?.let(onPage) }
     HorizontalPager(state, contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 10.dp) { i ->
         val h = heroes[i]
-        HeroCard(h, now, pinned != null && h.token == pinned, { onPin(h) }, { onOpen(h.event) })
+        HeroCard(h, now, pinned != null && h.token == pinned, { onPin(h) }, { onOpen(h.event) }, scores[h.event.id])
     }
     if (heroes.size > 1) {
         Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.Center) {
@@ -323,10 +347,20 @@ fun AlertBell(e: Event, size: Dp = 22.dp) {
     }
 }
 
+/** The day an event is listed under: its start, or for a TBC one the start of its window. */
+fun groupDay(e: Event): LocalDate = localDate(e.window?.first?.takeIf { _ -> e.isTbc } ?: e.start)
+
+/** Where [day]'s heading sits among the items [dayGroups] adds (a heading, then one item per event, day by day). */
+fun dayGroupIndex(events: List<Event>, day: LocalDate): Int? {
+    var i = 0
+    events.groupBy(::groupDay).toSortedMap().forEach { (d, list) -> if (d == day) return i; i += 1 + list.size }
+    return null
+}
+
 /** Events grouped under day headers, in the phone's own zone. */
 fun androidx.compose.foundation.lazy.LazyListScope.dayGroups(events: List<Event>, now: Instant, scores: Map<String, Score>, onOpen: (Event) -> Unit) {
     val today = localDate(now)
-    events.groupBy { localDate(it.window?.first?.takeIf { _ -> it.isTbc } ?: it.start) }.toSortedMap().forEach { (d, list) ->
+    events.groupBy(::groupDay).toSortedMap().forEach { (d, list) ->
         item(key = "h$d") { DayHeader(d, today) }
         list.forEach { e ->
             item(key = e.id) {

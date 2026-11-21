@@ -26,7 +26,7 @@ import java.util.Locale
  * Polling stays light: scores only while a match is on, lineups from an hour before kick-off.
  */
 
-private const val UA = "SportClock/2.33 (personal Android app)"
+private const val UA = "SportClock/2.34 (personal Android app)"
 
 /** Like [httpGet] but with a given User-Agent, for sites that serve browsers only (the FIA). */
 internal fun httpGetAs(url: String, ua: String): String {
@@ -56,7 +56,8 @@ val ESPN_LEAGUE = mapOf("ENG" to "eng.1", "EFL" to "eng.2", "ESP" to "esp.1", "I
 
 data class EspnMatch(val id: String, val league: String, val start: Instant, val home: String, val away: String,
                      val homeScore: Int?, val awayScore: Int?, val state: String, val detail: String,
-                     val homeSide: TeamSide? = null, val awaySide: TeamSide? = null, val group: String = "")
+                     val homeSide: TeamSide? = null, val awaySide: TeamSide? = null, val group: String = "",
+                     val odds: Triple<String, String, String>? = null)
 /** A club as ESPN draws it: badge URL and its two colours ("da020e"), for the NEXT UP card. */
 data class TeamSide(val id: String, val name: String, val logo: String, val color: String, val alt: String)
 private fun side(c: JSONObject) = c.getJSONObject("team").let { t ->
@@ -83,9 +84,31 @@ suspend fun espnScoreboard(league: String, date: String): List<EspnMatch> = with
             EspnMatch(e.getString("id"), league, Instant.parse(e.getString("date").let { if (it.length == 17) it.dropLast(1) + ":00Z" else it }),
                 h.getJSONObject("team").optString("displayName"), a.getJSONObject("team").optString("displayName"),
                 if (state == "pre") null else h.optString("score").toIntOrNull(), if (state == "pre") null else a.optString("score").toIntOrNull(),
-                state, st.optString("shortDetail"), side(h), side(a), comp.optJSONObject("group")?.optString("name").orEmpty())
+                state, st.optString("shortDetail"), side(h), side(a), comp.optJSONObject("group")?.optString("name").orEmpty(),
+                moneyline(comp))
         }.getOrNull()
     }
+}
+
+/** The bookmaker's home / draw / away prices as ESPN lists them ("-270", "+425", "+650"), closing price first. */
+private fun moneyline(comp: JSONObject): Triple<String, String, String>? {
+    val ml = comp.optJSONArray("odds")?.optJSONObject(0)?.optJSONObject("moneyline") ?: return null
+    fun price(k: String) = ml.optJSONObject(k)?.let { o -> o.optJSONObject("close")?.optString("odds")?.ifBlank { null } ?: o.optJSONObject("open")?.optString("odds") }.orEmpty()
+    return Triple(price("home"), price("draw"), price("away")).takeIf { it.first.isNotBlank() && it.third.isNotBlank() }
+}
+
+/** American prices as home / draw / away chances in whole percent, the bookmaker's margin taken out; null when a price is missing. */
+fun impliedChances(home: String, draw: String, away: String): Triple<Int, Int, Int>? {
+    fun p(s: String): Double? {
+        val t = s.trim().uppercase()
+        if (t == "EVEN" || t == "EV") return 0.5
+        val o = t.removePrefix("+").toDoubleOrNull() ?: return null
+        return if (o < 0) -o / (-o + 100) else 100 / (o + 100)
+    }
+    val h = p(home) ?: return null; val a = p(away) ?: return null; val d = p(draw) ?: 0.0
+    val sum = h + d + a
+    val hp = Math.round(100 * h / sum).toInt(); val ap = Math.round(100 * a / sum).toInt()
+    return Triple(hp, 100 - hp - ap, ap)
 }
 
 /** Club names differ between sources ("1. FSV Mainz 05" v "Mainz"), so compare the meaningful words. */

@@ -139,11 +139,11 @@ fun TeamLinks(e: Event, onTeam: (String) -> Unit) {
 
 /** Full-time cards for your teams' matches that ended in the last 36 hours. */
 @Composable
-fun LastResults(st: AppState, events: List<Event>, now: Instant, scores: Map<String, Score>, onTeam: (String) -> Unit) {
+fun LastResults(st: AppState, events: List<Event>, now: Instant, scores: Map<String, Score>, onTeam: (String) -> Unit, skip: Set<String> = emptySet()) {
     val mine = st.follows.filter { it.startsWith("t:") }.map { it.substring(2) }
     val recent = mine.mapNotNull { team ->
         events.lastOrNull { team in it.teams && it.over(now) && it.end.isAfter(now.minusSeconds(36 * 3600)) }?.let { team to it }
-    }.distinctBy { it.second.id }
+    }.distinctBy { it.second.id }.filter { it.second.id !in skip }          // a result still on its NEXT UP card isn't repeated
     recent.forEach { (team, e) ->
         val sc = scores[e.id]?.takeIf { it.status == "FINISHED" && it.home != null }
         if (sc != null) key(e.id) { Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(C.tile)

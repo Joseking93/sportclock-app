@@ -76,6 +76,14 @@ fun FollowScreen(st: AppState, events: List<Event>, now: Instant, onBack: () -> 
                     Repo.setNextUp(ctx, token, it); st.nextUp = Repo.nextUpPicks(ctx); onChanged()
                 }
             } }
+        // which live alerts each football follow sends (LiveKinds.kt)
+        val footy = st.follows.filter { tokenSport(it) == Sport.FOOTBALL }.sortedWith(compareBy({ if (it.startsWith("t:")) 0 else 1 }, { tokenLabel(it) }))
+        if (footy.isNotEmpty()) {
+            item { SectionLabel("Live match alerts") }
+            item { Text("Choose what each one sends while its match is on. Your teams start with everything, a league with nothing; picking something for a league watches all its games. Settings › Live alerts still turns them all off.",
+                color = C.fg3, fontFamily = Inter, fontSize = 12.sp, modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 6.dp)) }
+            footy.forEach { token -> item(key = "lk$token") { LiveKindsRow(ctx, token, onChanged) } }
+        }
         item { SectionLabel("★ Favourites") }
         // three to a row: driver, fighter, player, then the NFL player and the boxer
         Kind.entries.chunked(3).forEach { row -> item {

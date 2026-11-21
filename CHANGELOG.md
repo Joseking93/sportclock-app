@@ -2,6 +2,17 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.34 (21 Nov 2026)
+
+- **The NEXT UP card stays with the match.** It no longer jumps to the next game at kick-off. About 75 minutes before, it says LINEUPS OUT with your club's formation and whether your player starts. During the match it shows the live score and the minute in a red ring. At the end it shows FULL TIME with the score and a Highlights button for three hours. F1 sessions and fight cards show LIVE while they're on. The widget still shows what's next.
+- **Your teams** under the card: a tile for each club and country you follow, with the badge, league position, last five results and the next game (or the live score). Tap one to open the team.
+- **A week strip** above the list shows the next seven days, with dots on the days that have something. Tap a day to jump to it.
+- **League pages open on an Overview**, like F1 Home. It shows where to watch in Kenya, this round's fixtures in your time, the top of the table with your clubs highlighted, the top five scorers and top three for assists, the latest highlights from the Premier League's and LALIGA's own YouTube channels (they open in YouTube), and BBC Sport news.
+- **Main event walkouts.** Every UFC main card, and every boxing card with a start time, gets a "Main event walkout" estimate in the list. You can set an alert for it, so you're woken for the main event rather than the first fight. For UFC it's the main card's start plus about 28 minutes per fight before the main event, counting the fights from ESPN's card. For boxing it's about 55 minutes before the card ends. Both are marked ~ approximate.
+- **Live alerts per team.** More › Following › Live match alerts lets you pick, for each club, country and league, which of lineups, goals, red cards, half-time and full time it sends. For example, everything for United and only full time for La Liga. Picking anything for a league watches all its games.
+- **Win chance** on a match's Facts before kick-off: home / draw / away percentages on one bar, from the bookmakers' prices on ESPN with their margin taken out.
+- **On TV in Kenya** on league pages and match sheets, from a hand-kept list (SuperSport for the Premier League, La Liga, Serie A and F1; StarTimes, Azam or Canal+ for the Bundesliga; DAZN for the big boxing cards).
+
 ## 2.33 (20 Nov 2026)
 
 - **You choose what's on NEXT UP.** Following a league no longer gives it a card of its own: follow La Liga for its table and scores, and Athletic v Espanyol stays in your list, not on top of Home. Cards come from F1, the other series and your teams (clubs and countries).

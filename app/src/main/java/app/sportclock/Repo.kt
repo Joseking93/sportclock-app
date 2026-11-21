@@ -51,10 +51,12 @@ object Repo {
         // cup ties of the clubs you follow (Carabao Cup, FA Cup, Copa del Rey, DFB-Pokal, Europa League…), and the games of
         // the countries you follow (qualifiers, tournaments, friendlies)
         _data.value?.let { d ->
-            val base = d.events.filter { !it.id.startsWith("CUP|") }
+            val base = d.events.filter { !it.id.startsWith("CUP|") && !isWalkout(it) }
             val cups = runCatching { Cups.events(ctx, base) }.getOrDefault(emptyList())
             val nations = runCatching { Nations.events(ctx) }.getOrDefault(emptyList())
-            val extra = (cups + nations).distinctBy { it.id }
+            // and the estimated main-event walkout of each fight night (Fights.kt)
+            val walks = walkouts(base, UfcCardSize.get())
+            val extra = (cups + nations + walks).distinctBy { it.id }
             if (extra.isNotEmpty() || base.size != d.events.size) _data.value = d.copy(events = (base + extra).sortedBy { it.start })
         }
         _data.value
@@ -146,22 +148,42 @@ fun billedOn(p: Person, e: Event): Boolean {
     return key.isNotBlank() && personKey(e.title).split(Regex("[^a-z0-9]+")).contains(key)
 }
 
+/** How long a club's finished match stays on its card, with the score and Highlights, before the card moves on. */
+const val AFTERGLOW_SECS = 3 * 3600L
+
 /**
  * The swipeable NEXT UP cards: one per followed thing that has something coming and is on NEXT UP ([picks], see
  * [onNextUp]), soonest first, the pinned one always first (pinning a card keeps it even if its kind is off).
+ * With [follow] (Home), a card stays with what is on now instead of skipping it: a match or session in progress keeps
+ * its card while it is live, and a club's match keeps it for [AFTERGLOW_SECS] after the end (full time, Highlights).
+ * The widget leaves [follow] off: it redraws too rarely to show a live score.
  */
 fun heroes(events: List<Event>, follows: Set<String>, pinned: String?, filter: Filter, favs: Map<Kind, Person?>, now: Instant,
-           picks: Set<String> = emptySet()): List<Hero> {
+           picks: Set<String> = emptySet(), follow: Boolean = false): List<Hero> {
     val sport = filter.sport()
     val tokens = follows.filter { (sport == null || tokenSport(it) == sport) && (it == pinned || onNextUp(it, picks)) }
     val cards = tokens.mapNotNull { t ->
-        events.firstOrNull { tokenMatches(t, it) && !it.started(now) && !it.over(now) }?.let { Hero(t, it, heroPerson(t, it, favs)) }
-    }.sortedBy { it.event.start }
+        val mine = events.filter { tokenMatches(t, it) }
+        val held = if (!follow) null else mine.firstOrNull { it.inProgress(now) }
+            ?: mine.lastOrNull { t.startsWith("t:") && it.teams.size == 2 && it.over(now) && it.end.isAfter(now.minusSeconds(AFTERGLOW_SECS)) }
+        (held ?: mine.firstOrNull { !it.started(now) && !it.over(now) })?.let { Hero(t, it, heroPerson(t, it, favs)) }
+    }.sortedBy { heroWhen(it.event, now) }
     if (cards.isEmpty() && sport != null) {
         events.firstOrNull { it.sport == sport && !it.started(now) && !it.over(now) }?.let { return listOf(Hero(null, it, heroPerson(null, it, favs))) }
     }
     val pin = cards.firstOrNull { it.token == pinned }
     return if (pin != null) listOf(pin) + (cards - pin) else cards
+}
+
+/** Card order: what is on now and what just finished come before what is still to come, each by its own time. */
+private fun heroWhen(e: Event, now: Instant): Instant = if (e.over(now)) e.end else e.start
+
+/** What a NEXT UP card is showing: still to come, on now, or a finished match kept for its result. */
+enum class HeroState { NEXT, LIVE, DONE }
+fun heroState(e: Event, now: Instant, score: Score?): HeroState = when {
+    score?.status == "FINISHED" || (e.over(now) && e.started(now)) -> if (e.started(now)) HeroState.DONE else HeroState.NEXT
+    e.inProgress(now) -> HeroState.LIVE
+    else -> HeroState.NEXT
 }
 
 /** The list under the heroes: what the pill selects, from now, without the card on screen. */

@@ -38,8 +38,9 @@ object Live {
     private const val F1_BEFORE = 10L * 60
     private fun inF1Window(e: Event, now: Instant) = !now.isBefore(e.start.minusSeconds(F1_BEFORE)) && !now.isAfter(e.start.plusSeconds(AFTER))
 
+    /** A match worth checking: something is chosen for it in More › Following (LiveKinds.kt), or you belled it. */
     fun watched(e: Event, follows: Set<String>) = e.sport == Sport.FOOTBALL && e.teams.size == 2 && !e.isTbc && ESPN_COMP.containsKey(e.code) &&
-        (e.teams.any { "t:$it" in follows } || AlertChoices.wants(e))
+        liveKindsFor(e, follows, LiveKinds.stored, AlertChoices.wants(e)).isNotEmpty()
     private fun inWindow(e: Event, now: Instant) = !now.isBefore(e.start.minusSeconds(BEFORE)) && !now.isAfter(e.start.plusSeconds(AFTER))
     private fun wanted(ctx: Context) = Settings.alertsOn(ctx) && (Settings.liveAlerts(ctx) || Settings.lineupAlerts(ctx) || Settings.f1Alerts(ctx))
 
@@ -120,12 +121,13 @@ object Live {
         val line = "$home ${score("home")}–${score("away")} $away"
         val code = key.hashCode()
         val spoiler = Settings.spoilerFree(ctx)
+        val kinds = LiveKinds.forEvent(e)
         val first = !s.has("seen")
         val seen = s.optJSONArray("seen") ?: org.json.JSONArray().also { s.put("seen", it) }
         val seenIds = (0 until seen.length()).map { seen.getString(it) }.toMutableSet()
 
         // lineups, once, as soon as both starting elevens are published
-        if (Settings.lineupAlerts(ctx) && !s.optBoolean("lineups")) {
+        if (Settings.lineupAlerts(ctx) && LiveKind.LINEUPS in kinds && !s.optBoolean("lineups")) {
             val sheet = runCatching { espnSheet(m.league, m.id) }.getOrNull()
             if (sheet?.home != null && sheet.away != null) {
                 fun xi(t: TeamSheet) = "${short(t.team)}${if (t.formation.isNotBlank()) " (${t.formation})" else ""}: " +
@@ -147,22 +149,23 @@ object Live {
                 val text = k.optString("text"); val minute = k.optJSONObject("clock")?.optString("displayValue").orEmpty()
                 val kind = k.optJSONObject("type")?.optString("type").orEmpty()
                 when {
-                    k.optBoolean("scoringPlay") -> {
+                    k.optBoolean("scoringPlay") && LiveKind.GOALS in kinds -> {
                         val at = Regex("""(\d+), [^.]*? (\d+)\.""").find(text)?.groupValues
                         val shown = if (at != null) "$home ${at[1]}–${at[2]} $away" else line
                         notify(ctx, GOALS, code + 10 + i, "⚽ GOAL · $shown", "${scorer(text)} $minute".trim(), e.line1())
                     }
-                    kind == "red-card" -> notify(ctx, GOALS, code + 10 + i, "🟥 Red card · ${e.line1()}",
+                    kind == "red-card" && LiveKind.REDS in kinds -> notify(ctx, GOALS, code + 10 + i, "🟥 Red card · ${e.line1()}",
                         "${text.substringBefore(" is shown").trim()} $minute".trim(), line)
                 }
             }
-            if (!first && !s.optBoolean("ht") && (clock == "HT" || type?.optString("name") == "STATUS_HALFTIME")) {
+            if (LiveKind.HT in kinds && !first && !s.optBoolean("ht") && (clock == "HT" || type?.optString("name") == "STATUS_HALFTIME")) {
                 notify(ctx, GOALS, code + 2, "Half-time · $line", "Second half next", e.line1()); s.put("ht", true)
             }
-            if (state == "in") ongoing(ctx, code + 3, line, clock)
+            // the quiet live-score notification only for a match whose goals you want
+            if (state == "in" && LiveKind.GOALS in kinds) ongoing(ctx, code + 3, line, clock)
             if (state == "post") {
                 cancel(ctx, code + 3)
-                notify(ctx, GOALS, code + 4, "Full time · $line", clock.ifEmpty { "FT" }, e.line1())
+                if (LiveKind.FT in kinds) notify(ctx, GOALS, code + 4, "Full time · $line", clock.ifEmpty { "FT" }, e.line1())
             }
         } else cancel(ctx, code + 3)
         if (state == "post") s.put("ft", true)
