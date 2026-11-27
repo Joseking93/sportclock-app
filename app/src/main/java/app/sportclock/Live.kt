@@ -84,7 +84,8 @@ object Live {
         // F1: one snapshot of F1's live timing covers every session we're watching
         val activeF1 = if (Settings.f1Alerts(ctx)) data.events.filter { watchedF1(it) && inF1Window(it, now) } else emptyList()
         if (activeF1.isNotEmpty()) {
-            val snap = runCatching { f1Snapshot() }.onFailure { Diag.log("f1 alerts: $it") }.getOrNull()
+            F1Now.init(ctx.cacheDir)
+            val snap = runCatching { F1Now.refresh(0) }.onFailure { Diag.log("f1 alerts: $it") }.getOrNull()
             for (e in activeF1) {
                 when (if (snap != null && snap.isFor(e)) runCatching { checkF1(ctx, e, st, snap) }.onFailure { Diag.log("f1 ${e.session}: $it") }.getOrNull() else null) {
                     "in" -> live = true

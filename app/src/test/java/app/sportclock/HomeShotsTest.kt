@@ -111,4 +111,17 @@ class HomeShotsTest {
         rule.waitForIdle()
         save("follow-alerts.png")
     }
+
+    /** 2.36: the F1 page opened from a notification after the session, drawn from the phone's copy: no white box. */
+    @Test fun f1LiveFinished() {
+        assumeTrue(System.getenv("SC_SHOTS") == "1")
+        F1Now.snap = parseF1(org.json.JSONObject(javaClass.getResource("/f1-austin-quali.json")!!.readText())); F1Now.at = System.currentTimeMillis()
+        val now = Instant.parse("2026-10-24T23:00:00Z")
+        rule.mainClock.autoAdvance = false
+        rule.setContent {
+            SportClockTheme("night", "dark") { Box(Modifier.fillMaxSize().background(C.bg).statusBarsPadding()) { F1Hub(events, now, {}, {}, action = "Close", start = 2) } }
+        }
+        settle(4)
+        save("f1-live-finished.png")
+    }
 }

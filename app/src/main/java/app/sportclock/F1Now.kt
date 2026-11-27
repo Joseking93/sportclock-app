@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.withLock
 import java.time.Duration
 import java.time.Instant
 
@@ -46,7 +47,40 @@ import java.time.Instant
  */
 
 /** The latest snapshot of the live session. */
-object F1Now { var snap by mutableStateOf<F1Snapshot?>(null) }
+/**
+ * The latest F1 live timing snapshot, shared by the F1 page, the Weekend panel, Home and the alert check, so a screen
+ * opens on what is already here instead of waiting for F1's feed. The last one is also kept on the phone, so even a
+ * cold start paints at once and then refreshes.
+ */
+object F1Now {
+    var snap by mutableStateOf<F1Snapshot?>(null)
+    /** When [snap] was taken (epoch ms); 0 = never. */
+    var at by mutableLongStateOf(0L)
+    private var file: java.io.File? = null
+    private val lock = kotlinx.coroutines.sync.Mutex()
+    private const val KEEP_MS = 24 * 3600_000L
+
+    /** Where the last snapshot is kept; loads it if it is from the last day. */
+    fun init(dir: java.io.File) {
+        if (file != null) return
+        val f = java.io.File(dir, "f1-live.json").also { file = it }
+        if (snap == null && f.exists() && System.currentTimeMillis() - f.lastModified() < KEEP_MS)
+            runCatching { snap = parseF1(org.json.JSONObject(f.readText())); at = f.lastModified() }.onFailure { Diag.log("f1 cache: $it") }
+    }
+
+    fun age(): Long = if (at == 0L) Long.MAX_VALUE else System.currentTimeMillis() - at
+
+    /** A fresh snapshot, unless one younger than [maxAge] ms is already here; two callers at once share one fetch. */
+    suspend fun refresh(maxAge: Long = 5_000): F1Snapshot = lock.withLock {
+        snap?.takeIf { age() < maxAge } ?: run {
+            val raw = f1SnapshotRaw()
+            val s = parseF1(raw)
+            snap = s; at = System.currentTimeMillis()
+            file?.let { f -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { f.writeText(raw.toString()) } } }
+            s
+        }
+    }
+}
 
 /** Every session of [e]'s Grand Prix weekend, in order. */
 fun f1Weekend(e: Event, events: List<Event>) =
@@ -129,7 +163,7 @@ fun F1NowPanel(session: Event, onPage: (String) -> Unit) {
     var failed by remember { mutableStateOf(false) }
     LaunchedEffect(session.id) {
         while (true) {
-            runCatching { f1Snapshot() }.onSuccess { F1Now.snap = it; failed = false }
+            runCatching { F1Now.refresh() }.onSuccess { failed = false }
                 .onFailure { if (it is CancellationException) throw it; failed = true; Diag.log("f1 now: $it") }
             delay(15_000)
         }

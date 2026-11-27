@@ -66,16 +66,15 @@ internal fun utcHm(utc: String) = runCatching { hm(LocalDateTime.parse(utc.remov
  */
 @Composable
 fun F1LiveView() {
-    var snap by remember { mutableStateOf<F1Snapshot?>(null) }
     var failed by remember { mutableStateOf(false) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         while (true) {
-            runCatching { f1Snapshot() }.onSuccess { snap = it; failed = false }.onFailure { if (it is CancellationException) throw it; failed = snap == null; Diag.log("f1 live: $it") }
-            delay(if (snap?.live == true) 15_000 else 60_000)
+            runCatching { F1Now.refresh() }.onSuccess { failed = false }.onFailure { if (it is CancellationException) throw it; failed = F1Now.snap == null; Diag.log("f1 live: $it") }
+            delay(if (F1Now.snap?.live == true) 15_000 else 60_000)
         }
     }
-    val s = snap
+    val s = F1Now.snap
     FlagColours(s)
     when {
         s == null && failed -> Text("Couldn't reach F1 live timing. Check your connection.", color = C.fg2, fontFamily = Inter, modifier = Modifier.padding(20.dp))
@@ -108,8 +107,10 @@ fun F1LiveView() {
 
 @Composable
 private fun StatusBanner(s: F1Snapshot) {
-    val col = if (s.live) trackColor(s.track) else C.tile2
-    Column(Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(col.copy(alpha = if (s.live) .9f else 1f)).padding(12.dp)) {
+    // live: the flag's colour; otherwise the page's own card colour as it is (the F1 look's card is see-through white,
+    // so forcing it opaque made a white box with white text)
+    val col = if (s.live) trackColor(s.track).copy(alpha = .9f) else C.tile
+    Column(Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(col).padding(12.dp)) {
         val ink = if (s.live) Color.White else C.fg                     // white on a flag colour, the theme's text on a plain card
         Text("${s.meeting} · ${s.session}", color = ink, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(when {
@@ -120,6 +121,8 @@ private fun StatusBanner(s: F1Snapshot) {
         s.weather?.let { w ->
             Text("Air ${w.air}° · Track ${w.track}° · ${if (w.rain) "Rain" else "Dry"} · Wind ${w.wind} m/s", color = ink.copy(alpha = .85f), fontFamily = Inter, fontSize = 12.sp)
         }
+        // shown from the phone's copy while the fresh one loads
+        if (F1Now.age() > 60_000) Text("Updating…", color = ink.copy(alpha = .7f), fontFamily = Inter, fontSize = 12.sp)
     }
 }
 
@@ -137,7 +140,8 @@ private fun TimingTower(s: F1Snapshot) = LazyColumn {
                 if (s.live && sec.any { it.value.isNotBlank() || it.segments.isNotEmpty() }) SectorBars(sec)
                 else Text(d?.team.orEmpty(), color = C.fg3, fontFamily = Inter, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            val tag = when { l.retired -> "OUT"; l.stopped -> "STOPPED"; l.inPit -> "PIT"; l.knockedOut -> "KO"; else -> null }
+            // PIT only while it's on: after the flag every car is back in the garage, so it said PIT on all of them
+            val tag = when { l.retired -> "OUT"; l.stopped -> "STOPPED"; l.inPit && s.live -> "PIT"; l.knockedOut -> "KO"; else -> null }
             tag?.let { Text(it, color = if (it == "PIT") C.lime else RED, fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(end = 8.dp)) }
             if (l.tyre.isNotBlank()) TyreBadge(l.tyre)
             Column(Modifier.width(86.dp), horizontalAlignment = Alignment.End) {
@@ -519,6 +523,8 @@ fun F1Hub(events: List<Event>, now: Instant, onOpen: (Event) -> Unit, onPage: (S
     var seg by rememberSaveable(start) { mutableIntStateOf(start) }      // a notification opens it on its Live tab (2)
     val race = remember(events, now.epochSecond / 600) { currentGp(events, now) }
     CompetitionTheme("F1")
+    // start loading live timing as the page opens, whichever tab, so Live is ready when it's tapped
+    LaunchedEffect(Unit) { runCatching { F1Now.refresh(30_000) }.onFailure { if (it is CancellationException) throw it } }
     Box(Modifier.fillMaxSize()) {
     CompBackdrop("F1", Modifier.matchParentSize())
     Column(Modifier.fillMaxSize()) {

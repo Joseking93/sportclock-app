@@ -2,6 +2,12 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.36 (27 Nov 2026)
+
+- **F1 Live opens at once.** The latest live timing is kept on the phone and shared by the F1 page, the Weekend panel and the alerts. Opening the F1 page starts loading it whichever tab you're on. Home keeps it fresh from half an hour before a session. A tapped notification opens on what the alert check just fetched. If the copy is older than a minute it's shown with "Updating…" while the new one loads.
+- **No more white box on F1 Live.** After a session the banner at the top was a solid white card with white text. It now reads "Qatar Grand Prix · Practice 1 / Finished" with the weather, on the page's dark card.
+- After a session, the timing list no longer shows PIT next to every driver.
+
 ## 2.35 (27 Nov 2026)
 
 - **F1 notifications open the new F1 page.** A starting-soon alert, or a safety car, red flag or penalty alert, used to open the old session sheet or the old live timing page. Now it opens the F1 page: on its Live tab while the session is on, on its Home tab before it starts.

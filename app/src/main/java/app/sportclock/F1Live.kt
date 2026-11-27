@@ -96,7 +96,10 @@ private class SrConn {
 }
 
 /** The current state of the live or latest F1 session. */
-suspend fun f1Snapshot(): F1Snapshot = withContext(Dispatchers.IO) {
+suspend fun f1Snapshot(): F1Snapshot = parseF1(f1SnapshotRaw())
+
+/** F1's live timing state as it comes off the feed, before parsing (kept on the phone by [F1Now] for a fast first paint). */
+suspend fun f1SnapshotRaw(): JSONObject = withContext(Dispatchers.IO) {
     val c = SrConn()
     val (nc, nb) = c.call("$SR/negotiate?negotiateVersion=1", "POST", "")
     if (nc != 200) error("negotiate $nc")
@@ -116,7 +119,7 @@ suspend fun f1Snapshot(): F1Snapshot = withContext(Dispatchers.IO) {
         if (result != null) break
     }
     runCatching { c.call(u, "DELETE", null) }
-    parseF1(result ?: error("no snapshot"))
+    result ?: error("no snapshot")
 }
 
 private fun JSONObject?.entries(): List<Pair<String, JSONObject>> =

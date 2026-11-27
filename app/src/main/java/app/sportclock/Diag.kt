@@ -20,7 +20,7 @@ const val APP_API = "$SITE/api/app"
 internal const val APP_KEY = "BF7o_Cc6Dyy-SaBNu4bcU8kn"
 
 class SportClockApp : Application() {
-    override fun onCreate() { super.onCreate(); Diag.install(this) }
+    override fun onCreate() { super.onCreate(); Diag.install(this); F1Now.init(cacheDir) }
 }
 
 /**

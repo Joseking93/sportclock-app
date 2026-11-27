@@ -267,6 +267,11 @@ fun HomeScreen(st: AppState, events: List<Event>, now: Instant, scores: Map<Stri
     val list = remember(events, st.follows, filter, now, shown) { listEvents(events, st.follows, filter, now, shown) }
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     val scope = rememberCoroutineScope()
+    // an F1 session on, or starting within half an hour: keep live timing warm so the F1 page opens on it at once
+    val f1Near = remember(events, now.epochSecond / 60) { events.any { it.code == "F1" && !it.isTbc && !now.isBefore(it.start.minusSeconds(1800)) && !it.over(now) } }
+    if (f1Near) LaunchedEffect(Unit) {
+        while (true) { runCatching { F1Now.refresh(60_000) }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }; kotlinx.coroutines.delay(60_000) }
+    }
     // the items above the day groups, counted so a tap on the week strip can scroll to its day
     val before = 7 + if (list.isEmpty()) 1 else 0
     LazyColumn(Modifier.fillMaxSize(), state = listState) {

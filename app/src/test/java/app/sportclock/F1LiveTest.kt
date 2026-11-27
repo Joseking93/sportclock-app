@@ -49,4 +49,15 @@ class F1LiveTest {
             fiaUpgradesUrl("United States Grand Prix", 2026))
         assertTrue(fiaUpgradesUrl("São Paulo Grand Prix", 2026).contains("2026_sao_paulo_grand_prix_-_"))
     }
+
+    /** 2.36: the last snapshot is kept on the phone and opens at once; a fresh enough one is reused, not fetched again. */
+    @Test fun keptOnThePhone() = kotlinx.coroutines.runBlocking {
+        val dir = kotlin.io.path.createTempDirectory("f1").toFile()
+        java.io.File(dir, "f1-live.json").writeText(javaClass.getResource("/f1-austin-quali.json")!!.readText())
+        F1Now.snap = null; F1Now.at = 0
+        F1Now.init(dir)
+        assertEquals("Qualifying", F1Now.snap?.session)
+        assertTrue(F1Now.age() < 60_000)
+        assertEquals("Qualifying", F1Now.refresh(60_000).session)            // no network: the copy is young enough
+    }
 }
