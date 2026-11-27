@@ -514,8 +514,9 @@ fun currentGp(events: List<Event>, now: Instant): Event? = events
     .minByOrNull { it.start }
 
 @Composable
-fun F1Hub(events: List<Event>, now: Instant, onOpen: (Event) -> Unit, onPage: (String) -> Unit, onChange: () -> Unit = {}, action: String = "Change") {
-    var seg by rememberSaveable { mutableIntStateOf(0) }
+fun F1Hub(events: List<Event>, now: Instant, onOpen: (Event) -> Unit, onPage: (String) -> Unit, onChange: () -> Unit = {}, action: String = "Change",
+          start: Int = 0) {
+    var seg by rememberSaveable(start) { mutableIntStateOf(start) }      // a notification opens it on its Live tab (2)
     val race = remember(events, now.epochSecond / 600) { currentGp(events, now) }
     CompetitionTheme("F1")
     Box(Modifier.fillMaxSize()) {

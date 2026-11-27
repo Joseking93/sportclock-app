@@ -146,12 +146,20 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
             delay(if (live) 120_000 else 900_000)
         }
     }
-    // a tapped notification: its match's sheet (the results), or the page it names
+    // a tapped notification: its match's sheet (the results), or the page it names. Anything F1 opens the F1 page itself, like
+    // its cards on Home: on its Live tab while a session is on (race control alerts, a session that has started), else on Home.
     LaunchedEffect(DeepLink.target, data) {
         val t = DeepLink.target ?: return@LaunchedEffect
         val d = data ?: return@LaunchedEffect
-        if (t.startsWith("page:")) { detail = null; open(t.removePrefix("page:")) }
-        else (d.events.firstOrNull { it.id == t } ?: AlertChoices.extras.firstOrNull { it.id == t })?.let { detail = it } ?: Diag.log("deep link: no event $t")
+        detail = null
+        val e = if (t.startsWith("page:")) null else d.events.firstOrNull { it.id == t } ?: AlertChoices.extras.firstOrNull { it.id == t }
+        when {
+            t == "page:f1live" -> open("f1home:live")
+            t.startsWith("page:") -> open(t.removePrefix("page:"))
+            e == null -> Diag.log("deep link: no event $t")
+            e.code == "F1" -> open(if (e.inProgress(Instant.now())) "f1home:live" else "f1home")
+            else -> detail = e
+        }
         DeepLink.target = null
     }
     fun refreshWidget() = scope.launch { SportClockWidget().updateAll(ctx) }
@@ -204,7 +212,8 @@ fun App(onTextScale: (Float) -> Unit = {}, onTheme: (String, String) -> Unit = {
                 page == "update" -> UpdateScreen(onBack = { back(); updateWaiting = Updater.waiting(ctx) })
                 page == "report" -> ReportScreen(onBack = { back() })
                 // an F1 card on Home opens the F1 page itself (its Home tab), not a single session's sheet
-                page == "f1home" -> F1Hub(d?.events.orEmpty(), now, onOpen = { detail = it }, onPage = { open(it) }, onChange = { back() }, action = "Close")
+                page == "f1home" || page == "f1home:live" -> F1Hub(d?.events.orEmpty(), now, onOpen = { detail = it }, onPage = { open(it) }, onChange = { back() },
+                    action = "Close", start = if (page == "f1home:live") 2 else 0)
                 page == "f1live" || page == "f1news" || page?.startsWith("upgrades:") == true -> F1Page(page!!, onBack = { back() })
                 page?.startsWith("league:") == true -> LeaguePage(page!!.removePrefix("league:"), st, d?.events.orEmpty(), now, scores.matches,
                     onBack = { back() }, onOpen = { detail = it }, onTeam = { open("team:$it") })

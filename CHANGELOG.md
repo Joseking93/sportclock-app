@@ -2,6 +2,10 @@
 
 Newest first. Each version's APK is attached to its GitHub Release.
 
+## 2.35 (27 Nov 2026)
+
+- **F1 notifications open the new F1 page.** A starting-soon alert, or a safety car, red flag or penalty alert, used to open the old session sheet or the old live timing page. Now it opens the F1 page: on its Live tab while the session is on, on its Home tab before it starts.
+
 ## 2.34 (21 Nov 2026)
 
 - **The NEXT UP card stays with the match.** It no longer jumps to the next game at kick-off. About 75 minutes before, it says LINEUPS OUT with your club's formation and whether your player starts. During the match it shows the live score and the minute in a red ring. At the end it shows FULL TIME with the score and a Highlights button for three hours. F1 sessions and fight cards show LIVE while they're on. The widget still shows what's next.
